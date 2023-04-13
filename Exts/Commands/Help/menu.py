@@ -278,7 +278,7 @@ class Cog(ListPageSource):
     def __init__(
             self, ctx: ShakeContext, 
             group: commands.Cog, items: list[commands.Command],
-            paginating: bool = False, per_page: int = 6, **kwargs
+            paginating: bool = True, per_page: int = 6, **kwargs
         ):
         title: str = getattr(group, 'help_command_title', None) or f'{group.qualified_name} Befehle'
         super().__init__(
@@ -367,7 +367,7 @@ class HelpFrontSource(FrontPageSource):
             )
             embed.add_field(
                 name=_("Support Server"), inline=False,
-                value=_("You can get more help if you join the official server at\n[https://discord.gg/shake]({support_server})").format(
+                value=_("You can get more help if you join the official server at\n{support_server}").format(
                     support_server=menu.ctx.bot.config.other.server
                 )
             )

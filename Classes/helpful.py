@@ -108,7 +108,7 @@ class Migration():
         import_module(self.import_module())
         try:
             connection = await connect(config.database.postgresql)
-            await connection.execute(f'CREATE DATABASE "{self.item.id}" OWNER "shake"')
+            await connection.execute(f'CREATE DATABASE "{self.item.id}" OWNER "postgres"')
 
             try: 
                 pool = await Table.create_pool(config.database.postgresql + str(self.item.id), **_kwargs)
@@ -317,7 +317,7 @@ class ShakeContext(Context):
     async def reply(
         self, content: Optional[str] = None, tts: bool = False,
         embed: Optional[ShakeEmbed] = None, embeds: Optional[Sequence[ShakeEmbed]] = None,
-        file: Optional[File] = None, files: Optional[Sequence[File]] = None,
+        file: Optional[File] = None, files: Optional[Sequence[File]] = None, error: bool = False,
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = None,
@@ -327,7 +327,7 @@ class ShakeContext(Context):
             message = await self.__await__(super().reply,
                 content=content, tts=tts, embed=embed, embeds=embeds, file=file,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
-                nonce=nonce, allowed_mentions=allowed_mentions, view=view,
+                nonce=nonce, allowed_mentions=allowed_mentions, view=view, error=error,
                 mention_author=mention_author, suppress_embeds=suppress_embeds
             )
         except (Forbidden, HTTPException):
@@ -339,7 +339,7 @@ class ShakeContext(Context):
     async def smart_reply(
         self, content: Optional[str] = None, tts: bool = False,
         embed: Optional[ShakeEmbed] = None, embeds: Optional[Sequence[ShakeEmbed]] = None,
-        file: Optional[File] = None, files: Optional[Sequence[File]] = None,
+        file: Optional[File] = None, files: Optional[Sequence[File]] = None, error: bool = False,
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = False,
@@ -348,7 +348,7 @@ class ShakeContext(Context):
         kwargs = {
             'content': content, 'embed': embed, 'embeds': embeds, 'file': file, 'suppress_embeds': suppress_embeds, 
             'stickers': stickers, 'delete_after': delete_after, 'ephemeral': ephemeral, 'nonce': nonce, 'files': files, 
-            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts,
+            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts, 'error': error,
         }
         if ref := self.message.reference:
             kwargs['reference'] = ref
@@ -356,7 +356,6 @@ class ShakeContext(Context):
                 author = ref.cached_message.author
                 kwargs['mention_author'] = (author in self.message.mentions and author.id not in self.message.raw_mentions)
             return await self.send(**kwargs)
-        view = kwargs.pop('view', None)
         if getattr(self.channel, "last_message", MISSING) != self.message:
             return await self.reply(**kwargs)
         return await self.send(**kwargs)
@@ -521,12 +520,12 @@ class BotBase(AutoShardedBot):
         await super().close()
 
     @staticmethod
-    async def on_connect():
-        getLogger(__name__).info("Connection to Discord established.")
+    async def on_shard_connect(shard_id):
+        getLogger(__name__).info("Shard ID {id} has successfully CONNECTED to Discord.".format(id=shard_id))
 
     @staticmethod
-    async def on_disconnect():
-        getLogger(__name__).info("Connection to Discord lost.")
+    async def on_shard_disconnect(shard_id):
+        getLogger(__name__).info("Shard ID {id} has LOST Connection to Discord.".format(id=shard_id))
     
     async def open(self, token: str,) -> None:
         try: 

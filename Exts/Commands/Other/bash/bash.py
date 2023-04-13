@@ -5,6 +5,7 @@ from asyncio import (
     Semaphore, create_task, sleep, TimeoutError, 
     create_subprocess_shell, Task, wait, FIRST_COMPLETED
 )
+from typing import Optional
 from re import sub
 from time import perf_counter
 from discord import Message, User, Reaction
@@ -16,13 +17,13 @@ class TextPaginator:
     __slots__ = ("ctx", "reactions", "_paginator", "current", "message", "update_lock")
 
     def __init__(
-        self, ctx: ShakeContext, prefix: str | None = None, suffix: str | None = None
+        self, ctx: ShakeContext, prefix: Optional[str] = None, suffix: Optional[str] = None
     ) -> None:
         self._paginator = commands.Paginator(
             prefix=prefix, suffix=suffix, max_size=1950
         )
         self.current = 0
-        self.message: Message | None = None
+        self.message: Optional[Message] = None
         self.ctx = ctx
         self.update_lock = Semaphore(value=2)
         self.reactions = {

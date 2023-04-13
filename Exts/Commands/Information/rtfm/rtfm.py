@@ -26,13 +26,7 @@ class RtfmKey():
     async def convert(cls, ctx: ShakeContext, argument: Optional[str] = None) -> List[str]:
         return argument if not argument is None and argument in RTFM_PAGE_TYPES else None
 
-def finder(
-    text: str,
-    collection: Iterable[str],
-    *,
-    key: Optional[Callable[[str], str]] = ...,
-    lazy: bool = True,
-) -> Generator[str, None, None] | list[str]:
+def finder(text: str, collection: Iterable[str], *, key: Optional[Callable[[str], str]] = ..., lazy: bool = True,) -> list[str]:
     suggestions: list[tuple[int, int, str]] = []
     text = str(text)
     pat = '.*?'.join(map(escape, text))

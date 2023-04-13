@@ -54,11 +54,9 @@ class Reddit:
         if not bool(len(self.posts)):
             await self.create(ctx, subreddit)
 
-        print(1, time())
         for post in self.posts:
             if post in self.guild_posts:
                 continue
-            print(2, time())
             self.expire(ctx, post)
             return post
         

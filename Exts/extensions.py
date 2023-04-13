@@ -54,7 +54,6 @@ extensions = [
     'Exts.Functions.Reactions.raw.reaction.remove.__init__', 
     
     'Exts.Functions.Scheduled.freegames.__init__', 
-    'Exts.Functions.Scheduled.twitter.__init__', 
     
     'Exts.Functions.Voice.voice_state_update.__init__'
 ]

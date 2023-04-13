@@ -3,17 +3,16 @@
 from discord import PartialEmoji
 from importlib import reload
 from Classes import ShakeBot, ShakeContext
-from . import do
+from . import language as _language
 from typing import Optional
 from Classes.i18n import _, locale_doc, setlocale
 from discord.ext import commands
-from discord.ext.commands import MissingPermissions
-from discord import app_commands
+from discord.ext.commands import MissingPermissions, guild_only
 ########
 #
 class language_extension(commands.Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -23,13 +22,14 @@ class language_extension(commands.Cog):
         return "information"
     
     @commands.hybrid_group(name="language")
-    @app_commands.guild_only()
+    @guild_only()
     @setlocale()
     @locale_doc
     async def language(self, ctx: ShakeContext):
         return
 
     @language.command(name='list')
+    @guild_only()
     @setlocale()
     @locale_doc
     async def list(self, ctx: ShakeContext) -> None:
@@ -41,11 +41,12 @@ class language_extension(commands.Cog):
             (If something is not yet translated, the english original text is used.)"""
         )
         if self.bot.dev:
-            reload(do)
-        return await do.command(ctx=ctx).list()
+            reload(_language)
+        return await _language.command(ctx=ctx).list()
 
 
     @language.command(name='set')
+    @guild_only()
     @setlocale()
     @locale_doc
     async def set(self, ctx: ShakeContext, *, language: str, server: Optional[bool] = False) -> None:
@@ -62,16 +63,15 @@ class language_extension(commands.Cog):
                 If the language should be for the whole server"""
         )
         if self.bot.dev:
-            reload(do)
+            reload(_language)
+
         if server == True:
-            
             if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
                 raise MissingPermissions(missing)
-            
-            await do.command(ctx=ctx).guild_locale(locale=language)
+            await _language.command(ctx=ctx).guild_locale(locale=language)
             return
 
-        await do.command(ctx=ctx).user_locale(locale=language)
+        await _language.command(ctx=ctx).user_locale(locale=language)
         return
 
 

@@ -12,7 +12,7 @@ else:
 
 class ListMenu(page.Pages):
     def __init__(self, source: _source.ListPageSource, ctx: ShakeContext):
-        super().__init__(source, ctx=ctx, compact=True)
+        super().__init__(source, ctx=ctx)
 
     async def rebind(self, source: menus.PageSource, interaction: Interaction) -> None:
         self.source = source
@@ -33,7 +33,7 @@ class CategoricalMenu(page.Pages):
             front: Optional[_source.FrontPageSource] = None, 
             **kwargs: Any
         ):
-        super().__init__(source=source, ctx=ctx, compact=True, **kwargs)
+        super().__init__(source=source, ctx=ctx, **kwargs)
         self.select: _select.CategoricalSelect = select or _select.CategoricalSelect
         self.selectsource: _source.ListPageSource = selectsource 
         self.front: _source.FrontPageSource = front or source

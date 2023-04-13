@@ -9,7 +9,7 @@ from polib import pofile
 from contextlib import suppress
 from gettext import GNUTranslations
 from Classes.pages import ListMenu, ListPageSource
-from Classes.i18n import _, localedir, gettext_translations, localess, locales as __locales
+from Classes.i18n import _, localedir, gettext_translations, available, locales
 ########
 #
 
@@ -32,7 +32,7 @@ class locale():
         crw_lang = metadata.pop('X_Crowdin_Language', '') # ''  /  None
         self.authors = [', '.join(metadata.pop('Last-Translator', '').split())] or []
         self.two_letters_code = metadata.pop('Language', crw_lang[:2] or locale[:2]).lower() # if crw_lang else
-        self.language = localess.get(locale, {}).get('language', None) or metadata.pop('Language-Team', None) #.replace(two_letters_code, y.get(two_letters_code, two_letters_code))
+        self.language = available.get(locale, {}).get('language', None) or metadata.pop('Language-Team', None) #.replace(two_letters_code, y.get(two_letters_code, two_letters_code))
         self.flag: str = ':flag_{}:'.format(y.get(code := self.two_letters_code, code))
         self.locale_with_underscore = ((crw_lang.lower()+'_'+crw_lang.upper()) if len(crw_lang) == 2 else (crw_lang)).replace('-', '_') if crw_lang else None
         self.locale = locale
@@ -48,33 +48,33 @@ class command():
         self.ctx: ShakeContext = ctx
 
     def get_locale_by_name(self, name: str) -> str:
-        for locale in localess:
-            language = localess[locale]['language']
-            simplified = localess[locale]['simplified']
+        for locale in available:
+            language = available[locale]['language']
+            simplified = available[locale]['simplified']
             if name in [language, locale] or name in simplified:
                 return locale
         return None
 
 
-    def check(self, locale) -> Union[ShakeEmbed, bool]:
-        if not (locale := self.get_locale_by_name(locale)):
+    def check(self, name: str) -> Union[ShakeEmbed, bool]:
+        if not name in locales:
+            embed = ShakeEmbed.default(self.ctx, description = _(
+                "{emoji} {prefix} **I'm sorry to say that I dont have your given locale ready.** \nTry to contribute [here]({link}) if you want to!").format(
+                emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix, link="https://github.com/Shake-Developement/Locales/"))
+            locale = None
+        elif (locale := self.get_locale_by_name(name)) is None:
             embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} **Your given language is not valid. Use </language list> to get a list of all available languages**").format(
                 emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix))
-            return embed, None
-        if not locale in __locales:
+        else:
             embed = ShakeEmbed.default(self.ctx, description = _(
-                """{emoji} {prefix} **I'm sorry to say that I dont have your given locale ready.**
-                Try to contribute [here]({link}) if you want to!""").format(
-                emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix, link="https://github.com/KidusTV/locales/"))
-            return embed, None
-        embed = ShakeEmbed.default(self.ctx, description = _(
-            """{emoji} {prefix} **The specified language was set successfully!**""").format(
-                emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix))
+                """{emoji} {prefix} **The specified language was set successfully!**""").format(
+                    emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix))
+            locale = name
         return embed, locale
 
 
     async def list(self): 
-        locales = [
+        items = [
             locale(x) for x in list(
                 x for x, y in gettext_translations.items() if isinstance(y, GNUTranslations)
             )
@@ -82,9 +82,10 @@ class command():
         current = locale(await self.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US')
         menu = ListMenu(
             ctx=self.ctx, source=PageSource(
-                ctx=self.ctx, items=locales, current=current, title = _("Available Translations"),
-                description=_("There are currently translations for `{languages}` languages \nand your current language is **{current}**. \nIs something wrong or don't you see your language? \nCome help us out on [Crowdin]({link})!""")).format(
-                    languages=len(locales), link=self.bot.config.other.crowdin, current=current.language
+                ctx=self.ctx, items=items, current=current, title = _("Available Translations"),
+                description=_("There are currently translations for `{languages}` languages and your current language is **{current}**. \nDon't you see your language? Come help us out on [Crowdin]({link})!""").format(
+                    languages=len(items), link=self.bot.config.other.crowdin, current=current.language
+                )
             )
         )
         await menu.setup()

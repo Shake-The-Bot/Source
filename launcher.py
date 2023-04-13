@@ -10,6 +10,7 @@ from re import compile
 from bot import ShakeBot
 from logging import getLogger, INFO
 from contextlib import contextmanager
+from asyncpg.exceptions import InvalidCatalogNameError
 from Classes.logging.logger import stream, file_handler, command_handler
 from click import option, group, argument, pass_context, Context
 
@@ -55,7 +56,11 @@ async def run_bot():
     def prefix(bot, msg):
         return ['<@!{}> '.format(bot.user.id), '<@{}> '.format(bot.user.id)]
     async with ShakeBot(shard_count=1, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
-        pool = await _create_pool(config)
+        try:
+            pool = await _create_pool(config)
+        except:
+            raise
+
         bot.pool = pool.get('bot', None)
         bot.config_pool = pool.get('config', None)
         await bot.open(token=config.client.token)
@@ -78,7 +83,7 @@ def init(id, reason):
         item = Migration.dbitem(id)
         migrations = Migration(item)
         initiation = await migrations.init(reason)
-        print(f'» {item.name} succesfully initiated' if initiation else f'» {item.name} couldn\'t get initiated')
+        logger.info(f'» {item.name} succesfully initiated' if initiation else f'» {item.name} couldn\'t get initiated')
     return run(i())
 
 
@@ -91,7 +96,7 @@ def migrate(id, reason):
         item = Migration.dbitem(id)
         migrations = Migration(item)
         migration = await migrations.migrate(reason)
-        print(f'» {item.name} succesfully migrated' if migration else f'» {item.name} couldn\'t get migrated')
+        logger.info(f'» {item.name} succesfully migrated' if migration else f'» {item.name} couldn\'t get migrated')
     return run(m())
 
 
@@ -100,12 +105,12 @@ def migrate(id, reason):
 @argument('id', metavar='[id]')
 def drop(id, reason):
     """Drops a revision for you to edit."""
-    async def m():
+    async def d():
         item = Migration.dbitem(id)
         migrations = Migration(item)
         drop = await migrations.drop(reason)
-        print(f'» {item.name} succesfully dropped' if drop else f'» {item.name} couldn\'t get dropped')
-    return run(m())
+        logger.info(f'» {item.name} succesfully dropped' if drop else f'» {item.name} couldn\'t get dropped')
+    return run(d())
 
 
 @main.command()
@@ -117,7 +122,7 @@ def upgrade(id, reason):
         item = Migration.dbitem(id)
         migrations = Migration(item)
         upgrade = await migrations.upgrade(reason)
-        print(f'» {item.name} succesfully upgraded' if upgrade else f'» {item.name} couldn\'t get upgraded')
+        logger.info(f'» {item.name} succesfully upgraded' if upgrade else f'» {item.name} couldn\'t get upgraded')
     return run(u())
 
 
@@ -130,7 +135,7 @@ def downgrade(id, reason):
         item = Migration.dbitem(id)
         migrations = Migration(item)
         downgrade = await migrations.downgrade(reason)
-        print(f'» {item.name} succesfully downgraded' if downgrade else f'» {item.name} couldn\'t get downgraded')
+        logger.info(f'» {item.name} succesfully downgraded' if downgrade else f'» {item.name} couldn\'t get downgraded')
     return run(d())
 
 

@@ -31,8 +31,8 @@ class ItemPageSource(menus.PageSource):
 
 class ListPageSource(menus.ListPageSource):
     def __init__(
-            self, ctx: Union[ShakeContext, Interaction], group: Any, items: list[Any], title: str, description: str = MISSING, 
-            paginating: bool = False, per_page: Optional[int] = 6, *args, **kwargs
+            self, ctx: Union[ShakeContext, Interaction], items: list[Any], title: str, group: Optional[Any] = MISSING, description: str = MISSING, 
+            paginating: bool = True, per_page: Optional[int] = 6, *args, **kwargs
         ):
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot

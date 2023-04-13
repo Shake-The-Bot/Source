@@ -51,6 +51,8 @@ class Pages(ui.View):
         self.clear_items()
         self.fill()
 
+    def clear_items(self):
+        return super().clear_items()
 
     def fill(self) -> None:
         if self.source.is_paginating():
@@ -175,6 +177,7 @@ class Pages(ui.View):
         self.page = page
         return True
     
+
     async def send(self, ephemeral: Optional[bool] = False):
         files = (self.file if isinstance(self.file, list) else [self.file]) if self.file else None
         self.message = await self.ctx.smart_reply(

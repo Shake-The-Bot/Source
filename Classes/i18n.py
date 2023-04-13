@@ -92,7 +92,8 @@ current_locale: ContextVar[str] = ContextVar("current_locale", default="en-US")
 _ = use_current_gettext
 locale_doc = i18n_docstring
 current_locale.set(default_locale)
-localess = {
+
+available = {
     'en-US': {'language': 'English', 'simplified': ['american english', 'english'], '_': 'English (american)' }, 
     'en-GB': {'language': 'English', 'simplified': ['british english'], '_': 'English (british)'}, 
     'bg-BG': {'language': 'български', 'simplified': ['bulgarian']}, 

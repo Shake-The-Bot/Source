@@ -171,7 +171,7 @@ class HelpPaginatedCommand():
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
         menu.add_categories(commands)
         
-        if setup := await menu.setup():
+        if await menu.setup():
             await menu.send()
 
 
