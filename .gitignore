@@ -3,9 +3,9 @@
 *.log
 *.toml
 .vscode
-Assets/
+Assets/*
 Classes/secrets
-Migrations/
+Migrations/*
 Testing/
 
 # Byte-compiled / optimized / DLL files
