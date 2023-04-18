@@ -3,6 +3,7 @@
 *.log
 *.toml
 .vscode
+requirements.txt
 Assets/*
 Classes/secrets
 Migrations/*
