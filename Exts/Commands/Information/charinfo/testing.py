@@ -1,7 +1,8 @@
 ############
 #
 from unicodedata import name
-from Classes import ShakeBot, ShakeContext, _, MISSING
+from Classes import ShakeBot, ShakeContext, _
+from . import lol
 from Classes.pages import ListMenu, ListPageSource
 ########
 #

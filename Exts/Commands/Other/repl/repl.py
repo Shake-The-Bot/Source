@@ -86,7 +86,7 @@ async def func():
             elif not isinstance(output, str): output = f'\n{repr(output) if output else str(output)}\n'
             else: output = f'\n{output}\n'
         except Exception as e:
-            await self.ctx.message.add_reaction(self.bot.emojis.hook)
+            await self.ctx.message.add_reaction(self.bot.emojis.cross)
             output = f'\n{type(e).__name__}: {e}\n'
         _eval_end = time() * 1000
         self.code = self.code.split('\n')

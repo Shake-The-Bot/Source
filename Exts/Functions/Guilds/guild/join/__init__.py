@@ -18,7 +18,13 @@ class on_guild_join(Cog):
         test = guild.id in list(self.bot.tests.keys())
         
         if test:
-            reload(testing)
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
         do = testing if test else guild_join
 
         try:

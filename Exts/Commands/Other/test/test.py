@@ -15,7 +15,6 @@ class command():
         self.id: int = id
 
     async def __await__(self):
-        
         try:
             try:
                 user = await UserConverter().convert(self.ctx, self.id)

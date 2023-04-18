@@ -63,7 +63,13 @@ class rtfm_extension(Cog):
         )
 
         if ctx.testing:
-            reload(testing)
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
         do = testing if ctx.testing else rtfm
 
         try:    
@@ -88,7 +94,13 @@ class rtfm_extension(Cog):
         )
 
         if ctx.testing:
-            reload(testing)
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
         do = testing if ctx.testing else rtfm
 
         try:    

@@ -16,7 +16,13 @@ class on_command_completion(Cog):
         test = any(x.id in list(self.bot.tests.keys()) for x in (ctx.author, ctx.guild, ctx.channel))
         
         if test:
-            reload(testing)
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
         do = testing if test else command_completion
 
         try:

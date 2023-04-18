@@ -19,7 +19,13 @@ class on_raw_reaction_remove(Cog):
         test = any(x in list(self.bot.tests.keys()) for x in (payload.channel_id, payload.guild_id, payload.user_id))
         
         if test:
-            reload(testing)
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
         do = testing if test else raw_reaction_remove
 
         try:

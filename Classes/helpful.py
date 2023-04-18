@@ -220,6 +220,7 @@ class ShakeContext(Context):
         super().__init__(**kwargs)
         self.__dict__.update(dict.fromkeys(["waiting", "result", "channel_used", "running", "failed", "done"]))
         self.pool: Pool = self.bot.pools.get(self.guild.id, None)
+        self.__testing = True if any(x.id in list(self.bot.tests.keys()) for x in (self.author, self.guild, self.channel)) else False
         self.messages: Dict[int, Message] = {}
         self.reinvoked = False
 
@@ -241,9 +242,7 @@ class ShakeContext(Context):
 
     @property
     def testing(self) -> bool:
-        if any(x.id in list(self.bot.tests.keys()) for x in (self.author, self.guild, self.channel)):
-            return True
-        return False
+        return self.__testing
 
     @property
     def session(self) -> ClientSession:
