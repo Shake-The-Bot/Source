@@ -12,7 +12,7 @@ extensions = [
     'Exts.Commands.Gimmicks.rainbow.__init__', 'Exts.Commands.Gimmicks.count.__init__',
     'Exts.Commands.Gimmicks.countdown.__init__', 'Exts.Commands.Gimmicks.random.__init__',
     'Exts.Commands.Gimmicks.meme.__init__', 'Exts.Commands.Gimmicks.would you.__init__', 
-    'Exts.Commands.Gimmicks.wwyd.__init__', 
+    'Exts.Commands.Gimmicks.scenario.__init__', 
 
     'Exts.Commands.Information.information',
     'Exts.Commands.Information.charinfo.__init__', 'Exts.Commands.Information.invite.__init__', 
