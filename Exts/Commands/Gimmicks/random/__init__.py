@@ -3,26 +3,24 @@
 from discord import PartialEmoji
 from typing import Optional
 from importlib import reload
-from Classes import ShakeBot, ShakeContext
-from . import random
-from Classes.i18n import _, locale_doc, setlocale
-from discord import app_commands
-from discord.ext import commands
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
+from . import random, testing
+from discord.ext.commands import Cog, hybrid_command, guild_only
 ########
 #
-class random_extension(commands.Cog):
+class random_extension(Cog):
     def __init__(self, bot) -> None: 
-        self.bot = bot
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{VIDEO GAME}'))
+        return PartialEmoji(name='\N{VIDEO GAME}')
 
     def category(self) -> str: 
         return "gimmicks"
     
-    @commands.hybrid_command(name="random")
-    @app_commands.guild_only()
+    @hybrid_command(name="random")
+    @guild_only()
     @setlocale()
     @locale_doc
     async def random(self, ctx: ShakeContext, offline: Optional[bool] = True):
@@ -34,9 +32,20 @@ class random_extension(commands.Cog):
             offline: bool
                 if offline is ok"""
         )
-        if self.bot.dev:
-            reload(random)
-        return await random.command(ctx=ctx, offline=offline).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else random
+
+        try:    
+            await do.command(ctx=ctx, offline=offline).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+         
 ########
 #
 async def setup(bot: ShakeBot): 

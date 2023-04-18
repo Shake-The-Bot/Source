@@ -2,11 +2,10 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import wouldyou
+from . import wouldyou, testing
 from typing import Optional, Literal
-from Classes.i18n import _, locale_doc, setlocale
 from discord.ext.commands import Cog, hybrid_command, guild_only
-from Classes import ShakeBot, ShakeContext, extras
+from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale, Testing
 ########
 #
 class wouldyou_extension(Cog):
@@ -18,7 +17,7 @@ class wouldyou_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{SCALES}'))
+        return PartialEmoji(name='\N{SCALES}')
 
     @hybrid_command(name="wouldyou")
     @extras(beta=True)
@@ -45,11 +44,21 @@ class wouldyou_extension(Cog):
                 ehm
             """
         )
-        if self.bot.dev:
-            reload(wouldyou)
-        await wouldyou.command(ctx=ctx, utility=utility, voting=voting, rather=rather).__await__(True)
+
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else wouldyou
+        try:    
+            await do.command(ctx=ctx, utility=utility, voting=voting, rather=rather).__await__()
     
-async def setup(bot): 
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+    
+async def setup(bot: ShakeBot): 
     await bot.add_cog(wouldyou_extension(bot))
 #
 ############

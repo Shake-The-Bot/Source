@@ -2,17 +2,18 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras
-from . import list
+from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
+from . import list, testing
 from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
 ########
 #
 class list_extension(Cog):
-    def __init__(self, bot) -> None: self.bot = bot
+    def __init__(self, bot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{SPIRAL NOTE PAD}'))
+        return PartialEmoji(name='\N{SPIRAL NOTE PAD}')
     
     def category(self) -> str: 
         return "information"
@@ -27,9 +28,19 @@ class list_extension(Cog):
         _(
             """list all guilds"""
         )
-        if self.bot.dev:
-            reload(list)
-        return await list.command(ctx=ctx).__await__()
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else list
+
+        try:
+            await do.command(ctx=ctx).__await__()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+         
             
 
 async def setup(bot: ShakeBot): 

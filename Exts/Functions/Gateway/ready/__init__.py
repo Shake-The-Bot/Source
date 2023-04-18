@@ -1,21 +1,23 @@
 ############
 #
-from importlib import reload
-from . import do
-from discord.ext import commands
+from . import ready
+from discord.ext.commands import Cog
+from Classes import ShakeBot
 ########
 #
-class on_ready(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+class on_ready(Cog):
+    def __init__(self, bot: ShakeBot):
+        self.bot: ShakeBot = bot
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_ready(self):
-        if self.bot.dev:
-            reload(do)
-        return await do.ready_event(bot=self.bot).__await__()
+        try:
+            await ready.event(bot=self.bot).__await__()
+        except:
+            raise
+
     
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(on_ready(bot))
 #
 ############

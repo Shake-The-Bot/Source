@@ -2,16 +2,14 @@
 #
 from discord import PartialEmoji, Member
 from importlib import reload
-
-from Classes import ShakeContext
-from . import do
-from Classes.i18n import _, locale_doc, setlocale
+from . import rank, testing
+from Classes import _, locale_doc, setlocale, ShakeContext, ShakeBot, Testing
 from discord.ext.commands import Greedy, Cog, hybrid_command, guild_only
 ########
 #
 class rank_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -34,11 +32,21 @@ class rank_extension(Cog):
                 the member to get the level information about
                 """
         )
-        if self.bot.dev:
-            reload(do)
-        return await do.rank_command(ctx=ctx, member=member or [ctx.author]).__await__()
 
-async def setup(bot): 
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else rank
+
+        try:    
+            await do.command(ctx=ctx, member=member or [ctx.author]).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(rank_extension(bot))
 #
 ############

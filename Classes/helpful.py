@@ -212,6 +212,7 @@ class ShakeContext(Context):
     channel: Union[VoiceChannel, TextChannel, Thread, DMChannel]
     command: Command[Any, ..., Any]
     message: Message
+    testing: bool
     bot: ShakeBot
     pool: Pool
 
@@ -238,11 +239,11 @@ class ShakeContext(Context):
     def db(self) -> Pool:
         return self.pool
 
-
     @property
-    def session(self) -> ClientSession:
-        return self.bot.session
-    
+    def testing(self) -> bool:
+        if any(x.id in list(self.bot.tests.keys()) for x in (self.author, self.guild, self.channel)):
+            return True
+        return False
 
     @property
     def session(self) -> ClientSession:
@@ -305,7 +306,7 @@ class ShakeContext(Context):
             message = await self.__await__(super().send, 
                 content=content, tts=tts, embed=embed, embeds=embeds, file=file, error=error,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
-                nonce=nonce, allowed_mentions=allowed_mentions, reference=reference or self.reference,
+                nonce=nonce, allowed_mentions=allowed_mentions, reference=reference or self.reference(),
                 mention_author=mention_author, suppress_embeds=suppress_embeds, view=view
             )
         except (Forbidden, HTTPException):
@@ -356,7 +357,7 @@ class ShakeContext(Context):
                 author = ref.cached_message.author
                 kwargs['mention_author'] = (author in self.message.mentions and author.id not in self.message.raw_mentions)
             return await self.send(**kwargs)
-        if getattr(self.channel, "last_message", MISSING) != self.message:
+        if getattr(self.channel, "last_message", MISSING) not in (self.message, MISSING):
             return await self.reply(**kwargs)
         return await self.send(**kwargs)
 
@@ -547,19 +548,25 @@ class ShakeEmbed(Embed):
         instance = cls(**kwargs)
         instance.timestamp = ctx.created_at
         author = getattr(ctx, 'author', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'user', str(MISSING))
-        bot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         instance.set_footer(text=f"Requested by {author} • via Shake", icon_url=bot.user.avatar.url)
         #instance.add_field(name='\u200b', value=bot.config.embed.footer.format(author), inline=False)
         return instance
     
     @classmethod
-    def to_success(cls, *, message: str, colour: Union[Colour, int] = embed_colour, **kwargs: Any) -> ShakeEmbed:
+    def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = embed_colour, **kwargs: Any) -> ShakeEmbed:
+        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        if description := kwargs.pop('description', None):
+            kwargs['description'] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
         return instance
 
     @classmethod
-    def to_error(cls, colour: Union[Colour, int] = embed_error_colour, **kwargs: Any) -> ShakeEmbed:
+    def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = embed_error_colour, **kwargs: Any) -> ShakeEmbed:
+        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        if description := kwargs.pop('description', None):
+            kwargs['description'] = f"{bot.emojis.cross} {bot.emojis.prefix} **{description}**"
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
         return instance

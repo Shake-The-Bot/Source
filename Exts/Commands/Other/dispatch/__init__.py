@@ -2,19 +2,19 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras
-from . import dispatch
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
+from . import dispatch, testing
 from typing import Optional
 from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
 ########
 #
 class dispatch_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{PISTOL}'))
+        return PartialEmoji(name='\N{PISTOL}')
     
     def category(self) -> str: 
         return "other"
@@ -37,9 +37,19 @@ class dispatch_extension(Cog):
             kwargs: Any
                 event keyword arguments"""
         )
-        if self.bot.dev:
-            reload(dispatch)
-        return await dispatch.command(ctx, event, kwargs).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else dispatch
+
+        try:    
+            await do.command(ctx, event, kwargs).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(dispatch_extension(bot))

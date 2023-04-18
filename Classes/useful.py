@@ -42,6 +42,7 @@ class _MissingSentinel:
 
     def __repr__(self):
         return '...'
+
 MISSING: Any = _MissingSentinel()
 
 @_SpecialForm
@@ -53,6 +54,12 @@ def Missing(self, parameters):
     arg = _type_check(parameters, f"{self} requires a single type.")
     return Union[arg, type(MISSING)]
 
+
+RTFM_PAGE_TYPES = {
+    'stable': 'https://discordpy.readthedocs.io/en/stable',
+    'latest': 'https://discordpy.readthedocs.io/en/latest',
+    'python': 'https://docs.python.org/3',
+}
 
 """"    Image    """
 

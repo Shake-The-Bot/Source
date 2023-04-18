@@ -4,14 +4,14 @@ from discord import PartialEmoji
 from importlib import reload
 from typing import Optional, Union
 from discord import TextChannel, Member, User
-from . import do
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras
+from . import sudo, testing
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
 from discord.ext.commands import Cog, hybrid_command, is_owner, guild_only
 ########
 #
 class sudo_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -48,9 +48,18 @@ class sudo_extension(Cog):
                 the arguments
             """
         )
-        if self.bot.dev:
-            reload(do)
-        return await do.sudo_command(ctx=ctx, channel=channel, user=user, command=command, args=arguments).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else sudo
+
+        try:    
+            await do.command(ctx=ctx, channel=channel, user=user, command=command, args=arguments).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot):
     await bot.add_cog(sudo_extension(bot))

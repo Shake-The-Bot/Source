@@ -2,22 +2,35 @@
 #
 from importlib import reload
 from discord import Interaction
-from Classes import ShakeBot
-from . import do
-from discord.ext import commands
+from Classes import ShakeBot, Testing
+from . import interaction as _interaction, testing
+from discord.ext.commands import Cog
 ########
 #
-class on_interaction(commands.Cog):
+class on_interaction(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_interaction(self, interaction: Interaction):
-        if self.bot.dev:
-            reload(do)
-        return await do.interaction_event(bot=self.bot, interaction=interaction).__await__()
+        
+        test = any(x.id in list(self.bot.tests.keys()) for x in (interaction.user, interaction.guild, interaction.channel))
+        
+        if test:
+            reload(testing)
+        do = testing if test else _interaction
 
-async def setup(bot): 
+        try:
+            await do.event(bot=self.bot, interaction=interaction).__await__()
+    
+        except:
+            if test:
+                raise Testing
+            raise
+
+
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(on_interaction(bot))
 #
 ############

@@ -2,17 +2,18 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import plus
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras
+from . import plus, testing
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
 from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
 ########
 #
 class premium_extension(Cog):
-    def __init__(self, bot) -> None:  self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None:  
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GEM STONE}'))
+        return PartialEmoji(name='\N{GEM STONE}')
 
     def category(self) -> str: 
         return "information"
@@ -29,9 +30,18 @@ class premium_extension(Cog):
 
             Of course, you dont have to. It's like a tip"""
         )
-        if self.bot.dev:
-            reload(plus)
-        return await plus.premium_command(ctx=ctx).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else plus
+
+        try:    
+            await do.command(ctx=ctx).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(premium_extension(bot))

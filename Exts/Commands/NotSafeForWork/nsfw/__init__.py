@@ -13,7 +13,7 @@ class nsfw_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{WASTEBASKET}'))
+        return PartialEmoji(name='\N{WASTEBASKET}')
 
     def category(self) -> str: 
         return "notsafeforwork"

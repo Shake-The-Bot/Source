@@ -2,8 +2,8 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras
-from . import do
+from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
+from . import do, testing
 from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
 ########
 #
@@ -28,9 +28,19 @@ class do_extension(Cog):
         _(
             """run commands multiple times"""
         )
-        if self.bot.dev:
-            reload(do)
-        return await do.command(ctx=ctx, times=times, command=command).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        _do = testing if ctx.testing else do
+
+        try:    
+            await _do.command(ctx=ctx, times=times, command=command).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 
 async def setup(bot: ShakeBot):
     await bot.add_cog(do_extension(bot))

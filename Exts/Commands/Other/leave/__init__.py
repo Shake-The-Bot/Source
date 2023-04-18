@@ -2,18 +2,19 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras
+from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
 from typing import Optional
-from . import leave
+from . import leave, testing
 from discord.ext.commands import hybrid_command, guild_only, is_owner, Cog
 ########
 #
 class leave_extension(Cog):
-    def __init__(self, bot) -> None: self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='blobleave', animated=True, id=1058033660755972219))
+        return PartialEmoji(name='blobleave', animated=True, id=1058033660755972219)
     
     def category(self) -> str: 
         return "other"
@@ -33,9 +34,18 @@ class leave_extension(Cog):
             guild: int
                 the ID of the server"""
         )
-        if self.bot.dev:
-            reload(leave)
-        return await leave.command(ctx=ctx, guild=guild).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else leave
+
+        try:    
+            await do.command(ctx=ctx, guild=guild).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
             
 
 async def setup(bot: ShakeBot): 

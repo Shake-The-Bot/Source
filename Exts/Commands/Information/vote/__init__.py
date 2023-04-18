@@ -2,26 +2,24 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import vote
-from Classes import ShakeBot, ShakeContext
+from . import vote, testing
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing, extras
 from discord.ext.commands import hybrid_command, is_owner, Cog, guild_only
-from Classes.checks import extras
-from Classes.i18n import _, locale_doc, setlocale
 ########
 #
 class vote_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GEM STONE}'))
+        return PartialEmoji(name='\N{GEM STONE}')
 
     def category(self) -> str: 
         return "information"
     
     @hybrid_command(name='vote')
-    @extras(beta=True, owner= True)
+    @extras(beta=True, owner=True)
     @guild_only()
     @is_owner()
     @setlocale()
@@ -32,9 +30,18 @@ class vote_extension(Cog):
 
             Of course, you dont have to. It's like a tip"""
         )
-        if self.bot.dev:
-            reload(vote)
-        return await vote.vote_command(ctx=ctx).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else vote
+
+        try:    
+            await do.command(ctx=ctx).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(vote_extension(bot))

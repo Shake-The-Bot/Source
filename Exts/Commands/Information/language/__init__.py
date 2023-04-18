@@ -2,26 +2,24 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, ShakeContext
-from . import language as _language
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from . import language as lang, testing
 from typing import Optional
-from Classes.i18n import _, locale_doc, setlocale
-from discord.ext import commands
-from discord.ext.commands import MissingPermissions, guild_only
+from discord.ext.commands import MissingPermissions, guild_only, Cog, hybrid_group
 ########
 #
-class language_extension(commands.Cog):
+class language_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{EARTH GLOBE EUROPE-AFRICA}'))
+        return PartialEmoji(name='\N{EARTH GLOBE EUROPE-AFRICA}')
 
     def category(self) -> str: 
         return "information"
     
-    @commands.hybrid_group(name="language")
+    @hybrid_group(name="language")
     @guild_only()
     @setlocale()
     @locale_doc
@@ -40,9 +38,18 @@ class language_extension(commands.Cog):
             Some of these languages are no real languages but serve as a way to spice up the text.
             (If something is not yet translated, the english original text is used.)"""
         )
-        if self.bot.dev:
-            reload(_language)
-        return await _language.command(ctx=ctx).list()
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else lang
+
+        try:
+            await do.command(ctx=ctx).list()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 
     @language.command(name='set')
@@ -62,17 +69,27 @@ class language_extension(commands.Cog):
             server: Optional[bool]
                 If the language should be for the whole server"""
         )
-        if self.bot.dev:
-            reload(_language)
+        
+        if ctx.testing:
+            reload(testing)
 
-        if server == True:
-            if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
-                raise MissingPermissions(missing)
-            await _language.command(ctx=ctx).guild_locale(locale=language)
-            return
+        do = testing if ctx.testing else lang
 
-        await _language.command(ctx=ctx).user_locale(locale=language)
-        return
+        try:        
+            if server == True:
+                if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
+                    raise MissingPermissions(missing)
+                await do.command(ctx=ctx).guild_locale(locale=language)
+                
+            else:
+                await do.command(ctx=ctx).user_locale(locale=language)
+            
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+
 
 
 async def setup(bot: ShakeBot): 

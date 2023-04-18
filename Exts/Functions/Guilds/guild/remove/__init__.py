@@ -1,24 +1,34 @@
 ############
 #
-from typing import Optional
-from discord import Guild, TextChannel
+from discord import Guild
 from importlib import reload
-from . import do
-from discord.ext.commands import GuildConverter, TextChannelConverter
-from discord.ext import commands
+from . import guild_remove, testing
+from Classes import ShakeBot, Testing
+from discord.ext.commands import Cog
 ########
 #
-class on_guild_remove(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+class on_guild_remove(Cog):
+    def __init__(self, bot: ShakeBot):
+        self.bot: ShakeBot = bot
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_guild_remove(self, guild: Guild):
-        if self.bot.dev:
-            reload(do)
-        return await do.guild_remove_event(guild=guild, bot=self.bot).__await__()
+        test = guild.id in list(self.bot.tests.keys())
+        
+        if test:
+            reload(testing)
+        do = testing if test else guild_remove
+
+        try:
+            await do.event(guild=guild, bot=self.bot).__await__()
     
-async def setup(bot): 
+        except:
+            if test:
+                raise Testing
+            raise
+
+    
+async def setup(bot: ShakeBot): 
     await bot.add_cog(on_guild_remove(bot))
 #
 ############

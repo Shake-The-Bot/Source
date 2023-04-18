@@ -2,11 +2,10 @@
 #
 from discord import PartialEmoji, Member
 from importlib import reload
-from . import mute
-from Classes import ShakeBot
+from . import mute, testing
 from discord.ext.commands import Greedy, hybrid_command, has_permissions, Cog, guild_only
 from Classes.i18n import _, locale_doc, setlocale
-from Classes import ShakeContext
+from Classes import ShakeContext, ShakeBot, Testing
 ########
 #
 class mute_extension(Cog):
@@ -15,7 +14,7 @@ class mute_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji:
-        return str(PartialEmoji(name="🚨"))
+        return PartialEmoji(name="🚨")
 
     def category(self) -> str:
         return "moderation"
@@ -40,9 +39,19 @@ class mute_extension(Cog):
             time: discord.Member
                 the time"""
         )
-        if self.bot.dev:
-            reload(mute)
-        return await mute.mute_command(ctx=ctx, member=member, time=time).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else mute
+
+        try:    
+            await do.command(ctx=ctx, member=member, time=time).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 
 async def setup(bot):
     await bot.add_cog(mute_extension(bot))

@@ -1,11 +1,11 @@
 ############
 #
 from Classes.i18n import _
-from discord import ui, PartialEmoji, ButtonStyle
+from discord import ui, PartialEmoji
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 ########
 #
-class ping_command():
+class command():
     def __init__(self, ctx: ShakeContext):
         self.bot: ShakeBot = ctx.bot
         self.ctx: ShakeContext = ctx

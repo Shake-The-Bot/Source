@@ -2,20 +2,18 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import ping
+from . import ping, testing
 from discord.ext.commands import guild_only, Cog, hybrid_command
-from Classes.i18n import _, locale_doc, setlocale
-from discord import app_commands
-from Classes import ShakeContext
+from Classes import ShakeContext, _, locale_doc, setlocale, Testing, ShakeBot
 ########
 #
 class ping_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{CHART WITH UPWARDS TREND}'))
+        return PartialEmoji(name='\N{CHART WITH UPWARDS TREND}')
     
     def category(self) -> str: 
         return "information"
@@ -28,11 +26,23 @@ class ping_extension(Cog):
         _(
             """Get some ping"""
         )
-        if self.bot.dev:
-            reload(ping)
-        return await ping.ping_command(ctx=ctx).__await__()
 
-async def setup(bot): 
+        
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else list
+
+        try:
+            await do.command(ctx=ctx).__await__()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+        
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(ping_extension(bot))
 #
 ############

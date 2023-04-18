@@ -2,18 +2,18 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, _, locale_doc, setlocale, ValidCog, extras, ShakeContext
-from . import load
+from Classes import ShakeBot, _, locale_doc, setlocale, ValidCog, extras, ShakeContext, Testing
+from . import load, testing
 from discord.ext.commands import Greedy, Cog, hybrid_command, is_owner, guild_only
 ########
 #
 class extensions_load_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{INBOX TRAY}'))
+        return PartialEmoji(name='\N{INBOX TRAY}')
 
     def category(self) -> str: 
         return "other"
@@ -33,9 +33,18 @@ class extensions_load_extension(Cog):
             extension: Greedy[ValidCog]
                 the extension"""
         )
-        if self.bot.dev:
-            reload(load)
-        return await load.command(ctx=ctx, extension=extension).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else load
+
+        try:    
+            await do.command(ctx=ctx, extension=extension).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(extensions_load_extension(bot))

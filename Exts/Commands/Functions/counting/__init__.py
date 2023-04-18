@@ -3,14 +3,12 @@
 from discord import PartialEmoji
 from importlib import reload
 from typing import Optional
-from . import do
-from Classes.i18n import _, locale_doc, setlocale
-from discord import app_commands
-from discord.ext import commands
-from Classes import ShakeBot, ShakeContext
+from . import counting, testing
+from discord.ext.commands import hybrid_group, has_permissions, Cog, guild_only
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
 ########
 #
-class counting_extension(commands.Cog):
+class counting_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
 
@@ -19,11 +17,11 @@ class counting_extension(commands.Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GEAR}'))
+        return PartialEmoji(name='\N{GEAR}')
 
-    @commands.hybrid_group(name="counting")
-    @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @hybrid_group(name="counting")
+    @guild_only()
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def counting(self, ctx: ShakeContext) -> None:
@@ -34,7 +32,7 @@ class counting_extension(commands.Cog):
 
     
     @counting.command(name="setup")
-    @commands.has_permissions(administrator=True)
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def setup(
@@ -54,9 +52,19 @@ class counting_extension(commands.Cog):
                 the goal
             """
         )
-        if self.bot.dev:
-            reload(do)
-        await do.counting_command(ctx=ctx, hardcore=hardcore, numbersonly=numbersonly, goal=goal).setup()
+        
+        if ctx.testing:
+            reload(testing)
+            
+        do = testing if ctx.testing else counting
+
+        try:
+            await do.command(ctx=ctx, hardcore=hardcore, numbersonly=numbersonly, goal=goal).setup()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
     
 async def setup(bot: ShakeBot): 
     await bot.add_cog(counting_extension(bot))

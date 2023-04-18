@@ -2,8 +2,8 @@
 #
 from typing import Optional
 from importlib import reload
-from . import serverinfo
-from Classes import ShakeBot, ShakeContext, GuildNotFound, _, locale_doc, setlocale
+from . import serverinfo, testing
+from Classes import ShakeBot, ShakeContext, GuildNotFound, _, locale_doc, setlocale, Testing
 from discord.ext.commands import Cog, hybrid_command, GuildNotFound as _GuildNotFound, guild_only
 from discord.ext.commands.converter import GuildConverter
 from discord import PartialEmoji
@@ -18,7 +18,7 @@ class server_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{INFORMATION SOURCE}'))
+        return PartialEmoji(name='\N{INFORMATION SOURCE}')
 
     def category(self) -> str: 
         return "information"
@@ -38,15 +38,25 @@ class server_extension(Cog):
             guild: Optional[str]
                 the guild name or id to get information about"""
         )
-        if self.bot.dev:
-            reload(serverinfo)
-        try:
-            guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))
-        except _GuildNotFound as argument:
-            raise GuildNotFound(argument, "Either this server does not exist or I am not on it.")
-        return await serverinfo.serverinfo_command(ctx=ctx, guild=guild).__await__()
 
-async def setup(bot): 
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else serverinfo
+
+        try:    
+            try:
+                guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))
+            except _GuildNotFound as argument:
+                raise GuildNotFound(argument, _("Either this server does not exist or I am not on it."))
+            await do.command(ctx=ctx, guild=guild).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+        
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(server_extension(bot))
 #
 ############

@@ -2,10 +2,9 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import wwyd
-from Classes.i18n import _, locale_doc
+from . import wwyd, testing
 from discord.ext.commands import Cog, guild_only, hybrid_command
-from Classes import ShakeBot, ShakeContext, setlocale
+from Classes import ShakeBot, ShakeContext, setlocale, Testing, _, locale_doc
 ########
 #
 class wwyd_extension(Cog):
@@ -17,7 +16,7 @@ class wwyd_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(animated=True, name='shakeloading', id=1092832911163654245))
+        return PartialEmoji(animated=True, name='shakeloading', id=1092832911163654245)
 
     @hybrid_command(name="wwyd")
     @guild_only()
@@ -27,12 +26,22 @@ class wwyd_extension(Cog):
         _(
             """What would you do in this situation."""
         )
-        if self.bot.dev:
-            reload(wwyd)
-        await wwyd.command(ctx=ctx).__await__()
-        return
+
+        if ctx.testing:
+            reload(testing)
+            
+        do = testing if ctx.testing else wwyd
+
+        try:    
+            await do.command(ctx=ctx).__await__()
     
-async def setup(bot): 
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+    
+async def setup(bot: ShakeBot): 
     await bot.add_cog(wwyd_extension(bot))
 #
 ############

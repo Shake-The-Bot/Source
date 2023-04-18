@@ -1,23 +1,34 @@
 ############
 #
 from discord import Member
-from . import do
+from . import member_join, testing
 from importlib import reload
-from Classes import ShakeBot
-from discord.ext import commands
+from Classes import ShakeBot, Testing
+from discord.ext.commands import Cog
 ########
 #
-class on_member_join(commands.Cog):
+class on_member_join(Cog):
     def __init__(self, bot):
         self.bot: ShakeBot = bot
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_member_join(self, member: Member):
-        if self.bot.dev:
-            reload(do)
-        return await do.on_member_join_event(member=member, bot=self.bot).__await__()
+        test = any(x.id in list(self.bot.tests.keys()) for x in (member, member.guild))
+        
+        if test:
+            reload(testing)
+        do = testing if test else member_join
+
+        try:
+            await do.event(member=member, bot=self.bot).__await__()
     
-async def setup(bot): 
+        except:
+            if test:
+                raise Testing
+            raise
+
+    
+async def setup(bot: ShakeBot): 
     await bot.add_cog(on_member_join(bot))
 #
 ############

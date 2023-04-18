@@ -2,15 +2,14 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import do
-from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext
-from discord import app_commands
+from . import freegames, testing
+from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext, Testing, extras
 from typing import Literal
-from discord.ext import commands
+from discord.ext.commands import Cog, hybrid_group, guild_only, has_permissions
 from discord.ext.commands import Greedy
 ########
 #
-class freegames_commands_extension(commands.Cog):
+class freegames_commands_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
 
@@ -19,11 +18,12 @@ class freegames_commands_extension(commands.Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GEAR}'))
+        return PartialEmoji(name='\N{GEAR}')
 
-    @commands.hybrid_group(name="freegames")
-    @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @hybrid_group(name="freegames")
+    @extras(permissions=True)
+    @guild_only()
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def freegames(self, ctx: ShakeContext) -> None:
@@ -33,7 +33,9 @@ class freegames_commands_extension(commands.Cog):
         pass
 
     @freegames.command(name="setup")
-    @commands.has_permissions(administrator=True)
+    @extras(permissions=True)
+    @guild_only()
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def setup(self, ctx: ShakeContext, stores: Greedy[Literal['steam', 'epicgames', 'gog']]) -> None:
@@ -46,11 +48,20 @@ class freegames_commands_extension(commands.Cog):
                 the stores which the channel should support
             """
         )
-        if self.bot.dev:
-            reload(do)
-        await do.freegames_command(ctx=ctx, stores=stores).setup()
+        
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else freegames
+
+        try:
+            await do.command(ctx=ctx, stores=stores).setup()
     
-async def setup(bot): 
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(freegames_commands_extension(bot))
 #
 ############

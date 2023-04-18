@@ -3,7 +3,7 @@
 from __future__ import annotations
 from ast import literal_eval
 from difflib import get_close_matches
-from typing import Union, Literal, Any, Tuple, TYPE_CHECKING
+from typing import Union, Literal, Any, Tuple, TYPE_CHECKING, Optional, List
 from re import error, fullmatch, DOTALL, IGNORECASE, Pattern, compile, split
 from dateutil.relativedelta import relativedelta
 from discord import TextChannel
@@ -13,20 +13,26 @@ from datetime import datetime, timezone
 if TYPE_CHECKING:
     from Classes import _, MISSING
     from .helpful import ShakeContext
-    from .useful import Duration
+    from .useful import Duration, RTFM_PAGE_TYPES
 
 
 class ValidArg():
     """Tries to convert into a valid cog"""
-    @classmethod
+    
     async def convert(cls, ctx: ShakeContext, argument: Any) -> Tuple[str]: # TODO
         if "=" in argument: return None
         return argument
 
 
-class ValidKwarg():
+class RtfmKey(Converter):
+    """convert into a valid key"""
+    
+    async def convert(cls, ctx: ShakeContext, argument: Optional[str] = None) -> List[str]:
+        return argument if not argument is None and argument in RTFM_PAGE_TYPES else None
+
+class ValidKwarg(Converter):
     """Tries to convert into a valid cog"""
-    @classmethod
+    
     async def convert(cls, ctx: ShakeContext, argument: str) -> Tuple[Any]: # TODO
         args = ()
         kwargs = {}

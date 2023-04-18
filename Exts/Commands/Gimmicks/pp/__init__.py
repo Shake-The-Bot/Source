@@ -2,29 +2,27 @@
 #
 from discord import PartialEmoji, Member
 from importlib import reload
-from Classes import ShakeBot, ShakeContext
-from . import pp
-from Classes.i18n import _, locale_doc, setlocale
-from discord import app_commands
-from discord.ext import commands
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
+from . import pp, testing
+from discord.ext.commands import Cog, guild_only, Greedy, hybrid_command
 ########
 #
-class pp_extension(commands.Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+class pp_extension(Cog):
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{VIDEO GAME}'))
+        return PartialEmoji(name='\N{VIDEO GAME}')
 
     def category(self) -> str: 
         return "gimmicks"
     
-    @commands.hybrid_command(name="pp")
-    @app_commands.guild_only()
+    @hybrid_command(name="pp")
+    @guild_only()
     @setlocale()
     @locale_doc
-    async def pp(self, ctx: ShakeContext, member: commands.Greedy[Member]=None):
+    async def pp(self, ctx: ShakeContext, member: Greedy[Member] = None):
         _(
             """Reveal the length of a user's pp
 
@@ -38,9 +36,19 @@ class pp_extension(commands.Cog):
             member: Greedy[Member]
                 the member to ban"""
         )
-        if self.bot.dev:
-            reload(pp)
-        return await pp.command(ctx=ctx, member=member or [ctx.author]).__await__()
+
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else pp
+        try:    
+            await do.command(ctx=ctx, member=member or [ctx.author]).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 ########
 #
 async def setup(bot: ShakeBot): 

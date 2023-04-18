@@ -1,35 +1,43 @@
 ############
 #
 from importlib import reload
-from Classes import ShakeBot, ShakeContext
-from . import countdown
-from discord.ext import commands
-from discord import app_commands, PartialEmoji
-from Classes.i18n import _, locale_doc, setlocale
+from . import countdown, testing
+from discord.ext.commands import Cog, hybrid_command, guild_only
+from discord import PartialEmoji
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
 ########
 #
-class countdown_extension(commands.Cog):
+class countdown_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{INPUT SYMBOL FOR NUMBERS}'))
+        return PartialEmoji(name='\N{INPUT SYMBOL FOR NUMBERS}')
     
     def category(self) -> str: 
         return 'gimmicks'
     
-    @commands.hybrid_command(name='countdown')
-    @app_commands.guild_only()
+    @hybrid_command(name='countdown')
+    @guild_only()
     @setlocale()
     @locale_doc
     async def countdown(self, ctx: ShakeContext):
         _(
             """It's the final countdown"""
         )
-        if self.bot.dev:
-            reload(countdown)
-        return await countdown.command(ctx=ctx).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else countdown
+
+        try:    
+            await do.command(ctx=ctx).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(countdown_extension(bot))

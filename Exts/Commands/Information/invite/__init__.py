@@ -2,18 +2,18 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import invite
-from Classes import ShakeBot, ShakeContext
+from . import invite, testing
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord.ext.commands import guild_only, Cog, hybrid_command
-from Classes.i18n import _, locale_doc, setlocale
 ########
 #
 class invite_extension(Cog):
-    def __init__(self, bot) -> None:  self.bot = bot
+    def __init__(self, bot) -> None:  
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{INCOMING ENVELOPE}'))
+        return PartialEmoji(name='\N{INCOMING ENVELOPE}')
 
     def category(self) -> str: 
         return "information"
@@ -28,9 +28,18 @@ class invite_extension(Cog):
 
             Of course, you can also simply add the bot via its user profile."""
         )
-        if self.bot.dev:
-            reload(invite)
-        return await invite.command(ctx=ctx).__await__()
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else invite
+
+        try:
+            await do.command(ctx=ctx).__await__()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(invite_extension(bot))

@@ -1,8 +1,8 @@
 ############
 #
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, MISSING
-from . import meme
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
+from . import meme, testing
 from typing import Optional
 from discord.ext.commands import Cog, hybrid_command, guild_only
 from discord import PartialEmoji
@@ -14,7 +14,7 @@ class meme_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{INPUT SYMBOL FOR NUMBERS}'))
+        return PartialEmoji(name='\N{INPUT SYMBOL FOR NUMBERS}')
     
     def category(self) -> str: 
         return "gimmicks"
@@ -34,9 +34,19 @@ class meme_extension(Cog):
                 an optional argument to pass a subreddit
             """
         )
-        if self.bot.dev:
-            reload(meme)
-        return await meme.command(ctx=ctx, subreddit=subreddit or 'dankmemes').__await__()
+
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else meme
+        try:    
+            await do.command(ctx=ctx, subreddit=subreddit or 'dankmemes').__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+        
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(meme_extension(bot))

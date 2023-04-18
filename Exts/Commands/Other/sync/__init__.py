@@ -3,8 +3,8 @@
 from discord import PartialEmoji, Object
 from importlib import reload
 from typing import Optional, Literal
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras
-from . import sync
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
+from . import sync, testing
 from discord.ext.commands import Greedy, guild_only, is_owner, Cog, hybrid_command
 ########
 #
@@ -45,9 +45,19 @@ class sync_extension(Cog):
             dump: Optional[bool]
                 if dump"""
         )
-        if self.bot.dev:
-            reload(sync)
-        return await sync.command(ctx=ctx, guilds=guilds, spec=spec, dump=dump).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else sync
+
+        try:
+            await do.command(ctx=ctx, guilds=guilds, spec=spec, dump=dump).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 
 async def setup(bot):
     await bot.add_cog(sync_extension(bot))

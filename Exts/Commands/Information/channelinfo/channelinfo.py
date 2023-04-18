@@ -5,15 +5,13 @@ from discord import VoiceChannel, TextChannel, StageChannel, ForumChannel, Categ
 CHANNELS = Union[VoiceChannel, TextChannel, StageChannel, ForumChannel, CategoryChannel]
 
 class command():
-    def __init__(self, ctx, channel: Optional[CHANNELS]) -> None:
+    def __init__(self, ctx: ShakeContext, channel: Optional[CHANNELS]) -> None:
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
-        self.channel: CHANNELS = channel or ctx.author.voice.channel
+        self.channel: CHANNELS = channel or getattr(ctx.author.voice, 'channel', None) or ctx.channel
 
 
     async def __await__(self):
-        if not self.channel.user_limit:
-            self.channel.user_limit = "Infinite"
 
         embed = ShakeEmbed.default(
             title=f"{self.channel.name} Info",
@@ -26,7 +24,7 @@ class command():
         embed.add_field(name=f"📃 Category", value=f"{self.channel.category}")
         embed.add_field(name=f"🔉 Audio Bitrate", value=f"{round((self.channel.bitrate)/1000)} Kilo")
         embed.add_field(name=f"🔢 Channel Position", value=f"{self.channel.position+1}")
-        embed.add_field(name=f"👤 Member Limit", value=f"{self.channel.user_limit}")
+        embed.add_field(name=f"👤 Member Limit", value=f"{self.channel.user_limit or 'Infinite'}")
         embed.add_field(name=f"📆 Created On", value=f"<t:{round(self.channel.created_at.timestamp())}:D>")
 
         if self.ctx.guild.icon:

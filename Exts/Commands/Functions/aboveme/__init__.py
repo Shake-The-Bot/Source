@@ -2,14 +2,12 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from . import do
-from Classes.i18n import _, locale_doc, setlocale
-from discord import app_commands
-from discord.ext import commands
-from Classes import ShakeBot, ShakeContext
+from . import aboveme, testing
+from discord.ext.commands import Cog, hybrid_group, has_permissions, guild_only
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 ########
 #
-class aboveme_extension(commands.Cog):
+class aboveme_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
 
@@ -18,11 +16,11 @@ class aboveme_extension(commands.Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GEAR}'))
+        return PartialEmoji(name='\N{GEAR}')
 
-    @commands.hybrid_group(name="aboveme")
-    @app_commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @hybrid_group(name="aboveme")
+    @guild_only()
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def aboveme(self, ctx: ShakeContext) -> None:
@@ -32,7 +30,7 @@ class aboveme_extension(commands.Cog):
         pass
 
     @aboveme.command(name="setup")
-    @commands.has_permissions(administrator=True)
+    @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
     async def setup(
@@ -41,11 +39,20 @@ class aboveme_extension(commands.Cog):
         _(
             """Set up the Aboveme-Game with a wizard in seconds."""
         )
-        if self.bot.dev:
-            reload(do)
-        await do.aboveme_command(ctx=ctx).setup()
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else aboveme
+
+        try:
+            await do.command(ctx=ctx).setup()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
     
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(aboveme_extension(bot))
 #
 ############

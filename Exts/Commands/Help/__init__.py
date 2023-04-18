@@ -1,23 +1,22 @@
 ############
 #
-from . import help
+from . import help, testing
 from typing import Optional
-from Classes import ShakeBot, ShakeContext
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
 from importlib import reload
-from discord.ext import commands
+from discord.ext.commands import Cog, hybrid_command, guild_only
 from discord import app_commands
-from Classes.i18n import _, locale_doc, setlocale
 ########
 #
-class help_extension(commands.Cog):
+class help_extension(Cog):
     def __init__(self, bot) -> None:
         self.bot: ShakeBot = bot
 
     def category(self) -> str: 
         return "help_extension"
 
-    @commands.hybrid_command(name="help")
-    @app_commands.guild_only()
+    @hybrid_command(name="help")
+    @guild_only()
     @setlocale()
     @locale_doc
     async def help(self, ctx: ShakeContext, category: Optional[str]=None, command: Optional[str]=None):
@@ -33,9 +32,20 @@ class help_extension(commands.Cog):
                 the command   
             """
         )
-        if self.bot.dev:
-            reload(help)
-        await help.command(ctx=ctx, category=category, command=command).__await__()
+        
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else help
+
+        try:
+            await do.command(ctx=ctx, category=category, command=command).__await__()
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+            
+
         return 
 
 async def setup(bot: ShakeBot): 

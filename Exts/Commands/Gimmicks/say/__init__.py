@@ -3,25 +3,24 @@
 from typing import Optional
 from discord import PartialEmoji
 from importlib import reload
-from . import say
-from Classes.i18n import _, locale_doc, setlocale
-from discord.ext import commands
-from discord import app_commands
-from Classes import ShakeContext, ShakeBot
+from . import say, testing
+from discord.ext.commands import Cog, hybrid_command, guild_only
+from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, Testing
 ########
 #
-class say_extension(commands.Cog):
+class say_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{SPEECH BALLOON}'))
+        return PartialEmoji(name='\N{SPEECH BALLOON}')
     
     def category(self) -> str: 
         return "gimmicks"
     
-    @commands.hybrid_command(name="say")
+    @hybrid_command(name="say")
+    @guild_only()
     @setlocale()
     @locale_doc
     async def say(self, ctx: ShakeContext, reply: Optional[bool] = True, *, text: str):
@@ -36,11 +35,20 @@ class say_extension(commands.Cog):
             text: str
                 What the bot should echo"""
         )
-        if self.bot.dev:
-            reload(say)
-        return await say.command(ctx=ctx, text=text, reply=reply).__await__()
 
-async def setup(bot): 
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else say
+        try:    
+            await do.command(ctx=ctx, text=text, reply=reply).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+async def setup(bot: ShakeBot): 
     await bot.add_cog(say_extension(bot))
 #
 ############

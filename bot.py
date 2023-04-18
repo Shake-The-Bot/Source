@@ -2,7 +2,7 @@
 #
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from typing import TYPE_CHECKING, Optional, Sequence
-from asyncpg import Pool, Connection, connect
+from asyncpg import Pool, Connection, connect, exceptions
 from Classes.useful import source_lines
 from logging import getLogger, Logger
 from importlib import import_module
@@ -33,9 +33,9 @@ class ShakeBot(BotBase):
         super().__init__(**options)
         self.log = getLogger(__name__)
         self.locales = self.pools = {}
+        self.tests: dict[int, bool] = {}
         self.boot = datetime.now()
         self.lines = source_lines()
-        self.dev = True
         self.scheduler = AsyncIOScheduler()
         self.locale = locale(self)
         self.reddit: Reddit = Reddit()
@@ -114,14 +114,14 @@ class ShakeBot(BotBase):
         except:
             pass
         finally:
+            import_module('Classes.database.#main') 
+            self.pools[_id] = await Table.create_pool(self.config.database.postgresql+str(_id), **_kwargs)
             try:
-                import_module('Classes.database.#main') 
-                self.pools[_id] = await Table.create_pool(self.config.database.postgresql+str(_id), **_kwargs)
                 for table in Table.all_tables():
                     await table.create(item=str(_id), verbose=False, run_migrations=False)
-                await connection.close()
-            except:
-                raise CodeError
+            except exceptions.UniqueViolationError:
+                pass
+            await connection.close()
             return self.pools[_id]
 #
 ############

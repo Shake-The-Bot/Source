@@ -1,28 +1,26 @@
 ############
 #
 from typing import Optional
-from . import roll
+from . import roll, testing
 from discord import PartialEmoji
 from importlib import reload
-from discord import app_commands
-from Classes.i18n import _, locale_doc, setlocale
-from Classes import ShakeBot, ShakeContext
-from discord.ext import commands
+from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
+from discord.ext.commands import Cog, hybrid_command, guild_only
 ########
 #
-class roll_extension(commands.Cog):
+class roll_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{GAME DIE}'))
+        return PartialEmoji(name='\N{GAME DIE}')
 
     def category(self) -> str: 
         return "gimmicks"
 
-    @commands.hybrid_command(name="roll")
-    @app_commands.guild_only()
+    @hybrid_command(name="roll")
+    @guild_only()
     @setlocale()
     @locale_doc
     async def roll(self, ctx: ShakeContext, start: Optional[int] = 1, limit: Optional[int] = 6):
@@ -37,9 +35,18 @@ class roll_extension(commands.Cog):
             limit: Optional[int]
                 the limit to roll till"""
         )
-        if self.bot.dev:
-            reload(roll)
-        return await roll.command(ctx=ctx, start=start or 5, limit=limit or 6).__await__()
+
+        if ctx.testing:
+            reload(testing)
+
+        do = testing if ctx.testing else roll
+        try:    
+            await do.command(ctx=ctx, start=start or 5, limit=limit or 6).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(roll_extension(bot))

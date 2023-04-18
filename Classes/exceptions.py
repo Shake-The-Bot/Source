@@ -11,6 +11,12 @@ class ShakeError(CommandError):
         super().__init__(message=message)
         self.message = message
 
+class Testing(CommandError):
+    """Displays error in embed without generating signature hint"""
+    def __init__(self, message: Optional[str] = None, *args: Any) -> None:
+        super().__init__(message=message)
+        self.message = message
+
 class NotSFW(CommandError):
     def __init__(self, *args: Any) -> None:
         self.message = "This Content is not Safe For Work and will not be shown."

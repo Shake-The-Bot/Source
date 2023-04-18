@@ -3,8 +3,8 @@
 from typing import Union, Optional
 from discord import PartialEmoji, Member, User
 from importlib import reload
-from . import userinfo
-from Classes.i18n import _, locale_doc, setlocale, ShakeBot, ShakeContext
+from . import userinfo, testing
+from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext, Testing
 from discord.ext.commands import hybrid_command, Cog, guild_only
 ########
 #
@@ -32,9 +32,19 @@ class userinfo_extension(Cog):
             user: Optional[Union[Member, User]]
                 @mention, ID or name."""
         )
-        if self.bot.dev:
-            reload(userinfo)
-        return await userinfo.userinfo_command(ctx=ctx, user=user or ctx.author).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else userinfo
+
+        try:    
+            await do.command(ctx=ctx, user=user or ctx.author).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(userinfo_extension(bot))

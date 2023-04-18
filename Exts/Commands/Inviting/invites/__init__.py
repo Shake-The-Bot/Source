@@ -1,27 +1,27 @@
 ############
 #
-from Classes import _, locale_doc, setlocale, ShakeContext, ShakeBot, is_beta
+from Classes import _, locale_doc, setlocale, ShakeContext, ShakeBot, is_beta, Testing
 from discord import app_commands, Member, PartialEmoji
-from discord.ext import commands
+from discord.ext.commands import Cog, hybrid_command, guild_only
 from importlib import reload
 from typing import Optional
-from . import invites
+from . import invites, testing
 ########
 #
-class invites_extension(commands.Cog):
+class invites_extension(Cog):
     def __init__(self, bot: ShakeBot): 
         self.bot: ShakeBot = bot
         self.env = {}
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{DESKTOP COMPUTER}'))
+        return PartialEmoji(name='\N{DESKTOP COMPUTER}')
 
     def category(self) -> str: 
         return "inviting"
 
-    @commands.hybrid_command(name="invites")
-    @app_commands.guild_only()
+    @hybrid_command(name="invites")
+    @guild_only()
     @is_beta()
     @setlocale()
     @locale_doc
@@ -35,9 +35,19 @@ class invites_extension(commands.Cog):
                 the member
             """
         )
-        if self.bot.dev:
-            reload(invites)
-        return await invites.command(ctx=ctx, member=member or ctx.author).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else invites
+
+        try:    
+            await do.command(ctx=ctx, member=member or ctx.author).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+        
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(invites_extension(bot))

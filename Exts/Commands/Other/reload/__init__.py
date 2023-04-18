@@ -3,22 +3,17 @@
 from discord import PartialEmoji
 from importlib import reload as libreload
 from . import reload
-from Classes import (
-    ShakeContext, ShakeBot, ValidCog, extras, _, 
-    locale_doc, setlocale
-)
-from discord.ext.commands import (
-    guild_only, is_owner, Greedy, Cog, 
-    hybrid_command
-)
+from Classes import ShakeContext, ShakeBot, ValidCog, extras, _,  locale_doc, setlocale
+from discord.ext.commands import guild_only, is_owner, Greedy, Cog, hybrid_command
 ########
 #
 class extensions_reload_extension(Cog):
-    def __init__(self, bot) -> None: self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}'))
+        return PartialEmoji(name='\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}')
     
     def category(self) -> str: 
         return "other"

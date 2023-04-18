@@ -1,15 +1,17 @@
 ############
 #
-from discord import PartialEmoji
+from discord import PartialEmoji, TextChannel, Guild, User
+from discord.app_commands import transformers
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale
+from typing import Union
 from . import test
+from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale, Testing
 from discord.ext.commands import hybrid_command, guild_only, is_owner, Cog
 ########
 #
 class test_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot = bot
+    def __init__(self, bot: ShakeBot) -> None: 
+        self.bot: ShakeBot = bot
     
     def category(self) -> str: 
         return "other"
@@ -24,13 +26,16 @@ class test_extension(Cog):
     @is_owner()
     @setlocale()
     @locale_doc
-    async def test(self, ctx: ShakeContext):
+    async def test(self, ctx: ShakeContext, id: str):
         _(
-            """Test temporary commands"""
+            """Temporarily adds a server/channel/user to the public test build"""
         )
-        if self.bot.dev:
-            reload(test)
-        return await test.command(ctx).__await__()
+
+        reload(test)
+        try:
+            await test.command(ctx, id).__await__()
+        except:
+            raise Testing
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(test_extension(bot))

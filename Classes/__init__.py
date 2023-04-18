@@ -20,14 +20,14 @@ from .checks import (
 )
 from .useful import (
     captcha, perform_operation, human_join, source_lines, levenshtein, high_level_function, 
-    calc, votecheck, votecheck, cogs_handler, MISSING
+    calc, votecheck, votecheck, cogs_handler, MISSING, RTFM_PAGE_TYPES
 )
 from .converter import (
     DurationDelta, ValidArg, ValidKwarg, ValidCog, CleanChannels, Age, Regex
 )
 from .exceptions import (
     ShakeError, ShakeMissingPermissions, CodeError, NothingHereYet, CheckFailure, 
-    NotVoted, GuildNotFound, BadArgument, NotSFW
+    NotVoted, GuildNotFound, BadArgument, NotSFW, Testing
 )
 from bot import ShakeBot
 

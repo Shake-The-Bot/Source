@@ -2,9 +2,8 @@
 #
 from discord import PartialEmoji, Member
 from importlib import reload
-from Classes import ShakeBot, ShakeContext
-from . import everyone
-from Classes.i18n import _, locale_doc, setlocale
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from . import everyone, testing
 from discord.ext.commands import Cog, hybrid_command, guild_only, Greedy
 ########
 #
@@ -14,7 +13,7 @@ class everyone_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return str(PartialEmoji(name='\N{ANGRY FACE}'))
+        return PartialEmoji(name='\N{ANGRY FACE}')
     
     def category(self) -> str: 
         return "gimmicks"
@@ -34,9 +33,19 @@ class everyone_extension(Cog):
             member: commands.Greedy[Member]
                 the member to blame"""
         )
-        if self.bot.dev:
-            reload(everyone)
-        return await everyone.command(ctx=ctx, member=member or [ctx.author]).__await__()
+
+        if ctx.testing:
+            reload(testing)
+        do = testing if ctx.testing else everyone
+
+        try:    
+            await do.command(ctx=ctx, member=member or [ctx.author]).__await__()
+    
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+        
 
 async def setup(bot: ShakeBot): 
     await bot.add_cog(everyone_extension(bot))
