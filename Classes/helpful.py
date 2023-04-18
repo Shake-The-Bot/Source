@@ -252,7 +252,7 @@ class ShakeContext(Context):
     async def __await__(self, callback: Callable[..., Awaitable[Message]], /, **kwargs: Any) -> Message:
         error = kwargs.pop('error', False)
         if self.reinvoked and self.messages and not error:
-            message = utils.find(
+            message: Optional[Message] = utils.find(
                 lambda m: not getattr(m, "to_delete", False),
                 reversed(self.messages.values()),
             )
@@ -274,7 +274,7 @@ class ShakeContext(Context):
                 for key in list(kwargs):
                     if key not in allowed_kwargs:
                         kwargs.pop(key)
-                kwargs.update({k: MISSING for k, v in kwargs.items() if v is None and k != 'delete_after'})
+                kwargs = {k: v for k, v in kwargs.items() if v != None}
                 return await message.edit(**kwargs)
         message = await callback(**kwargs)
         return message

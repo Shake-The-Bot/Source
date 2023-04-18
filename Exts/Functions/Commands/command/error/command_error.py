@@ -87,7 +87,7 @@ class event():
         return
 
 
-    async def send(self, description, raisable: bool = False, **kwargs: Any):
+    async def send(self, description, raisable: bool = False):
         
         embed = ShakeEmbed.to_error(self.ctx, description=description)
         if raisable:
@@ -100,7 +100,7 @@ class event():
                 else:
                     await self.ctx.response.send_message(embed=embed, ephemeral=True)
             else:
-                await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True, **kwargs)
+                await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True)
             
             if raisable:
                 embed = ShakeEmbed.to_success(self.ctx, description=_("The {type} {error} was reported to the Shake-Team!").format(
@@ -108,7 +108,7 @@ class event():
                 if isinstance(self.ctx, Interaction):
                     await self.ctx.followup.send(embed=embed, ephemeral=True)
                 else:
-                    await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True, **kwargs)
+                    await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True)
         except:
             raise
 #
