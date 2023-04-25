@@ -2,7 +2,7 @@
 from typing import List, Any, Optional
 from discord.ext.commands.errors import (
     GuildNotFound as _GuildNotFound, CommandError, BotMissingPermissions,
-    CheckFailure, BadArgument as _BadArgument, ChannelNotFound as _ChannelNotFound
+    CheckFailure, ChannelNotFound as _ChannelNotFound
 )
 
 class ShakeError(CommandError):
@@ -26,12 +26,6 @@ class ShakeMissingPermissions(BotMissingPermissions):
     def __init__(self, missing_permissions: List[str], message: Optional[str] = None, *args: Any) -> None:
         super().__init__(missing_permissions, *args)
         self.message = message
-
-class BadArgument(_BadArgument):
-    def __init__(self, message: Optional[str] = None, argument: Optional[str] = None, *args: Any) -> None:
-        super().__init__(message, *args)
-        self.message = message
-        self.argument = argument
 
 class CodeError(Exception):
     """ Something totaly went wrong """

@@ -20,22 +20,16 @@ class command():
                 user = await UserConverter().convert(self.ctx, self.id)
             except UserNotFound:
                 user = MISSING
-            else:
-                name = _("user")
 
             try:
                 channel = await TextChannelConverter().convert(self.ctx, self.id)
             except ChannelNotFound:
                 channel = MISSING
-            else:
-                name = _("channel")
 
             try:
                 guild = await GuildConverter().convert(self.ctx, self.id)
             except GuildNotFound:
                 guild = MISSING
-            else:
-                name = _("guild")
         
             if all([not guild, not user, not channel]):
                 raise EveryNone
@@ -46,12 +40,14 @@ class command():
             return
         
         else:
-            if (guild or channel or user).id in list(self.bot.tests.keys()):
-                del self.bot.tests[(guild or channel or user).id]
-                description=_("The specified {name} is __removed__ to the public test build").format(name=name)
+            current = (guild or channel or user)
+            name = getattr(current, 'mention', current.name)
+            if current.id in list(self.bot.tests.keys()):
+                del self.bot.tests[current.id]
+                description=_("{name} is __removed__ from the public test build").format(name=name)
             else:
-                self.bot.tests[(guild or channel or user).id] = guild or channel or user
-                description = _("The specified {name} is temporarily __added__ to the public test build").format(name=name)
+                self.bot.tests[current.id] = guild or channel or user
+                description = _("{name} is temporarily __added__ to the public test build").format(name=name)
             
             embed = ShakeEmbed.to_success(self.ctx, description=description)
             await self.ctx.smart_reply(embed=embed)

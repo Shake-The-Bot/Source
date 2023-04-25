@@ -10,6 +10,10 @@ from discord.ext.commands import Cog, hybrid_command, guild_only, Greedy
 class everyone_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(everyone)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -41,7 +45,7 @@ class everyone_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else everyone
 
         try:    

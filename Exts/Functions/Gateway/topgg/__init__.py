@@ -11,6 +11,10 @@ logger = getLogger(__name__)
 class topgg_extension(Cog):
     def __init__(self, bot):
         self.bot: ShakeBot = bot
+        try:
+            reload(topgg)
+        except:
+            pass
 
     @Cog.listener()
     async def on_autopost_success(self):

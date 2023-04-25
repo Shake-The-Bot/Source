@@ -20,20 +20,20 @@ from .checks import (
 )
 from .useful import (
     captcha, perform_operation, human_join, source_lines, levenshtein, high_level_function, 
-    calc, votecheck, votecheck, cogs_handler, MISSING, RTFM_PAGE_TYPES
+    calc, votecheck, votecheck, cogshandler, MISSING, RTFM_PAGE_TYPES
 )
 from .converter import (
     DurationDelta, ValidArg, ValidKwarg, ValidCog, CleanChannels, Age, Regex
 )
 from .exceptions import (
     ShakeError, ShakeMissingPermissions, CodeError, NothingHereYet, CheckFailure, 
-    NotVoted, GuildNotFound, BadArgument, NotSFW, Testing
+    NotVoted, GuildNotFound, NotSFW, Testing
 )
 from bot import ShakeBot
 
 
-from .secrets.emojis import Emojis
-from .secrets.configuration import Config
+from .tomls.emojis import Emojis
+from .tomls.configuration import Config
 emojis = Emojis('Assets/utils/emojis.toml')
 config = Config('config.toml')
 

@@ -23,10 +23,8 @@ class event():
         for webhook in webhooks:
             try:
                 await webhook.edit(name=guild_name, avatar=await self.guild.icon.read(), reason='Logs')
-            except (HTTPException, NotFound, ValueError):
+            except (HTTPException, NotFound, ValueError, AttributeError):
                 continue
-            except:
-                raise
             else:
                 with suppress(HTTPException, NotFound):
                     await webhook.send('{emoji} Joined `{name}`. I\'m now in {guilds} guilds (+{users} users).'.format(
@@ -58,17 +56,18 @@ class event():
         ])
         embed.set_thumbnail(url=getattr(self.guild.icon, 'url', None))
         embed.set_author(
-            name='Shake has arrived 〢 First welcome message',
+            name='Shake just has arrived 〢 First welcome message',
             icon_url=PartialEmoji(animated=True, name='thanks', id=984980175525666887).url
         )
         embed.description = """
             Hello There! Thanks for inviting me to your beautiful server! {emoji}
+            I think we can top that!
 
             {point} First of all, **no** dashboard is required! 
             *You can set up any feature on your Discord server by running the appropriate command*
 
             **Before you start, you can change the language for the server by typing...**
-            ```/language guild <the language>```
+            ```/language set <the language> server: True```
 
             To get started properly, you should take a look at the steps under **Start** as they are **honestly** useful 
             

@@ -4,6 +4,7 @@ from discord import Member
 from discord.ext.commands import Greedy
 from Classes.i18n import _
 from typing import Optional
+from discord.ext.commands import errors
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
 ########
 #
@@ -17,15 +18,11 @@ class command():
     async def __await__(self):
         try:
             for member in self.member: 
-                await member.kick(reason="kick command executed by {author}: {reason}".format(author=self.ctx.author, reason=self.reason))
+                await member.kick(reason="{reason} ({author})".format(author=self.ctx.author, reason=self.reason))
         except Exception as error:
             raise error
         else:
-            embed = ShakeEmbed.default(self.ctx, description=_("{emoji} {prefix} The specified members were successfully kicked").format(
-                emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix
-            ))
+            embed = ShakeEmbed.to_success(self.ctx, description=_("The specified member(s) got successfully kicked"))
             await self.ctx.smart_reply(embed=embed)
-        finally:
-            return
 #
 ############

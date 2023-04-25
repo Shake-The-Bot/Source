@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from pathlib import Path
 import json
-from Classes.secrets.configuration import Config
+from Classes.tomls.configuration import Config
 import pydoc
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Type, Union
 import uuid

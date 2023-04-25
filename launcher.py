@@ -7,6 +7,7 @@ from Classes.logging.filters import *
 from Classes.database.db import _create_pool
 from discord import Intents
 from re import compile
+import sys
 from bot import ShakeBot
 from logging import getLogger, INFO
 from contextlib import contextmanager
@@ -20,20 +21,22 @@ except ImportError:
     pass
 else:
     set_event_loop_policy(EventLoopPolicy())
+
+args = sys.argv[1:]
 ########
 #
 
 logger = getLogger()
 REVISION_FILE = compile(r'(?P<kind>current-|)(?P<name>.+).json')
 banner = ("\n"
-    "   ▄████████▄   ▄██    ██▄      ▄████████   ▄██   ▄██   ▄████████▄ \n"
-    "  ███▀    ███   ███    ███     ███    ███   ███ ▄███▀   ███▀   ▄██ \n"
-    "  ███      █▀   ███    ███     ███    ███   ███▐██▀     ███    █▀  \n"
-    "  ████▄▄▄▄▄    ▄███▄▄▄████▄▄   ███▄▄▄▄███  ▄████▀▀     ▄███▄▄▄     \n"
-    "   ▀▀▀▀▀▀███▄ ▀▀████▀▀▀███▀  ▀████▀▀▀▀███ ▀▀█████▄    ▀▀███▀▀▀     \n"
-    "          ███   ███    ███     ███    ███   ███▐██▄     ███    █▄  \n"
-    "   ▄█   ▄███▀   ███    ███     ███    ███   ███ ▀███▄   ███    ██▄ \n"
-    " ▄█████████▀    ▀██    █▀      ███    ██▀   ███   ▀██▄  ██████████ \n"
+    "   ▄████████▄   ▄██    ██▄     ▄████████   ▄██   ▄██   ▄████████▄ \n"
+    "  ███▀    ███   ███    ███    ███    ███   ███ ▄███▀   ███▀   ▄██ \n"
+    "  ███      █▀   ███    ███▄▄  ███    ███   ███▐██▀     ███    █▀  \n"
+    "  ████▄▄▄▄▄     ███▄▄▄████▀   ███▄▄▄▄███  ▄████▀▀     ▄███▄▄▄     \n"
+    "   ▀▀▀▀▀▀███▄ ▄█████▀▀▀███  ▀████▀▀▀▀███ ▀▀█████▄    ▀▀███▀▀▀     \n"
+    "          ███   ███    ███    ███    ███   ███▐██▄     ███    █▄  \n"
+    "   ▄█   ▄███▀   ███    ███    ███    ███   ███ ▀███▄   ███    ██▄ \n"
+    " ▄█████████▀    ▀██    █▀     ███    ██▀   ███   ▀██▄  ██████████ \n"
 "\u200b")
 ########
 #
@@ -55,7 +58,8 @@ def setup():
 async def run_bot():
     def prefix(bot, msg):
         return ['<@!{}> '.format(bot.user.id), '<@{}> '.format(bot.user.id)]
-    async with ShakeBot(shard_count=1, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
+    
+    async with ShakeBot(shard_count=3, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
         try:
             pool = await _create_pool(config)
         except:

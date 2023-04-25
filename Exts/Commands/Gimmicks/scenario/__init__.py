@@ -10,6 +10,10 @@ from Classes import ShakeBot, ShakeContext, setlocale, Testing, _, locale_doc
 class scenario_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(scenario)
+        except:
+            pass
 
     def category(self) -> str: 
         return "gimmicks"
@@ -38,7 +42,7 @@ class scenario_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
             
         do = testing if ctx.testing else scenario
 

@@ -2,14 +2,14 @@ from __future__ import annotations
 from importlib import import_module
 from Classes.database.db import Table
 from discord.player import AudioPlayer
-from Classes.secrets.configuration import Config
+from Classes.tomls.configuration import Config
 from Classes.exceptions import ChannelNotFound
 from asyncpg import Pool, connect, UndefinedTableError
 from Exts.Functions.Debug.error import error
 from discord.abc import T
 from Classes.useful import MISSING
 from aiohttp import ClientSession
-from Classes.secrets.emojis import Emojis
+from Classes.tomls.emojis import Emojis
 from asyncio import TimeoutError
 from traceback import print_exc
 from contextlib import suppress
@@ -250,8 +250,7 @@ class ShakeContext(Context):
 
 
     async def __await__(self, callback: Callable[..., Awaitable[Message]], /, **kwargs: Any) -> Message:
-        error = kwargs.pop('error', False)
-        if self.reinvoked and self.messages and not error:
+        if self.reinvoked and self.messages:
             message: Optional[Message] = utils.find(
                 lambda m: not getattr(m, "to_delete", False),
                 reversed(self.messages.values()),
@@ -281,32 +280,31 @@ class ShakeContext(Context):
 
 
     async def send(
-        self, 
+        self,
         content: Optional[str] = None,
+        *,
         tts: bool = False,
-        embed: Optional[ShakeEmbed] = None,
-        error: bool = False,
-        embeds: Optional[Sequence[ShakeEmbed]] = None,
+        embed: Optional[Embed] = None,
+        embeds: Optional[Sequence[Embed]] = None,
         file: Optional[File] = None,
         files: Optional[Sequence[File]] = None,
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None,
         nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None,
-        mention_author: Optional[bool] = None,
         reference: Optional[Union[Message, MessageReference, PartialMessage]] = None,
-        suppress_embeds: bool = False,
+        mention_author: Optional[bool] = None,
         view: Optional[View] = None,
+        suppress_embeds: bool = False,
         ephemeral: bool = False,
-        ) -> Message:
-        if (not error) and (content == None) and (random() < (1 / 100)):
-            content = '*'+_("Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or **share** me to your friends!").format(votelink=self.bot.config.other.vote)+'*'
+        silent: bool = False,
+    ) -> Message:
         try:
             message = await self.__await__(super().send, 
-                content=content, tts=tts, embed=embed, embeds=embeds, file=file, error=error,
+                content=content, tts=tts, embed=embed, embeds=embeds, file=file,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
                 nonce=nonce, allowed_mentions=allowed_mentions, reference=reference or self.reference(),
-                mention_author=mention_author, suppress_embeds=suppress_embeds, view=view
+                mention_author=mention_author, suppress_embeds=suppress_embeds, view=view, silent=silent
             )
         except (Forbidden, HTTPException):
             return None
@@ -317,7 +315,7 @@ class ShakeContext(Context):
     async def reply(
         self, content: Optional[str] = None, tts: bool = False,
         embed: Optional[ShakeEmbed] = None, embeds: Optional[Sequence[ShakeEmbed]] = None,
-        file: Optional[File] = None, files: Optional[Sequence[File]] = None, error: bool = False,
+        file: Optional[File] = None, files: Optional[Sequence[File]] = None,
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = None,
@@ -327,7 +325,7 @@ class ShakeContext(Context):
             message = await self.__await__(super().reply,
                 content=content, tts=tts, embed=embed, embeds=embeds, file=file,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
-                nonce=nonce, allowed_mentions=allowed_mentions, view=view, error=error,
+                nonce=nonce, allowed_mentions=allowed_mentions, view=view, 
                 mention_author=mention_author, suppress_embeds=suppress_embeds
             )
         except (Forbidden, HTTPException):
@@ -339,7 +337,7 @@ class ShakeContext(Context):
     async def smart_reply(
         self, content: Optional[str] = None, tts: bool = False,
         embed: Optional[ShakeEmbed] = None, embeds: Optional[Sequence[ShakeEmbed]] = None,
-        file: Optional[File] = None, files: Optional[Sequence[File]] = None, error: bool = False,
+        file: Optional[File] = None, files: Optional[Sequence[File]] = None,
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = False,
@@ -348,7 +346,7 @@ class ShakeContext(Context):
         kwargs = {
             'content': content, 'embed': embed, 'embeds': embeds, 'file': file, 'suppress_embeds': suppress_embeds, 
             'stickers': stickers, 'delete_after': delete_after, 'ephemeral': ephemeral, 'nonce': nonce, 'files': files, 
-            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts, 'error': error,
+            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts
         }
         if ref := self.message.reference:
             kwargs['reference'] = ref

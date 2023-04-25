@@ -13,7 +13,7 @@ from Classes.i18n import _, localedir, gettext_translations, available, locales
 ########
 #
 
-class locale():
+class L():
     locale: str
     authors: str
     flag: str
@@ -21,21 +21,23 @@ class locale():
     two_letters_code: str
     locale_with_underscore: str
 
-    __slots__ = {'locale', 'authors', 'flag', 'language', 'two_letters_code', 'locale_with_underscore'}
+    __slots__ = {'locale', 'authors', 'flag', 'language', 'two_letters_code', 'locale_with_underscore', 'first_two_letters', 'bettername'}
 
     def __init__(self, locale: str) -> None:
         po = None
         with suppress(OSError): 
             po = pofile(path.join(localedir, locale, 'LC_MESSAGES', 'shake.po'))
-        y = {'ja': 'jp', 'zn': 'cn'}
+        DC_EXCEPTION = {'sr-SP': 'sr'}
         metadata = getattr(po, 'metadata', {})
         crw_lang = metadata.pop('X_Crowdin_Language', '') # ''  /  None
         self.authors = [', '.join(metadata.pop('Last-Translator', '').split())] or []
         self.two_letters_code = metadata.pop('Language', crw_lang[:2] or locale[:2]).lower() # if crw_lang else
+        self.first_two_letters = metadata.pop('Language', crw_lang[3:] or locale[3:]).lower() # if crw_lang else
         self.language = available.get(locale, {}).get('language', None) or metadata.pop('Language-Team', None) #.replace(two_letters_code, y.get(two_letters_code, two_letters_code))
-        self.flag: str = ':flag_{}:'.format(y.get(code := self.two_letters_code, code))
+        self.flag: str = ':flag_{}:'.format(DC_EXCEPTION.get(locale, self.first_two_letters))
         self.locale_with_underscore = ((crw_lang.lower()+'_'+crw_lang.upper()) if len(crw_lang) == 2 else (crw_lang)).replace('-', '_') if crw_lang else None
         self.locale = locale
+        self.bettername = available.get(locale, {}).get('_', None) or None
 
     def __str__(self) -> str:
         return self.locale
@@ -75,16 +77,16 @@ class command():
 
     async def list(self): 
         items = [
-            locale(x) for x in list(
+            L(x) for x in list(
                 x for x, y in gettext_translations.items() if isinstance(y, GNUTranslations)
             )
         ]
-        current = locale(await self.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US')
+        current = L(await self.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US')
         menu = ListMenu(
             ctx=self.ctx, source=PageSource(
                 ctx=self.ctx, items=items, current=current, title = _("Available Translations"),
-                description=_("There are currently translations for `{languages}` languages and your current language is **{current}**. \nDon't you see your language? Come help us out on [Crowdin]({link})!""").format(
-                    languages=len(items), link=self.bot.config.other.crowdin, current=current.language
+                description=_("There are currently translations for `{languages}` languages \nand your current language is **{current}**.\n\n{_}Don't you see your language or is incomplete?{_} \nThen come help us out on [Crowdin]({link})!""").format(
+                    languages=len(items), link=self.bot.config.other.crowdin, current=current.language, _='_'
                 )
             )
         )
@@ -111,13 +113,13 @@ class command():
 
 
 class PageSource(ListPageSource):
-    def add_field(self, embed, item):
+    def add_field(self, embed, item: L):
         tick = str(PartialEmoji(name='left', id=1033551843210579988)) if str(item) == str(self.kwargs.get('current', MISSING)) else ''
         embed.add_field(
             inline=False,
             name='` {index}. ` {flag} \N{EM DASH} {language} {emoji}'.format(
                 index=self.items.index(item)+1, flag=getattr(item, "flag", ""), 
-                language=item.language, emoji=tick
+                language=item.bettername or item.language, emoji=tick
             ), 
             value="""{usage} to set this language""".format(
                 authors=', '.join(item.authors) or '`/`', 

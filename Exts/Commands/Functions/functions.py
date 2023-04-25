@@ -2,15 +2,15 @@
 #
 from discord import PartialEmoji
 from discord.ext import commands
-from Classes.i18n import _
+from Classes import _, ShakeBot
 ########
 #
 class functions(commands.Cog):
-    _(
-        """Commands for the functions of mine"""
-    )
     def __init__(self, bot) -> None: 
         self.names = [_("functions")]
+        self.description = _(
+        """Commands for the functions of mine"""
+        )
         self.bot = bot
 
     @property
@@ -33,7 +33,7 @@ class functions(commands.Cog):
     def help_command_title(self) -> str: 
         return _("Functions Commands")
 
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(functions(bot))
 #
 ############

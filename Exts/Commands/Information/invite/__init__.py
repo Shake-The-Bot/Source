@@ -10,6 +10,10 @@ from discord.ext.commands import guild_only, Cog, hybrid_command
 class invite_extension(Cog):
     def __init__(self, bot) -> None:  
         self.bot: ShakeBot = bot
+        try:
+            reload(invite)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -36,7 +40,7 @@ class invite_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else invite
 

@@ -11,6 +11,10 @@ from discord.ext.commands import hybrid_command, guild_only, is_owner, Cog
 class leave_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(leave)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -42,7 +46,7 @@ class leave_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else leave
 
         try:    

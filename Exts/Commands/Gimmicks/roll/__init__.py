@@ -11,6 +11,10 @@ from discord.ext.commands import Cog, hybrid_command, guild_only
 class roll_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(roll)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -23,7 +27,7 @@ class roll_extension(Cog):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def roll(self, ctx: ShakeContext, start: Optional[int] = 1, limit: Optional[int] = 6):
+    async def roll(self, ctx: ShakeContext, start: Optional[int] = 1, end: Optional[int] = 6):
         _(
             """Displays a random number in a specified range of values. (Default: 1-6)
 
@@ -32,8 +36,8 @@ class roll_extension(Cog):
             start: Optional[int]
                 the start to roll at
 
-            limit: Optional[int]
-                the limit to roll till"""
+            end: Optional[int]
+                the endlimit to roll till"""
         )
 
         if ctx.testing:
@@ -43,11 +47,11 @@ class roll_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else roll
         try:    
-            await do.command(ctx=ctx, start=start or 5, limit=limit or 6).__await__()
+            await do.command(ctx=ctx, start=start or 5, end=end or 6).__await__()
     
         except:
             if ctx.testing:

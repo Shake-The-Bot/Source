@@ -11,6 +11,10 @@ from discord.ext.commands import Greedy, guild_only, is_owner, Cog, hybrid_comma
 class sync_extension(Cog):
     def __init__(self, bot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(sync)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -53,7 +57,7 @@ class sync_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else sync
 
         try:

@@ -11,6 +11,10 @@ from discord import Interaction
 class on_command_error(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
+        try:
+            reload(command_error)
+        except:
+            pass
 
     @Cog.listener()
     async def on_command_error(self, ctx: Union[ShakeContext, Interaction], error: CommandError):
@@ -26,7 +30,7 @@ class on_command_error(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else command_error
 
         try:

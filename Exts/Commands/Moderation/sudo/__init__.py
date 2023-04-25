@@ -6,12 +6,16 @@ from typing import Optional, Union
 from discord import TextChannel, Member, User
 from . import sudo, testing
 from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
-from discord.ext.commands import Cog, hybrid_command, is_owner, guild_only
+from discord.ext.commands import Cog, hybrid_command, has_permissions, guild_only
 ########
 #
 class sudo_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(sudo)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -22,10 +26,10 @@ class sudo_extension(Cog):
 
 
     @hybrid_command(name="sudo")
-    @extras(owner=True)
+    @extras(permissions=True)
+    @has_permissions(administrator=True)
     @guild_only()
-    @is_owner()
-    @setlocale()
+    @setlocale(guild=True)
     @locale_doc
     async def sudo(self, ctx: ShakeContext, channel: Optional[TextChannel], user: Union[Member, User], command: str, *, arguments: Optional[str] = None):
         _(
@@ -56,7 +60,7 @@ class sudo_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else sudo
 
         try:    

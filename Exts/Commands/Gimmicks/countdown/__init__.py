@@ -10,6 +10,10 @@ from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
 class countdown_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(countdown)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -34,7 +38,7 @@ class countdown_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else countdown
 
         try:    

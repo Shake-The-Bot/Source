@@ -10,6 +10,10 @@ from discord.ext.commands import Cog
 class on_interaction(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
+        try:
+            reload(_interaction)
+        except:
+            pass
 
     @Cog.listener()
     async def on_interaction(self, interaction: Interaction):
@@ -23,7 +27,7 @@ class on_interaction(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else _interaction
 
         try:

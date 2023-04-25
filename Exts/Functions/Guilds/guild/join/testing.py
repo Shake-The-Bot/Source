@@ -23,10 +23,8 @@ class event():
         for webhook in webhooks:
             try:
                 await webhook.edit(name=guild_name, avatar=await self.guild.icon.read(), reason='Logs')
-            except (HTTPException, NotFound, ValueError):
+            except (HTTPException, NotFound, ValueError, AttributeError):
                 continue
-            except:
-                raise
             else:
                 with suppress(HTTPException, NotFound):
                     await webhook.send('{emoji} Joined `{name}`. I\'m now in {guilds} guilds (+{users} users).'.format(

@@ -10,6 +10,11 @@ from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 class aboveme_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(aboveme)
+        except:
+            pass
+
 
     def category(self) -> str: 
         return "functions"
@@ -47,7 +52,7 @@ class aboveme_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else aboveme
 

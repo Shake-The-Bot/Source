@@ -20,7 +20,7 @@ class ListMenu(page.Pages):
         await self.source._prepare_once()
         page = await self.source.get_page(0)
         kwargs = await self._get_from_page(page)
-        self._update_labels(0)
+        self.update(0)
         await interaction.response.edit_message(**kwargs, view=self)
 
 
@@ -43,7 +43,7 @@ class CategoricalMenu(page.Pages):
         self.source = source
         self.page = 0 if isinstance(source, _source.ItemPageSource) else item
         if update:
-            self._update_labels(self.page)
+            self.update(self.page)
         await source._prepare_once()
         page_source = await source.get_page(item)
         self.kwargs, self.file = await self._get_from_page(page_source)

@@ -11,6 +11,10 @@ from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale, e
 class tempvoice_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(tempvoice)
+        except:
+            pass
 
     def category(self) -> str: 
         return "functions"
@@ -68,7 +72,7 @@ class tempvoice_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else tempvoice
 
         try:    

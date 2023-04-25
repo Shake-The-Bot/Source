@@ -10,6 +10,10 @@ from discord.ext.commands import Cog
 class on_message_edit(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
+        try:
+            reload(message_edit)
+        except:
+            pass
 
     @Cog.listener()
     @event_check(lambda self, before, after:  (before.content and after.content) or before.author.bot)
@@ -23,7 +27,7 @@ class on_message_edit(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else message_edit
 
         try:

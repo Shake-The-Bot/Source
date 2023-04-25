@@ -86,7 +86,7 @@ class Pages(ui.View):
         if not self.kwargs: 
             return False
         
-        self._update_labels(self.page)
+        self.update(self.page)
         attachments = (self.file if isinstance(self.file, list) else [self.file]) if self.file else []
         if interaction.response.is_done():
             if self.message:
@@ -97,10 +97,11 @@ class Pages(ui.View):
         return True
 
 
-    def _update_labels(self, page: Optional[int]) -> None:
+    def update(self, page: Optional[int] = None, timeouted: Optional[bool] = False) -> None:
+        self.timeouted = timeouted
         page = page or self.page or 0
         max_pages = self.source.get_max_pages()
-        self.stop_pages.label = ("\u2003%(pages)-9s\u2003" % {'pages': _("Stop")+f' ({page+1}/{max_pages})'})
+        self.stop_pages.label = ("\u2003%(pages)-9s\u2003" % {'pages': _("Done")+f' ({page+1}/{max_pages})'})
         
         next_page = page+1 >= max_pages
         self.go_to_next_page.disabled = next_page
@@ -117,6 +118,12 @@ class Pages(ui.View):
         first_page = page <= 1
         self.go_to_first_page.disabled = first_page
         self.go_to_first_page.style = ButtonStyle.grey if first_page else ButtonStyle.blurple
+
+        if timeouted:
+            for item in self._children:
+                if isinstance(item, ui.Button) or isinstance(item, ui.Select):
+                    item.disabled = True
+                    item.style = ButtonStyle.grey
 
 
     async def show_checked_page(self, interaction: Interaction, page: int) -> None:
@@ -138,10 +145,7 @@ class Pages(ui.View):
 
 
     async def on_timeout(self, interaction: Optional[Interaction] = None) -> None:
-        for item in self._children:
-            if isinstance(item, ui.Button) or isinstance(item, ui.Select):
-                item.disabled = True
-                item.style = ButtonStyle.grey
+        self.update(timeouted=True)
         if not interaction or not isinstance(interaction, Interaction) or interaction.response.is_done():
             if self.message:
                 await self.message.edit(view=self)
@@ -173,7 +177,7 @@ class Pages(ui.View):
         if content:
             self.kwargs.setdefault('content', content)
 
-        self._update_labels(page=page)
+        self.update(page=page)
         self.page = page
         return True
     
@@ -196,7 +200,7 @@ class Pages(ui.View):
         await self.show_checked_page(interaction, self.page - 1)
 
 
-    @ui.button(label=_("Stop"), style=ButtonStyle.red, row=1)
+    @ui.button(label=_("Done"), style=ButtonStyle.green, row=1)
     async def stop_pages(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await self.on_stop(interaction)

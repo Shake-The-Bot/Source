@@ -34,10 +34,14 @@ def is_message_context():
         return utils.find(message_getter(payload.message_id), bot.cached_context)
     return event_check(inner)
 
-class on_context_update(Cog):
+class on_context_delete(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.cooldown_report = CooldownMapping.from_cooldown(5, 30, BucketType.user)
+        try:
+            reload(delete)
+        except:
+            pass
 
     @Cog.listener('on_raw_bulk_message_delete')
     async def remove_context_messages(self, payload: RawBulkMessageDeleteEvent):
@@ -51,7 +55,7 @@ class on_context_update(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else delete
 
         try:
@@ -74,7 +78,7 @@ class on_context_update(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else delete
 
         try:
@@ -97,7 +101,7 @@ class on_context_update(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else delete
 
         try:
@@ -110,4 +114,4 @@ class on_context_update(Cog):
 
 
 async def setup(bot: ShakeBot) -> None:
-    await bot.add_cog(on_context_update(bot))
+    await bot.add_cog(on_context_delete(bot))

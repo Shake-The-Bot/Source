@@ -11,6 +11,10 @@ from discord.ext.commands import hybrid_command, Cog, guild_only
 class userinfo_extension(Cog):
     def __init__(self, bot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(userinfo)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -40,7 +44,7 @@ class userinfo_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else userinfo
 
         try:    

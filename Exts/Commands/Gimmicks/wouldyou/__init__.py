@@ -11,13 +11,17 @@ from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale, Te
 class wouldyou_extension(Cog):
     def __init__(self, bot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(wouldyou)
+        except:
+            pass
 
     def category(self) -> str: 
         return "gimmicks"
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{SCALES}')
+        return PartialEmoji(name='scale', id=1099618823348437032)
 
     @hybrid_command(name="wouldyou")
     @extras(beta=True)
@@ -52,7 +56,7 @@ class wouldyou_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else wouldyou
         try:    

@@ -6,10 +6,10 @@ I'm a multi purpose Discord-Bot which helps you to manage your Server with tempv
 <a href="https://top.gg/bot/778938275397632021"><img src="https://top.gg/api/widget/upvotes/778938275397632021.svg"></a> 
 
 ## Commands
-- For a list of commands type !help and use the select menu!
+- For a list of commands type "/help" (or "@Shake help") and use the select menu!
 
 ## Dashboard
-- Currently there is no dashbord and Shake is managable with its commands. 
+- Currently there is no dashbord and I am managable with my commands. 
 This will be changed in future!
 
 ## Contributing
@@ -18,7 +18,7 @@ This will be changed in future!
 Please make sure to update tests as appropriate.
 
 ## Self hosting
-- Please do not host the Shake Bot yourself. At least not now! The code is massively outdated and mostly only works platform specific.
+- Please do not host me yourself. At least not now! My code is massively outdated and mostly only works platform specific.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

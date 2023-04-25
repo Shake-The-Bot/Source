@@ -7,7 +7,7 @@ from random import choice, sample
 from re import Match
 
 from discord.utils import format_dt, maybe_coroutine
-from discord.ext.commands import CommandError, Command as _Command, Group, Cog as _Cog, Greedy
+from discord.ext.commands import CommandError, Command as _Command, Group, Cog as _Cog, Greedy, errors
 from discord.ext import commands, menus
 
 from Classes.pages import (
@@ -23,7 +23,7 @@ from discord import (
     Interaction, Guild, Member, User, TextChannel, Object, Message, VoiceChannel
 )
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, BadArgument, _, MISSING
+from Classes import ShakeBot, ShakeContext, ShakeEmbed, _, MISSING
 
 ########
 #
@@ -89,7 +89,7 @@ class HelpPaginatedCommand():
         return
 
     def command_not_found(self: HelpPaginatedCommand, string: str, /) -> ShakeEmbed:
-        raise BadArgument(message="Unknown command/category. Use \"/help\" for help.", argument=string)
+        raise errors.BadArgument(message="Unknown command/category. Use \"/help\" for help.", argument=string)
 
 
     async def send_error_message(self: HelpPaginatedCommand, **kwargs) -> None:
@@ -334,8 +334,8 @@ class HelpMenu(CategoricalMenu):
         await self.ctx.bot.invoke(new_ctx)
 
 
-    def _update_labels(self, page: Optional[int] = None) -> None:
-        super()._update_labels(page=page)
+    def update(self, page: Optional[int] = None) -> None:
+        super().update(page=page)
         is_frontpage = isinstance(self.source, FrontPageSource)
         self.go_to_info_page.style = (ButtonStyle.green if (self.current_source != None) else ButtonStyle.grey) if is_frontpage else ButtonStyle.blurple
         self.go_to_info_page.disabled = (False if (self.current_source != None) else True) if is_frontpage else False
@@ -548,9 +548,11 @@ class Cog(ListPageSource):
         for item in items:
             self.add_field(embed, item, config=config)            
 
-        last_embed = ["**{0}・{1}**".format(config[key].get('suffix'), config[key].get('text')) for key in self.suffixes]
-        if bool(last_embed): 
-            embed.add_field(name="\u200b", value="\n".join(last_embed))
+        information = ["**{0}・{1}**".format(config[key].get('suffix'), config[key].get('text')) for key in self.suffixes]
+
+        if bool(information): 
+            information.append(_("Use \"/help <command>\" to get more detailed information "))
+            embed.add_field(name="\u200b", value="\n".join(information))
 
         return embed, None
 

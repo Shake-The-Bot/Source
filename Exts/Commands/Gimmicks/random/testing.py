@@ -14,7 +14,12 @@ class command():
         self.ctx: ShakeContext = ctx
 
     async def __await__(self):
-        online = list(filter(lambda u: (True if self.offline else u.status == Status.online) and u.bot == False, self.ctx.guild.members))
-        return await self.ctx.invoke(self.bot.get_command('userinfo'), user=choice(online))
+        users = list(
+            filter(
+                lambda user: (True if self.offline else user.status == Status.online) and user.bot == False, 
+                self.ctx.guild.members
+            )
+        )
+        return await self.ctx.invoke(self.bot.get_command('userinfo'), user=choice(users))
 #
 ############

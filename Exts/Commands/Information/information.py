@@ -2,7 +2,7 @@
 #
 from discord.ext import commands
 from discord import PartialEmoji
-from Classes.i18n import _
+from Classes import _, ShakeBot
 ########
 #
 class information(commands.Cog):
@@ -18,6 +18,7 @@ class information(commands.Cog):
     def display_emoji(self) -> PartialEmoji: 
         return PartialEmoji(name='\N{INFORMATION SOURCE}')
 
+    @property
     def long_doc_title(self) -> str: 
         return f"{self.display_emoji}︱{self.label}"
 
@@ -29,7 +30,7 @@ class information(commands.Cog):
     def help_command_title(self) -> str: 
         return _("Information Commands")
 
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(information(bot))
 #
 ############

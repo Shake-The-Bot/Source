@@ -10,6 +10,10 @@ from discord.ext.commands import Cog
 class on_voice_state_update(Cog):
     def __init__(self, bot: ShakeBot) -> None:
         self.bot: ShakeBot = bot
+        try:
+            reload(voice_state_update)
+        except:
+            pass
 
     @Cog.listener()
     async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState,):
@@ -25,7 +29,7 @@ class on_voice_state_update(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else voice_state_update
 
         try:

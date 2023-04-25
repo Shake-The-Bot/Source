@@ -2,15 +2,15 @@
 #
 from discord.ext import commands
 from discord import PartialEmoji
-from Classes.i18n import _
+from Classes import _, ShakeBot
 ########
 #
 class leveling(commands.Cog):
-    _(
-        """Level & Ranking, Voice & Chat"""
-    )
     def __init__(self, bot) -> None: 
         self.names = ['leveling']
+        self.description = _(
+        """Level & Ranking, Voice & Chat"""
+        )
         self.bot = bot
 
     @property
@@ -28,7 +28,7 @@ class leveling(commands.Cog):
     def help_command_title(self) -> str: 
         return "Level Commands"
 
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(leveling(bot))
 #
 ############

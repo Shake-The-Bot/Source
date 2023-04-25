@@ -5,12 +5,15 @@ from typing import Optional
 from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
 from importlib import reload
 from discord.ext.commands import Cog, hybrid_command, guild_only
-from discord import app_commands
 ########
 #
 class help_extension(Cog):
     def __init__(self, bot) -> None:
         self.bot: ShakeBot = bot
+        try:
+            reload(help)
+        except:
+            pass
 
     def category(self) -> str: 
         return "help_extension"
@@ -40,7 +43,7 @@ class help_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else help
 

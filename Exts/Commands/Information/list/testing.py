@@ -18,7 +18,7 @@ class command():
             ctx=self.ctx, source=PageSource(
                 ctx=self.ctx, items=guilds, current=self.ctx.guild, title=_("Current Guilds"),
                 description=_("I'm currently in `{guilds}` guilds & this one is in top **{current}**.").format(
-                    guilds=len(self.guilds), current=guilds.index(self.ctx.guild)+1
+                    guilds=len(guilds), current=guilds.index(self.ctx.guild)+1
                 )
             )
         )

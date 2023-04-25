@@ -2,16 +2,16 @@
 #
 from discord import PartialEmoji
 from discord.ext import commands
-from Classes.i18n import _
+from Classes import _, ShakeBot
 ########
 #
 #@locale_doc
 class other(commands.Cog):
-    _(
-        """Other commands without categories"""
-    )
     def __init__(self, bot) -> None:
         self.names = ['other', 'other', 'others']
+        self.description = _(
+            """Other commands without categories"""
+        )
         self.bot = bot
         
     @property
@@ -30,7 +30,7 @@ class other(commands.Cog):
     def help_command_title(self) -> str: 
         return _("Other Commands")
 
-async def setup(bot): 
+async def setup(bot: ShakeBot): 
     await bot.add_cog(other(bot))
 #
 ############

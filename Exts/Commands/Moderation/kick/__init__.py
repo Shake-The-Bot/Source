@@ -11,6 +11,10 @@ from discord.ext.commands import Greedy, Cog, hybrid_command, has_permissions, b
 class kick_extension(Cog):
     def __init__(self, bot):
         self.bot: ShakeBot = bot
+        try:
+            reload(kick)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji:
@@ -22,8 +26,8 @@ class kick_extension(Cog):
     @hybrid_command(name="kick")
     @guild_only()
     @has_permissions(kick_members=True)
-    @bot_has_permissions(kick_members = True)
-    @setlocale()
+    @bot_has_permissions(kick_members=True)
+    @setlocale(guild=True)
     @locale_doc
     async def kick(self, ctx: ShakeContext, member: Greedy[Member], *, reason: Optional[str] = None):
         _(
@@ -31,8 +35,12 @@ class kick_extension(Cog):
 
             Parameters
             -----------
-            member: discord.Member
-                the member to mute"""
+            member: Greedy[discord.Member]
+                the member(s) to kick
+                
+            reason: Optional[str]
+                the reason why you kicked the member(s)
+                """
         )
 
         if ctx.testing:
@@ -42,7 +50,7 @@ class kick_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else kick
 
         try:    
@@ -54,7 +62,7 @@ class kick_extension(Cog):
             raise
 
 
-async def setup(bot):
+async def setup(bot: ShakeBot):
     await bot.add_cog(kick_extension(bot))
 #
 ############

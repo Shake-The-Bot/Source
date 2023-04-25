@@ -9,6 +9,10 @@ from discord.ext.commands import Cog
 class on_command_completion(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
+        try:
+            reload(command_completion)
+        except:
+            pass
 
     @Cog.listener()
     async def on_command_completion(self, ctx: ShakeContext):
@@ -22,7 +26,7 @@ class on_command_completion(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if test else command_completion
 
         try:

@@ -10,6 +10,10 @@ from discord.ext.commands import Cog
 class on_member_join(Cog):
     def __init__(self, bot):
         self.bot: ShakeBot = bot
+        try:
+            reload(member_join)
+        except:
+            pass
 
     @Cog.listener()
     async def on_member_join(self, member: Member):
@@ -22,7 +26,7 @@ class on_member_join(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else member_join
 
         try:

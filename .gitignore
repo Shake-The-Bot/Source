@@ -3,9 +3,8 @@
 *.log
 *.toml
 .vscode
-requirements.txt
 Assets/*
-Classes/secrets
+Classes/tomls
 Migrations/*
 Testing/
 

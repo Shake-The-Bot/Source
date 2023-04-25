@@ -6,7 +6,7 @@ from discord import Guild
 from typing import TYPE_CHECKING
 from collections import deque
 from Classes.helpful import MISSING
-from Classes.secrets.configuration import Config
+from Classes.tomls.configuration import Config
 config = Config('config.toml')
 
 if TYPE_CHECKING:

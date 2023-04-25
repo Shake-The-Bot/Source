@@ -12,7 +12,7 @@ from Classes.i18n import _
 from Classes.converter import ValidCog
 from PIL import ImageFont, ImageDraw, Image
 from random import random, choice, randrange
-from Classes.secrets.configuration import Config
+from Classes.tomls.configuration import Config
 from dateutil.relativedelta import relativedelta
 
 from typing import (Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check)
@@ -314,32 +314,48 @@ async def votecheck(ctx: Optional[Union[ShakeContext, Context, Interaction]] = M
         except:
             raise
 
-class Action(Enum):
+class Methods(Enum):
 
-    LOAD = partial(ShakeBot.load_extension)
-    UNLOAD = partial(ShakeBot.unload_extension)
-    RELOAD = partial(ShakeBot.reload_extension)
+    load = partial(ShakeBot.load_extension)
+    unload = partial(ShakeBot.unload_extension)
+    reload = partial(ShakeBot.reload_extension)
 
-async def cogs_handler(
-        ctx: ShakeContext, 
-        extensions: ValidCog, 
-        method: Literal['load', 'unload', 'reload'] # TODO: update to the Enums above
-    ) -> None: 
+async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Methods) -> None:
 
-    async def do_cog(exts: str) -> str:
-        func = getattr(ctx.bot, f'{method}_extension')
-        try: 
-            await func(f'{exts}')
-        except ExtensionNotFound:
-            return (f'`{exts}`', 'not found')
-        except (ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError) as e: 
-            return (f'`{exts}` {type(e).__name__}', f'{e}')
-        return (None, None)
+    async def handle(method: Methods, extension: ValidCog) -> str:
+        function = method.value
+        error = None
+        
+        try:
+            await function(ctx.bot, extension)
+
+        except (ExtensionNotLoaded) as err:
+            if method is method.reload:
+                handle = await handle(method.load, extension)
+                return handle
+            error = err
+        
+        except (ExtensionAlreadyLoaded) as err:
+            error = err
+            pass
+
+        except Exception as err:
+            error = err
+            pass
+
+        return error
+
+    failures = {}
+    for extension in extensions:
+        handling = await handle(method, extension)
+        error = getattr(handling, "original", handling) if handling else MISSING
+        if error:
+            failures[str(extension)] = error
+
     
-    embed = ShakeEmbed(colour=config.embed.colour, description=f"{ctx.bot.emojis.hook}")
-    outputs = await gather(*map(do_cog, extensions))
-    for name, value in map(tuple, outputs): 
-        if any(x is None for x in (name, value)): continue
-        embed.add_field(name=name, value=f'```py\n{value}\n```', inline=False)
-    await ctx.smart_reply(embed=embed)
-    return
+    embed = ShakeEmbed(description=f"**{len(extensions) - len(failures)} / {len(extensions)} extensions {method.name.lower()}ed.**")
+    for i, (ext, err) in enumerate(failures.items(), 1):
+        ext = ext.replace(ext, '`'+ext+'`')
+        err = str(err).replace(ext, '`'+ext+'`')
+        embed.add_field(name=f"` {i}. ` {ext}", value=err)
+    return embed

@@ -10,8 +10,12 @@ from discord.ext.commands import Greedy
 ########
 #
 class freegames_commands_extension(Cog):
-    def __init__(self, bot): 
+    def __init__(self, bot: ShakeBot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(freegames)
+        except:
+            pass
 
     def category(self) -> str: 
         return "functions"
@@ -56,7 +60,7 @@ class freegames_commands_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else freegames
 
         try:

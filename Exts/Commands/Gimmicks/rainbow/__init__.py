@@ -11,6 +11,10 @@ from discord.ext.commands import Cog, hybrid_command, guild_only
 class rainbow_extension(Cog):
     def __init__(self, bot: ShakeBot): 
         self.bot: ShakeBot = bot
+        try:
+            reload(rainbow)
+        except:
+            pass
         
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -40,7 +44,7 @@ class rainbow_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else rainbow
 
         try:    

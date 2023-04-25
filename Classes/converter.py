@@ -7,6 +7,7 @@ from typing import Union, Literal, Any, Tuple, TYPE_CHECKING, Optional, List
 from re import error, fullmatch, DOTALL, IGNORECASE, Pattern, compile, split
 from dateutil.relativedelta import relativedelta
 from discord import TextChannel
+import inspect
 from discord.ext.commands import Context, Converter, TextChannelConverter, errors, BadArgument
 from datetime import datetime, timezone
 
@@ -95,41 +96,48 @@ class Regex(Converter):
 
 
 class ValidCog(Converter): # beta, working on it rn
-    """Tries to find a matching extension and return it
+    """Tries to find a matching extension and returns it
 
     Triggers a BadArgument error if you specify the extensions "load", "unload" or "reload", 
     because they are excluded before this function
     """
-    # extension: str = (ext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Exts.Commands.Other.reload.__init__ -> reload
+    # extension: str = (get some pingext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Exts.Commands.Other.reload.__init__ -> reload
     async def convert(self, ctx: ShakeContext, argument: str) -> str:
+
         def final(ext: str):
-            if any(x in ext for x in ('load', 'unload', 'reload')):
-                raise BadArgument(str(ext) + ' is not a valid module to work with')
+            if any(x in str(ext) for x in ('load', 'unload', 'reload')):
+                raise BadArgument(message=str(ext) + ' is not a valid module to work with')
             return ext
+
+        if command := ctx.bot.get_command(argument):
+            file = inspect.getfile(command.cog.__class__).removesuffix('.py')
+            path = file.split('/')
+            index = path.index('Exts')
+            correct = path[index:]
+            return final('.'.join(correct))
 
         if argument in ctx.bot.config.client.extensions:
             return final(argument)
         
-        elif len(parts := split('.|/', argument)) > 1:
+        if len(parts := split('.|/', argument)) > 1:
             ext = '.'.join(filter(lambda x: not any(x == y for y in ('py', '__init__')), parts)) + '.__init__'
             if ext in ctx.bot.config.client.extensions:
                 return final(ext)
             
+        if matches := (
+            [ext for ext in ctx.bot.config.client.extensions if ext in ctx.bot.config.client.extensions] or 
+            get_close_matches(argument, ctx.bot.config.client.extensions)
+        ):
+            return final(matches[0])
         else:
-            if matches := (
-                [ext for ext in ctx.bot.config.client.extensions if ext in ctx.bot.config.client.extensions] or 
-                get_close_matches(argument, ctx.bot.config.client.extensions)
-            ):
-                return final(matches[0])
-            else:
-                shortened_exts = [ext.split('.')[-1].lower() for ext in ctx.bot.config.client.extensions]
+            shortened_exts = [ext.split('.')[-1].lower() for ext in ctx.bot.config.client.extensions]
 
-                if argument in shortened_exts:
-                    return final(ctx.bot.config.client.extensions[shortened_exts.index(argument)])
-                elif matches := get_close_matches(argument, shortened_exts):
-                    return final(ctx.bot.config.client.extensions[shortened_exts.index(matches[0])])
-                else:
-                    raise BadArgument('Specify either the module name or the path to the module', argument)
+            if argument in shortened_exts:
+                return final(ctx.bot.config.client.extensions[shortened_exts.index(argument)])
+            elif matches := get_close_matches(argument, shortened_exts):
+                return final(ctx.bot.config.client.extensions[shortened_exts.index(matches[0])])
+            else:
+                raise BadArgument(message='Specify either the module name or the path to the module')
         
 
 # class ValidCog(Converter):

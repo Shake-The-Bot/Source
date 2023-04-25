@@ -11,7 +11,10 @@ from . import invites, testing
 class invites_extension(Cog):
     def __init__(self, bot: ShakeBot): 
         self.bot: ShakeBot = bot
-        self.env = {}
+        try:
+            reload(invites)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -43,7 +46,7 @@ class invites_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else invites
 
         try:    

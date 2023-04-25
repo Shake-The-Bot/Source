@@ -3,12 +3,12 @@ from gettext import translation, NullTranslations, gettext
 from discord.ext.commands._types import Check
 from discord.ext.commands import check
 from contextvars import ContextVar
-from logging import getLogger
-from os import path, getcwd
+from os import path, getcwd, walk
 from glob import glob
+from subprocess import call
 from inspect import getsource
 from typing import Any, Callable, TYPE_CHECKING, Optional
-from discord import app_commands, Locale, User, Guild
+from discord import User, Guild
 
 if TYPE_CHECKING:
     from bot import ShakeBot
@@ -21,13 +21,25 @@ else:
 
 default_locale = "en-US"
 domain = 'shake'
-logger = getLogger('bot')
-localedir = path.join(getcwd(), 'locales')
+localedir = path.join(getcwd(), 'Locales')
 locales: frozenset[str] = frozenset(
-    map(path.basename, filter(path.isdir, glob(path.join(getcwd(), "locales", "*"))),
+    map(path.basename, filter(path.isdir, glob(path.join(getcwd(), "Locales", "*"))),
 ))
-########
-#
+def mo():
+    data_files = []
+    po_dirs = [localedir + '/' + l + '/LC_MESSAGES/' for l in locales]
+    for d in po_dirs:
+        mo_files = []
+        po_files = [f for f in next(walk(d))[2] if path.splitext(f)[1] == '.po']
+        for po_file in po_files:
+            filename, extension = path.splitext(po_file)
+            mo_file = filename + '.mo'
+            msgfmt_cmd = 'msgfmt {} -o {}'.format(d + po_file, d + mo_file)
+            call(msgfmt_cmd, shell=True)
+            mo_files.append(d + mo_file)
+        data_files.append((d, mo_files))
+    return data_files
+mo()
 
 def set_gettext():
     global gettext_translations
@@ -97,8 +109,8 @@ available = {
     'en-US': {'language': 'English', 'simplified': ['american english', 'english'], '_': 'English (american)' }, 
     'en-GB': {'language': 'English', 'simplified': ['british english'], '_': 'English (british)'}, 
     'bg-BG': {'language': 'български', 'simplified': ['bulgarian']}, 
-    'zn-CN': {'language': '中国人', 'simplified': ['chinese', 'simplified chinese'], '_': '中国人 (简化的)'}, 
-    'zn-TW': {'language': '中國人', 'simplified': ['taiwanese chinese'], '_': '中國人 (傳統的)'},
+    'zh-CN': {'language': '中国人', 'simplified': ['chinese', 'simplified chinese'], '_': '中国人 (简化的)'}, 
+    'zh-TW': {'language': '中國人', 'simplified': ['taiwanese chinese'], '_': '中國人 (傳統的)'},
     'hr-HR': {'language': 'Hrvatski', 'simplified': ['croatian']}, 
     'cs-CS': {'language': 'čeština', 'simplified': ['czech']}, 
     'da-DA': {'language': 'Dansk', 'simplified': ['danish']}, 

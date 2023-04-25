@@ -6,11 +6,11 @@ from Classes.i18n import _
 ########
 #
 class inviting(commands.Cog):
-    _(
-        """Inviting Commands are useful to track these and get some members"""
-    )
     def __init__(self, bot) -> None: 
         self.bot = bot
+        self.description = _(
+        """Useful Commands to track invites and and get some members with these"""
+        )
         self.names = [_("information"), _("info")]
 
     @property

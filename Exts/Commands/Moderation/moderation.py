@@ -6,12 +6,12 @@ from Classes.i18n import _
 ########
 #
 class moderation(commands.Cog):
-    _(
-        """Moderation related commands.
-        (Each of these commands requires certain authorization)."""
-    )
     def __init__(self, bot) -> None: 
         self.names = ['moderation', 'mod']
+        self.description = _(
+        """Moderation related commands.
+        (Each of these commands requires certain authorization)."""
+        )
         self.bot = bot
 
     @property

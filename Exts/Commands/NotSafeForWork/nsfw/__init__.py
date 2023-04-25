@@ -10,6 +10,10 @@ from discord.ext.commands import is_owner, is_nsfw, Cog, hybrid_group, guild_onl
 class nsfw_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot:ShakeBot = bot
+        try:
+            pass
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -38,7 +42,7 @@ class nsfw_extension(Cog):
                 The NSFW command you want to run.
 
             amount: Optional[int]
-                Amount of posts from 1 to 20 or 30 (Shake+)."""
+                Amount of posts from 1 to 20 (or 30 with Shake+)."""
         )
         pass # TODO: yeah..
 

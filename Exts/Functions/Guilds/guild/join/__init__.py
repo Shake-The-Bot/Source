@@ -12,6 +12,10 @@ from discord.ext.commands import Cog
 class on_guild_join(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
+        try:
+            reload(guild_join)
+        except:
+            pass
 
     @Cog.listener()
     async def on_guild_join(self, guild: Guild, channel: Optional[TextChannel] = None):
@@ -24,7 +28,7 @@ class on_guild_join(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                test = False
         do = testing if test else guild_join
 
         try:

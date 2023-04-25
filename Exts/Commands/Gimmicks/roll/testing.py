@@ -7,14 +7,14 @@ from Classes import ShakeContext, ShakeBot, ShakeEmbed
 ########
 #
 class command():
-    def __init__(self, ctx: ShakeContext, start: int = 1, limit: int = 6):
+    def __init__(self, ctx: ShakeContext, start: int = 1, end: int = 6):
         self.bot: ShakeBot = ctx.bot
         self.ctx: ShakeContext = ctx
-        self.limit: int = limit
+        self.end: int = end
         self.start: int = start
 
     async def __await__(self):
-        embed = ShakeEmbed.default(self.ctx, description = _("You have rolled a random number and the result is __**{number}**__").format(number=randint(1, self.limit)))
+        embed = ShakeEmbed.default(self.ctx, description = _("You have rolled a random number and the result is __**{number}**__").format(number=randint(1, self.end)))
         embed.set_author(
             name=_(f"Dice roll"),
             icon_url=PartialEmoji(animated=True, name='roll', id=1052677647030829056).url

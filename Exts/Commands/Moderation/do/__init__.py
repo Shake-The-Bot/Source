@@ -4,12 +4,16 @@ from discord import PartialEmoji
 from importlib import reload
 from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
 from . import do, testing
-from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
+from discord.ext.commands import Cog, hybrid_command, guild_only, has_permissions
 ########
 #
 class do_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(do)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -19,10 +23,10 @@ class do_extension(Cog):
         return "moderation"
 
     @hybrid_command(name="do")
-    @extras(owner=True)
+    @extras(permissions=True)
     @guild_only()
-    @is_owner()
-    @setlocale()
+    @has_permissions(administrator=True)
+    @setlocale(guild=True)
     @locale_doc
     async def __await__(self, ctx: ShakeContext, times: int, command: str):
         _(
@@ -36,7 +40,7 @@ class do_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         _do = testing if ctx.testing else do
 
         try:    

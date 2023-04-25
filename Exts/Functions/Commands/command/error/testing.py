@@ -27,7 +27,10 @@ class event():
         elif isinstance(original, (ShakeMissingPermissions,)):
             description =  original.message or _("I am missing `{permissions}` permission(s) to run this command.").format(permissions=', '.join(original.missing_permissions))
 
-        elif isinstance(original, (errors.MissingRequiredArgument, errors.MissingRequiredAttachment, errors.TooManyArguments, BadArgument, errors.BadUnionArgument, errors.BadLiteralArgument, errors.UserInputError)):
+        if isinstance(original, (errors.BadArgument)):    
+            description = getattr(original, "message", None) or _("You typed in some bad arguments, try !help")
+
+        elif isinstance(original, (errors.MissingRequiredArgument, errors.MissingRequiredAttachment, errors.TooManyArguments , errors.BadUnionArgument, errors.BadLiteralArgument, errors.UserInputError)):
             description = getattr(original, "message", None) or _("You did something wrong with the arguments, try !help")
 
         elif isinstance(original, (GuildNotFound,)):
@@ -93,23 +96,22 @@ class event():
         if raisable:
             dumped = await self.bot.dump(f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}")
             self.bot.log.warning(f"{self.ctx.guild.id} > {(self.ctx.author if isinstance(self.ctx, ShakeContext) else self.ctx.user).id} > {self.ctx.command}: {dumped} ({self.error.__class__.__name__})")
-        try:
-            if isinstance(self.ctx, Interaction):
-                if self.ctx.response.is_done():
-                    await self.ctx.followup.send(embed=embed, ephemeral=True)
-                else:
-                    await self.ctx.response.send_message(embed=embed, ephemeral=True)
+
+        if isinstance(self.ctx, Interaction):
+            if self.ctx.response.is_done():
+                await self.ctx.followup.send(embed=embed, ephemeral=True)
             else:
-                await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True)
-            
-            if raisable:
-                embed = ShakeEmbed.to_success(self.ctx, description=_("The {type} {error} was reported to the Shake-Team!").format(
-                    type=self.error.__class__.__name__, error="" if self.error.__class__.__name__.lower().endswith('error') else _("error")))
-                if isinstance(self.ctx, Interaction):
-                    await self.ctx.followup.send(embed=embed, ephemeral=True)
-                else:
-                    await self.ctx.smart_reply(embed=embed, ephemeral=True, error=True)
-        except:
-            raise
+                await self.ctx.response.send_message(embed=embed, ephemeral=True)
+        else:
+            await self.ctx.send(embed=embed, ephemeral=True)
+        
+        if raisable:
+            embed = ShakeEmbed.to_success(self.ctx, description=_("The {type} {error} was reported to the Shake-Team!").format(
+                type=self.error.__class__.__name__, error="" if self.error.__class__.__name__.lower().endswith('error') else _("error")))
+            if isinstance(self.ctx, Interaction):
+                await self.ctx.followup.send(embed=embed, ephemeral=True)
+            else:
+                await self.ctx.send(embed=embed, ephemeral=True)
+
 #
 ############

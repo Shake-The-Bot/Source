@@ -11,6 +11,10 @@ from discord.ext.commands import MissingPermissions, guild_only, Cog, hybrid_gro
 class language_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(lang)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -46,7 +50,7 @@ class language_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else lang
 
@@ -83,7 +87,7 @@ class language_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
 
         do = testing if ctx.testing else lang
 
@@ -100,8 +104,6 @@ class language_extension(Cog):
             if ctx.testing:
                 raise Testing
             raise
-
-
 
 
 async def setup(bot: ShakeBot): 

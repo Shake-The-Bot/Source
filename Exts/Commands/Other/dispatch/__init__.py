@@ -11,6 +11,10 @@ from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
 class dispatch_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
+        try:
+            reload(dispatch)
+        except:
+            pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
@@ -45,7 +49,7 @@ class dispatch_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.testing = False
+                ctx.__testing = False
         do = testing if ctx.testing else dispatch
 
         try:    

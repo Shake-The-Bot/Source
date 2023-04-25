@@ -6,11 +6,11 @@ from Classes.i18n import _
 ########
 #
 class gimmicks(commands.Cog):
-    _(
-        """Commands for fun and distraction"""
-    )
     def __init__(self, bot) -> None: 
         self.names = [_("gimmicks")]
+        self.description = _(
+        """Commands for fun and distraction"""
+        )
         self.bot = bot
 
     @property

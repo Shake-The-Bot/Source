@@ -11,7 +11,7 @@ extensions = [
     'Exts.Commands.Gimmicks.say.__init__', 'Exts.Commands.Gimmicks.pp.__init__',
     'Exts.Commands.Gimmicks.rainbow.__init__', 'Exts.Commands.Gimmicks.count.__init__',
     'Exts.Commands.Gimmicks.countdown.__init__', 'Exts.Commands.Gimmicks.random.__init__',
-    'Exts.Commands.Gimmicks.meme.__init__', 'Exts.Commands.Gimmicks.would you.__init__', 
+    'Exts.Commands.Gimmicks.meme.__init__', 'Exts.Commands.Gimmicks.wouldyou.__init__', 
     'Exts.Commands.Gimmicks.scenario.__init__', 
 
     'Exts.Commands.Information.information',
@@ -24,13 +24,12 @@ extensions = [
 
     'Exts.Commands.Moderation.moderation', 
     'Exts.Commands.Moderation.sudo.__init__', 'Exts.Commands.Moderation.do.__init__', 
-    'Exts.Commands.Moderation.mute.__init__', 'Exts.Commands.Moderation.kick.__init__',
+    'Exts.Commands.Moderation.timeout.__init__', 'Exts.Commands.Moderation.kick.__init__',
     
     'Exts.Commands.Other.other',
-    'Exts.Commands.Other.load.__init__', 'Exts.Commands.Other.reload.__init__',
-    'Exts.Commands.Other.unload.__init__', 'Exts.Commands.Other.bash.__init__',
+    'Exts.Commands.Other.extensions.__init__', 'Exts.Commands.Other.bash.__init__',
     'Exts.Commands.Other.repl.__init__', 'Exts.Commands.Other.dispatch.__init__',
-    'Exts.Commands.Other.test.__init__', 'Exts.Commands.Other.sync.__init__', 
+    'Exts.Commands.Other.ptb.__init__', 'Exts.Commands.Other.sync.__init__', 
     'Exts.Commands.Other.leave.__init__', 
 
 
