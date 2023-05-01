@@ -20,7 +20,10 @@ class Event():
     
     async def __await__(self):
         if self.api != MISSING:
-            self.api.command_run(self.ctx)
+            try:
+                self.api.command_run(self.ctx)
+            except:
+                pass
         
         query = """
             WITH insert AS (INSERT INTO commands (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING)
