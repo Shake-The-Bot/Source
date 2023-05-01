@@ -1,11 +1,11 @@
 ############
 #
 from importlib import reload
-from . import command_error, testing
-from typing import Union
+from . import command_error, testing as testfile
+from typing import Union, Optional
 from discord.ext.commands import Cog, CommandError
 from Classes import ShakeContext, ShakeBot, Testing
-from discord import Interaction
+from discord import Interaction, Client
 ########
 #
 class on_command_error(Cog):
@@ -21,24 +21,23 @@ class on_command_error(Cog):
         if isinstance(ctx, ShakeContext) and ctx.cog and ctx.cog._get_overridden_method(ctx.cog.cog_command_error) is not None:
             return
         
-        test = any(x.id in list(self.bot.tests.keys()) for x in (ctx.author, ctx.guild, ctx.channel))
+        author: ShakeBot = ctx.author if isinstance(ctx, ShakeContext) else ctx.user
+        test = any(x.id in list(self.bot.tests.keys()) for x in (author, ctx.guild, ctx.channel))
         
         if test:
             try:
-                reload(testing)
+                reload(testfile)
             except Exception as e:
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
+                    name=testfile.__file__, type=e.__class__.__name__
                 ))
                 test = False
-        do = testing if test else command_error
+        do = testfile if test else command_error
 
         try:
-            await do.event(ctx=ctx, error=error).__await__()
+            await do.Event(ctx=ctx, error=error).__await__()
     
         except:
-            if test:
-                raise Testing
             raise
 
 async def setup(bot: ShakeBot): 

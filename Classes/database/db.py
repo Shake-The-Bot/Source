@@ -652,8 +652,8 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
         async with MaybeAcquire(connection, pool=cls._pool) as con:
             sql = diff.to_sql(downgrade=downgrade)
-            if verbose:
-                print(sql)
+            # if verbose:
+            #     prnt(sql)
             await con.execute(sql)
 
         current = directory.with_name('current-' + p.name)
@@ -697,8 +697,8 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             # first, try to actually create the table
             async with MaybeAcquire(connection, pool=cls._pool) as con:
                 sql = cls.create_table(exists_ok=True)
-                if verbose:
-                    print(sql)
+                # if verbose:
+                #     pint(sql)
                 await con.execute(sql)
 
             # since that step passed, let's go ahead and make the migration
@@ -726,8 +726,8 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
         # execute the upgrade SQL
         async with MaybeAcquire(connection, pool=cls._pool) as con:
             sql = diff.to_sql()
-            if verbose:
-                print(sql)
+            # if verbose:
+            #     pint(sql)
             await con.execute(sql)
 
         # load the migration data
@@ -786,8 +786,8 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
         async with MaybeAcquire(connection, pool=cls._pool) as con:
             sql = 'DROP TABLE {0} CASCADE;'.format(cls.__tablename__)
-            if verbose:
-                print(sql)
+            # if verbose:
+            #     pint(sql)
             await con.execute(sql)
 
     @classmethod
@@ -824,7 +824,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
         """Inserts an element to the table."""
 
         # verify column names:
-        verified = {}
+        verified = dict()
         for column in cls.columns:
             try:
                 value = kwargs[column.name]  # type: ignore  # Doesn't understand that None | str is okay
@@ -849,7 +849,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
     @classmethod
     def to_dict(cls) -> dict[str, Any]:
-        x = {}
+        x = dict()
         x['name'] = cls.__tablename__
         x['__meta__'] = cls.__module__ + '.' + cls.__qualname__
 
@@ -915,8 +915,8 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
                 nullable: Optional[bool]
                 default: Optional[str]
         """
-        upgrade = {}
-        downgrade = {}
+        upgrade = dict()
+        downgrade = dict()
 
         def check_index_diff(a, b):
             if a.index != b.index:

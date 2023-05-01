@@ -47,7 +47,7 @@ class command():
             """INSERT INTO oneword (channel_id, guild_id, turn) VALUES ($1, $2, $3)""", 
             channel.id, self.ctx.guild.id, True
         )
-        embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} **Setup completed**. {channel} can now be used to play oneword on this Discord server!".format(
-            emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix, channel=channel.mention)
+        embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} {__}Setup completed{__}. {channel} can now be used to play oneword on this Discord server!".format(
+            emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix, channel=channel.mention, __='**')
         ))
         return await self.ctx.smart_reply(embed=embed)

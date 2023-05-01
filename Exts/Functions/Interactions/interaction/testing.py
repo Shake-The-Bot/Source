@@ -1,15 +1,13 @@
 ############
 #
-from logging import getLogger
 from Classes import ShakeBot
 from importlib import reload
 from Classes.i18n import _
 from Exts.Functions.Voice.voice_state_update.utils import system
 from discord import Interaction
-logger = getLogger(__name__)
 ########
 #
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, interaction: Interaction):
         self.bot: ShakeBot = bot
         self.interaction: Interaction = interaction

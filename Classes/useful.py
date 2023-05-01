@@ -314,8 +314,17 @@ async def votecheck(ctx: Optional[Union[ShakeContext, Context, Interaction]] = M
         except:
             raise
 
-class Methods(Enum):
+class Categorys(Enum):
+    Functions = 'functions'
+    Gimmicks = 'gimmicks'
+    Information = 'information'
+    #load = 'inviting'
+    #load = 'leveling'
+    Moderation = 'moderation'
+    #load = 'notsafeforwork'
+    Other = 'other'
 
+class Methods(Enum):
     load = partial(ShakeBot.load_extension)
     unload = partial(ShakeBot.unload_extension)
     reload = partial(ShakeBot.reload_extension)
@@ -329,23 +338,25 @@ async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Met
         try:
             await function(ctx.bot, extension)
 
-        except (ExtensionNotLoaded) as err:
+        except (ExtensionNotLoaded,) as error:
             if method is method.reload:
                 handle = await handle(method.load, extension)
                 return handle
-            error = err
+            if method is method.unload:
+                return None
+            return error
         
-        except (ExtensionAlreadyLoaded) as err:
-            error = err
-            pass
+        except (ExtensionAlreadyLoaded,) as error:
+            if method is method.load:
+                return None
+            return error
 
         except Exception as err:
-            error = err
-            pass
+            return err
 
-        return error
+        return None
 
-    failures = {}
+    failures = dict()
     for extension in extensions:
         handling = await handle(method, extension)
         error = getattr(handling, "original", handling) if handling else MISSING

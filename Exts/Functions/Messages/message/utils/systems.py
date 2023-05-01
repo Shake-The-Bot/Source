@@ -11,7 +11,7 @@ from asyncpg import Pool, Record
 class aboveme():
     def __init__(self, member: Member, bot: ShakeBot, message: Message):
         self.kwargs: dict = {'embeds': []}
-        self.do: dict = {}
+        self.do: dict = dict()
         self.message: Message = message
         self.channel: TextChannel = message.channel
         self.member: Member = member
@@ -21,7 +21,7 @@ class aboveme():
         await db.execute('INSERT INTO aboveme (channel_id) VALUES ($1) ON CONFLICT (channel_id) DO NOTHING;', self.channel.id)
 
     async def clean_channels(self, db, records) -> Dict[TextChannel, Record]: 
-        valids = {}
+        valids = dict()
         unvalids = []
         for record in records:
             channel_id = int(record['channel_id'])
@@ -106,7 +106,7 @@ class aboveme():
 class oneword():
     def __init__(self, member: Member, bot: ShakeBot, message: Message):
         self.kwargs: dict = {'embeds': []}
-        self.do: dict = {}
+        self.do: dict = dict()
         self.message: Message = message
         self.channel: TextChannel = message.channel
         self.member: Member = member
@@ -117,7 +117,7 @@ class oneword():
             await db.execute('INSERT INTO oneword (channel_id) VALUES ($1) ON CONFLICT (channel_id) DO NOTHING;', self.channel.id)
 
     async def clean_channels(self, db, records) -> Dict[TextChannel, Record]: 
-        valids = {}
+        valids = dict()
         unvalids = []
         for record in records:
             channel_id = int(record['channel_id'])
@@ -201,7 +201,7 @@ class oneword():
 class counting():
     def __init__(self, member: Member, bot: ShakeBot, message: Message):
         self.kwargs: dict = {'embeds': []}
-        self.do: dict = {}
+        self.do: dict = dict()
         self.message: Message = message
         self.member: Member = member
         self.channel = message.channel
@@ -222,7 +222,7 @@ class counting():
             await db.execute('INSERT INTO counting (channel_id) VALUES ($1) ON CONFLICT (channel_id) DO NOTHING;', self.channel.id)
 
     async def clean_channels(self, db, records) -> Dict[TextChannel, Record]: 
-        valids = {}
+        valids = dict()
         unvalids = []
         for record in records:
             channel_id = int(record['channel_id'])

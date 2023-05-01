@@ -33,7 +33,7 @@ class on_raw_reaction_remove(Cog):
         do = testing if test else raw_reaction_remove
 
         try:
-            await do.event(bot=self.bot, payload=payload).__await__()
+            await do.Event(bot=self.bot, payload=payload).__await__()
     
         except:
             if test:

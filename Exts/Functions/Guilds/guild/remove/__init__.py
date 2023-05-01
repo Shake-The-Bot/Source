@@ -30,7 +30,7 @@ class on_guild_remove(Cog):
         do = testing if test else guild_remove
 
         try:
-            await do.event(guild=guild, bot=self.bot).__await__()
+            await do.Event(guild=guild, bot=self.bot).__await__()
     
         except:
             if test:

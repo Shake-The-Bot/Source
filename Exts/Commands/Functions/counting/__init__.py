@@ -64,12 +64,13 @@ class counting_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
             
         do = testing if ctx.testing else counting
 
         try:
             await do.command(ctx=ctx, hardcore=hardcore, numbersonly=numbersonly, goal=goal).setup()
+        
         except:
             if ctx.testing:
                 raise Testing

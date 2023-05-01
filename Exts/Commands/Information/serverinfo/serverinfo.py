@@ -72,7 +72,7 @@ class command():
         return information
 
     def channelinfo(self,) -> Dict[str, str]:
-        information = {}
+        information = dict()
         emojis = (self.bot.emojis.hook, self.bot.emojis.cross)
         information[_("Categories")+':'] = '`'+ str((len(self.guild.categories))) +'`'
         information[_("Text Channels")+':'] = '`'+ str(len([channel for channel in self.guild.text_channels if channel.is_news])) +'`'

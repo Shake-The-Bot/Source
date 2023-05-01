@@ -9,9 +9,9 @@ from re import Match
 from discord.utils import format_dt, maybe_coroutine
 from discord.ext.commands import CommandError, Command as _Command, Group, Cog as _Cog, Greedy, errors
 from discord.ext import commands, menus
-
+from Classes.useful import Categorys
 from Classes.pages import (
-    ListPageSource, ItemPageSource, FrontPageSource, CategoricalMenu, 
+    ListPageSource, ItemsPageSource, FrontPageSource, CategoricalMenu, 
     CategoricalSelect, Pages
 )
 from typing import (
@@ -24,15 +24,16 @@ from discord import (
 )
 
 from Classes import ShakeBot, ShakeContext, ShakeEmbed, _, MISSING
-
 ########
 #
+hear_to_tasks = dict()
+
 class command():
-    def __init__(self, ctx: ShakeContext, command: Optional[str], category: Optional[str]):
+    def __init__(self, ctx: ShakeContext, command: Optional[str], category: Optional[Categorys]):
         self.bot = ctx.bot
         self.ctx = ctx
         self.command: str = command
-        self.category: str = category
+        self.category: Optional[Categorys] = category
     
 
     async def __await__(self: command):
@@ -42,8 +43,9 @@ class command():
             await HelpPaginatedCommand(self.ctx).send_bot_help()
             return 
         
-        if cat_or_cmd is not None and self.bot.get_cog(cat_or_cmd) is not None:
-            await HelpPaginatedCommand(self.ctx).send_cog_help(self.bot.get_cog(cat_or_cmd))
+        if isinstance(cat_or_cmd, Categorys):
+            cog = await self.bot.get_cog(self.category.value)
+            await HelpPaginatedCommand(self.ctx).send_cog_help(cog)
             return 
         
         maybe_coro = maybe_coroutine
@@ -78,6 +80,7 @@ class command():
             await help.send_command_help(cmd)
             return
 
+
 class HelpPaginatedCommand():
     ctx: ShakeContext
 
@@ -89,7 +92,8 @@ class HelpPaginatedCommand():
         return
 
     def command_not_found(self: HelpPaginatedCommand, string: str, /) -> ShakeEmbed:
-        raise errors.BadArgument(message="Unknown command/category. Use \"/help\" for help.", argument=string)
+        error = errors.BadArgument(message=_("Unknown command/category `{argument}`. Use \"/help\" for help.").format(argument=string))
+        self.ctx.bot.dispatch('command_error', self.ctx, error)
 
 
     async def send_error_message(self: HelpPaginatedCommand, **kwargs) -> None:
@@ -172,7 +176,7 @@ class HelpPaginatedCommand():
             filtered,
             sort=True, key=key,
         )
-        all_commands: dict[_Cog, list[_Command]] = {}
+        all_commands: dict[_Cog, list[_Command]] = dict()
         for name, children in groupby(entries, key=key):
             if name == '':  # "\U0010ffff"
                 continue 
@@ -183,7 +187,7 @@ class HelpPaginatedCommand():
 
 
     async def send_bot_help(self: HelpPaginatedCommand):
-        menu = HelpMenu(ctx=self.ctx, source=HelpFrontSource())
+        menu = HelpMenu(ctx=self.ctx, source=Front())
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
         menu.add_categories(commands)
         
@@ -217,7 +221,7 @@ class HelpPaginatedCommand():
             cog = self.ctx.bot.get_cog(cog.category())
         commands = await self.commands_from_cog(cog)
         source = Cog(self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True)
-        menu = HelpMenu(ctx=self.ctx, source=source, front=HelpFrontSource())
+        menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
         menu.add_categories(await self.all_commands(self.ctx.bot, self.ctx.author))
         if setup := await menu.setup():
             await menu.send()
@@ -231,7 +235,7 @@ class HelpPaginatedCommand():
         category = self.ctx.bot.get_cog(command.cog.category())
         commands = await self.commands_from_cog(category)
         source = Cog(self.ctx, category, commands, paginating=True)
-        menu = HelpMenu(ctx=self.ctx, source=source, front=HelpFrontSource())
+        menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
         menu.add_categories(await self.all_commands(self.ctx.bot, self.ctx.author))
         if not await menu.setup():
             raise
@@ -243,13 +247,10 @@ class HelpPaginatedCommand():
                 index = k
                 break
         source = Command()
-        await menu.rebind(source, item=index)
+        await menu.rebind(source, index)
         await menu.send()
-#
-############
 
-logger = getLogger(__name__)
-hear_to_tasks = dict()
+
 def configurations(bot: ShakeBot):
     conf = {
         'beta': {
@@ -270,13 +271,12 @@ def configurations(bot: ShakeBot):
         },
     }
     return conf 
-########
-#
+
+
 class HelpMenu(CategoricalMenu):
     def __init__(self, ctx: ShakeContext, source: menus.PageSource, front: Optional[FrontPageSource] = MISSING, **kwargs: Any):
-
-        super().__init__(ctx, source=source, front=front, select=CategoricalSelect, selectsource=Cog, **kwargs)
-        self.current_source = self.current_page = None
+        super().__init__(ctx, source=source, front=front, select=CategoricalSelect(ctx, source=Cog), **kwargs)
+        self.cache['source'] = self.cache['page'] = None
 
     async def hear(self):
         if not isinstance(self.source, ListPageSource): 
@@ -300,7 +300,7 @@ class HelpMenu(CategoricalMenu):
                     break
             if index is None:
                 return await self.hear()
-            await self.rebind(Command(), self.message, index)
+            await self.rebind(Command(), index)
             with suppress(NotFound, Forbidden, HTTPException): 
                 await msg.delete()
 
@@ -310,16 +310,16 @@ class HelpMenu(CategoricalMenu):
         is_frontpage = isinstance(self.source, FrontPageSource)
         
         if is_frontpage:
-            assert self.current_source is not None and self.current_page is not None
-            tmpsource, tmppage = (self.current_source, self.current_page)
-            self.current_source = self.current_page = None
-            await self.rebind(source=tmpsource, item=tmppage, interaction=interaction)
+            assert self.cache.get('source', MISSING) != MISSING and self.cache.get('page', MISSING) != MISSING
+            tmpsource, tmppage = (self.cache['source'], self.cache['page'])
+            self.cache['source'] = self.cache['page'] = None
+            await self.rebind(tmpsource, tmppage, interaction=interaction)
             return
 
         elif not is_frontpage:
-            assert self.current_source is None and self.current_page is None
-            self.current_source, self.current_page = (self.source, self.page)
-            await self.rebind(source=HelpFrontSource(), item=2, interaction=interaction)
+            assert self.cache.get('source', MISSING) == None and self.cache.get('page', MISSING) == None
+            self.cache['source'], self.cache['page'] = (self.source, self.page)
+            await self.rebind(Front(), 2, interaction=interaction)
             return
 
 
@@ -337,15 +337,20 @@ class HelpMenu(CategoricalMenu):
     def update(self, page: Optional[int] = None) -> None:
         super().update(page=page)
         is_frontpage = isinstance(self.source, FrontPageSource)
-        self.go_to_info_page.style = (ButtonStyle.green if (self.current_source != None) else ButtonStyle.grey) if is_frontpage else ButtonStyle.blurple
-        self.go_to_info_page.disabled = (False if (self.current_source != None) else True) if is_frontpage else False
+        self.go_to_info_page.style = (ButtonStyle.green if (self.cache['source'] != None) else ButtonStyle.grey) if is_frontpage else ButtonStyle.blurple
+        self.go_to_info_page.disabled = (False if (self.cache['source'] != None) else True) if is_frontpage else False
         return
 
 
     async def show_page(self, interaction: Interaction, item: int) -> None:
         await super().show_page(interaction=interaction, item=item)
         await self.hear()
+        return
 
+    async def rebind(self, source: menus.PageSource, page: Optional[int] = 0, interaction: Optional[Interaction] = None, update: Optional[bool] = True) -> None:
+        await super().rebind(source, page, interaction, update)
+        await self.hear()
+        return
 
     def fill(self) -> None:
         super().fill()
@@ -364,8 +369,8 @@ def get_signature( self: commands.Command, menu: ui.View,):
     if not params:
         return {}, {}
 
-    optionals = {}
-    required = {}
+    optionals = dict()
+    required = dict()
 
     all_text_channel = {str(channel.name): channel.mention for channel in guild.text_channels}
     text_channel = (all_text_channel.get(sorted(list(all_text_channel.keys()), key=len, reverse=False)[0]) if bool(guild.text_channels) else None)
@@ -447,7 +452,7 @@ def get_signature( self: commands.Command, menu: ui.View,):
     return required, optionals
 
 
-class Command(ItemPageSource):
+class Command(ItemsPageSource):
     def format_page(self, menu: ui.View, item: int):
         command = {i: command for i, command in enumerate(menu.items)}[self.item]
         
@@ -555,7 +560,7 @@ class Cog(ListPageSource):
         return embed, None
 
 
-class HelpFrontSource(FrontPageSource):
+class Front(FrontPageSource):
     def __init__(self) -> None:
         super().__init__()
         self.timeouted = None

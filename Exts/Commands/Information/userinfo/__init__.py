@@ -18,8 +18,8 @@ class userinfo_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{INFORMATION SOURCE}')
-    
+        return PartialEmoji(name='ℹ️')
+        
     def category(self) -> str: 
         return "information"
 
@@ -44,7 +44,7 @@ class userinfo_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
         do = testing if ctx.testing else userinfo
 
         try:    

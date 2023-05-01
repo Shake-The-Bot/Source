@@ -23,11 +23,10 @@ class command():
         )   ))
         embed = ShakeEmbed.default(self.ctx, description=description)
         embed.set_author(name=f"@everyone?!")
-        file_name = choice(listdir('./assets/everyone'))
-        file = File(f"./assets/everyone/{file_name}", filename=f"image.{file_name[-3:]}")
+        file_name = choice(listdir('./Assets/everyone'))
+        file = File(f"./Assets/everyone/{file_name}", filename=f"image.{file_name[-3:]}")
         embed.set_image(url=f"attachment://image.{file_name[-3:]}")
         await self.ctx.smart_reply(embed=embed, files=[file])
-        await self.ctx.confirm()
         return
 #
 ############

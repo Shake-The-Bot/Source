@@ -31,7 +31,7 @@ class on_interaction(Cog):
         do = testing if test else _interaction
 
         try:
-            await do.event(bot=self.bot, interaction=interaction).__await__()
+            await do.Event(bot=self.bot, interaction=interaction).__await__()
     
         except:
             if test:

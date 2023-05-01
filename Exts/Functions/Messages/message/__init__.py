@@ -32,7 +32,7 @@ class on_message(Cog):
         do = testing if test else _message
 
         try:
-            await do.event(message=message, bot=self.bot).__await__()
+            await do.Event(message=message, bot=self.bot).__await__()
     
         except:
             if test:

@@ -19,7 +19,7 @@ def is_message_older_context(bot: ShakeBot, message_id: int) -> bool:
     if not (cached_context := bot.cached_context): return False
     return message_id < cached_context[0].message.id
 
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, payload: RawBulkMessageDeleteEvent, event: Literal['remove_context_messages', 'remove_context_message', 'on_command_delete_event']):
         self.bot: ShakeBot = bot
         self.payload = payload

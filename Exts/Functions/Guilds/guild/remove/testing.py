@@ -11,7 +11,7 @@ from Classes import ShakeBot
 ########
 #
 
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, guild: Guild, channel: Optional[TextChannel]=None):
         self.channel: Optional[TextChannel] = channel
         self.bot: ShakeBot = bot
@@ -33,7 +33,7 @@ class event():
 
 
         with contextlib.suppress(Exception):
-            if self.bot.pools.get(self.guild.id, None):
+            if self.bot.cache['pools'].get(self.guild.id, None):
                 await db.delete_database(self.guild.id,)
 #
 ############

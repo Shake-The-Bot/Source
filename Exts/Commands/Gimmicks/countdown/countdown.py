@@ -12,7 +12,7 @@ class command():
 
     async def __await__(self):
         countdown = [_('five'), 'four', 'three', _('two'), _('one')]
-        msg = await self.ctx.smart_reply('**'+_('Lets start this')+'**')
+        msg = await self.ctx.smart_reply(_('{__} Lets start this {__}'))
         for num in countdown:
             await msg.edit(content='**:{0}:**'.format(num))
             await sleep(1)

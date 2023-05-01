@@ -20,13 +20,13 @@ extensions = [
     'Exts.Commands.Information.rtfm.__init__', 'Exts.Commands.Information.serverinfo.__init__', 
     'Exts.Commands.Information.stats.__init__', 'Exts.Commands.Information.userinfo.__init__', 
     'Exts.Commands.Information.vote.__init__', 'Exts.Commands.Information.list.__init__', 
-    'Exts.Commands.Information.language.__init__', 
 
     'Exts.Commands.Moderation.moderation', 
     'Exts.Commands.Moderation.sudo.__init__', 'Exts.Commands.Moderation.do.__init__', 
     'Exts.Commands.Moderation.timeout.__init__', 'Exts.Commands.Moderation.kick.__init__',
     
     'Exts.Commands.Other.other',
+    'Exts.Commands.Other.language.__init__', 
     'Exts.Commands.Other.extensions.__init__', 'Exts.Commands.Other.bash.__init__',
     'Exts.Commands.Other.repl.__init__', 'Exts.Commands.Other.dispatch.__init__',
     'Exts.Commands.Other.ptb.__init__', 'Exts.Commands.Other.sync.__init__', 

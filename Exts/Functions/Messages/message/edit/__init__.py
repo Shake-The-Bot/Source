@@ -31,7 +31,7 @@ class on_message_edit(Cog):
         do = testing if test else message_edit
 
         try:
-            await do.event(before=before, after=after, bot=self.bot).__await__()
+            await do.Event(before=before, after=after, bot=self.bot).__await__()
     
         except:
             if test:

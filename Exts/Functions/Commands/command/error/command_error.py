@@ -10,7 +10,7 @@ from discord.ext.commands import errors, Command
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 ########
 #
-class event():
+class Event():
     def __init__(self, ctx: Union[ShakeContext, Interaction], error):
         self.bot: ShakeBot = ctx.bot if isinstance(ctx, ShakeContext) else ctx.client
         self.ctx: Union[ShakeContext, Interaction] = ctx
@@ -19,6 +19,8 @@ class event():
     async def __await__(self):
         original = getattr(self.error, "original", self.error)
         raisable: bool = False
+
+        self.testing = isinstance(original, Testing)
 
         if isinstance(original, errors.CommandNotFound):
             await self.command_not_found(self.ctx)
@@ -71,7 +73,7 @@ class event():
     async def command_not_found(self, ctx: ShakeContext):
         invoked = ctx.invoked_with #ctx.message.content.replace(ctx.prefix, '', 1).split()[0]
         
-        commands = {}
+        commands = dict()
         for command in self.bot.commands:
             extras = getattr(command.callback, "extras", {})
             allowed = (owner := await ctx.bot.is_owner(ctx.author)) or extras.get("owner", False) == owner
@@ -91,11 +93,12 @@ class event():
 
 
     async def send(self, description, raisable: bool = False):
-        
-        embed = ShakeEmbed.to_error(self.ctx, description=description)
         if raisable:
             dumped = await self.bot.dump(f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}")
-            self.bot.log.warning(f"{self.ctx.guild.id} > {(self.ctx.author if isinstance(self.ctx, ShakeContext) else self.ctx.user).id} > {self.ctx.command}: {dumped} ({self.error.__class__.__name__})")
+            if not self.testing:
+                self.bot.log.warning(f"{self.ctx.guild.id} > {(self.ctx.author if isinstance(self.ctx, ShakeContext) else self.ctx.user).id} > {self.ctx.command}: {dumped} ({self.error.__class__.__name__})")
+
+        embed = ShakeEmbed.to_success(self.ctx, description=dumped) if raisable and self.testing else ShakeEmbed.to_error(self.ctx, description=description)
 
         if isinstance(self.ctx, Interaction):
             if self.ctx.response.is_done():
@@ -105,7 +108,7 @@ class event():
         else:
             await self.ctx.send(embed=embed, ephemeral=True)
         
-        if raisable:
+        if raisable and not self.testing:
             embed = ShakeEmbed.to_success(self.ctx, description=_("The {type} {error} was reported to the Shake-Team!").format(
                 type=self.error.__class__.__name__, error="" if self.error.__class__.__name__.lower().endswith('error') else _("error")))
             if isinstance(self.ctx, Interaction):

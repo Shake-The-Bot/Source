@@ -3,7 +3,7 @@
 from logging import Filter
 ########
 #
-class ApschedulerFilter(Filter):
+class NoMoreApscheduler(Filter):
     def filter(self, record):
         if record.levelname == 'INFO':
             return False
@@ -20,7 +20,16 @@ class NoMoreRatelimit(Filter):
         return True
 ########
 #
-class RemoveNoise(Filter):
+class NoMoreUnclosedSessions(Filter):
+    def __init__(self):
+        super().__init__(name='asyncio')
+
+    def filter(self, record):
+        if record.levelname == 'ERROR' and 'Unclosed' in record.msg:
+            return False
+        return True
+
+class NoMoreAnything(Filter):
     def __init__(self, _name):
         super().__init__(name=_name)
 
@@ -56,7 +65,7 @@ class NoCommands(Filter):
         super().__init__(name='command')
 
     def filter(self, record):
-        if record.name == ('command') and record.levelname in ('INFO', 'ERROR'): # // ERROR kann raus
+        if record.name == ('command'):
             return False
         return True
 #

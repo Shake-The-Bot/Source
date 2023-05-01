@@ -1,27 +1,29 @@
 ############
 #
 from logging import getLogger
-from statcord import Client
+from statcord import Client as StatClient
 from Classes import ShakeBot, ShakeContext, MISSING
 
 logger = getLogger('command')
 ########
 #
-class event():
+class Event():
     def __init__(self, ctx: ShakeContext, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.ctx: ShakeContext = ctx
         try:
-            self.api = Client(bot=self.bot, token=self.bot.config.statcord.key)
+            self.api = StatClient(bot=self.bot, token=self.bot.config.statcord.key)
         except:
             self.api = MISSING
         else:
             self.api.start_loop()
     
     async def __await__(self):
-        self.ctx.done = False
-        if not self.api is MISSING:
-            self.api.command_run(self.ctx)
+        if self.api != MISSING:
+            try:
+                self.api.command_run(self.ctx)
+            except:
+                pass
         
         query = """
             WITH insert AS (INSERT INTO commands (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING)

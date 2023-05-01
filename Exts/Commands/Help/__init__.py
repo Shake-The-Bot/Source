@@ -3,10 +3,12 @@
 from . import help, testing
 from typing import Optional
 from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
+from Classes.useful import Categorys
 from importlib import reload
 from discord.ext.commands import Cog, hybrid_command, guild_only
 ########
 #
+
 class help_extension(Cog):
     def __init__(self, bot) -> None:
         self.bot: ShakeBot = bot
@@ -22,17 +24,17 @@ class help_extension(Cog):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def help(self, ctx: ShakeContext, category: Optional[str]=None, command: Optional[str]=None):
+    async def help(self, ctx: ShakeContext, category: Optional[Categorys] = None, command: Optional[str] = None):
         _(
             """Shows all Shake bot commands and provides helpful links
         
             Parameters
             -----------
             category: Optional[str]
-                the category
+                the name of a category you want information about
 
             command: Optional[str]
-                the command   
+                the name of a command you want information about
             """
         )
         
@@ -43,12 +45,13 @@ class help_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
 
         do = testing if ctx.testing else help
 
         try:
             await do.command(ctx=ctx, category=category, command=command).__await__()
+        
         except:
             if ctx.testing:
                 raise Testing

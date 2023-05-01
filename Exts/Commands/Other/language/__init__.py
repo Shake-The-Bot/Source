@@ -50,12 +50,13 @@ class language_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
 
         do = testing if ctx.testing else lang
 
         try:
             await do.command(ctx=ctx).list()
+        
         except:
             if ctx.testing:
                 raise Testing
@@ -74,10 +75,10 @@ class language_extension(Cog):
             Parameters
             -----------
             language: str
-                The locale code of the language you want to use
+                The locale code of the language you want to set
             
             server: Optional[bool]
-                If the language should be for the whole server"""
+                If the language should be set for the whole server"""
         )
         
         if ctx.testing:
@@ -87,7 +88,7 @@ class language_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
 
         do = testing if ctx.testing else lang
 
@@ -99,6 +100,47 @@ class language_extension(Cog):
                 
             else:
                 await do.command(ctx=ctx).user_locale(locale=language)
+            
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+
+    @language.command(name='reset')
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def reset(self, ctx: ShakeContext, *, server: Optional[bool] = False) -> None:
+        _(
+            """Reset your language for Shake to the good old language
+            Doesn't change anything if no language is set
+            
+            Parameters
+            -----------
+            server: Optional[bool]
+                If the language should be reset for the whole server"""
+        )
+        
+        if ctx.testing:
+            try:
+                reload(testing)
+            except Exception as e:
+                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
+                    name=testing.__file__, type=e.__class__.__name__
+                ))
+                ctx.testing = False
+
+        do = testing if ctx.testing else lang
+
+        try:        
+            if server == True:
+                if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
+                    raise MissingPermissions(missing)
+                await do.command(ctx=ctx).guild_locale(locale='en-US')
+                
+            else:
+                await do.command(ctx=ctx).user_locale(locale='en-US')
             
         except:
             if ctx.testing:

@@ -30,7 +30,7 @@ class on_member_join(Cog):
         do = testing if test else member_join
 
         try:
-            await do.event(member=member, bot=self.bot).__await__()
+            await do.Event(member=member, bot=self.bot).__await__()
     
         except:
             if test:

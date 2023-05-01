@@ -27,9 +27,7 @@ else:
     from discord import Embed as ShakeEmbed
     from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
 
-hear_to_tasks = dict()
-
-Sources = PageSource # Union[PageSource, FrontPageSource, GroupPageSource, ItemPageSource]
+Sources = PageSource # Union[PageSource, FrontPageSource, GroupPageSource, ItemsPageSource]
 
 firstemoji = PartialEmoji(name='topleft', id=1033551840744312832)
 previousemoji = PartialEmoji(name='left', id=1033551843210579988)
@@ -39,15 +37,15 @@ lastemoji = PartialEmoji(name='topright', id=1033551844703744041)
 ########
 #
 class Pages(ui.View):
+    page: int = 0
+    message: Optional[Message] = None
     """ The Base of all interactive ui.View of Shake"""
     def __init__(self, source: PageSource, ctx: ShakeContext, ):
         super().__init__()
+        self.cache = dict()
         self.source: PageSource = source
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
-        self.message: Optional[Message] = None
-        self.page: int = 0
-        self.input_lock = Lock()
         self.clear_items()
         self.fill()
 
@@ -62,6 +60,8 @@ class Pages(ui.View):
             self.add_item(self.go_to_next_page)
             self.add_item(self.go_to_last_page)
 
+    def embed(self, embed: ShakeEmbed):
+        return embed
 
     async def _get_from_page(self, item: int) -> Tuple[Dict[str, Any], File]:
         locale = await self.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US'
@@ -73,7 +73,8 @@ class Pages(ui.View):
         elif isinstance(value, str):
             return {'content': value, 'embed': None}, file
         elif isinstance(value, ShakeEmbed):
-            return {'embed': value, 'content': None}, file
+            embed = self.embed(embed=value)
+            return {'embed': embed, 'content': None}, file
         else:
             return {}, file
 

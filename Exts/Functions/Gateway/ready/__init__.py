@@ -17,7 +17,7 @@ class on_ready(Cog):
     @Cog.listener()
     async def on_ready(self):
         try:
-            await ready.event(bot=self.bot).__await__()
+            await ready.Event(bot=self.bot).__await__()
         except:
             raise
 

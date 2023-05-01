@@ -30,7 +30,7 @@ def random_token(id_):
     hmac_ = new(randbytes, randbytes, hashlib.md5).hexdigest()
     return f"{id_}.{time_}.{hmac_}"
 
-def printable(code: str, output: bool = False):
+def stdoutable(code: str, output: bool = False):
     content = code.split('\n')
     s = ''
     for i, line in enumerate(content):
@@ -93,29 +93,28 @@ async def func():
     finally:
         self.env.update(locals())
 """.format(indent(content, ' ' * 8)).strip()
-        printed = printable(content)
-
+        stdouted = stdoutable(content)
+        stdout = StringIO()
         try:
-            exec(code, self.env)
+            with redirect_stdout(stdout):
+                exec(code, self.env)
         except Exception as e:
             await self.ctx.smart_reply(f"```py\n{e.__class__.__name__}: {e}\n```")
             return
 
-        stdout = StringIO()
-        func = self.env['func']
         token = random_token(self.bot.user.id)
         
         start = time() * 1000
         try:
+            
             with redirect_stdout(stdout):
+                func = self.env['func']
                 ret = await func()
-
-        except Exception as err:            
+        except Exception as err:
             with suppress(Forbidden, HTTPException):
                 await self.ctx.message.add_reaction(self.bot.emojis.cross)
-            await self.ctx.smart_reply(f"```py\n{printed}\n{err.__class__.__name__}: {err}\n```") #format_exc()
+            await self.ctx.smart_reply(f"```py\n{stdouted}\n{err.__class__.__name__}: {err}\n```") #format_exc()
             return
-
         finally:
             end = time() * 1000
             completed = end - start
@@ -126,13 +125,13 @@ async def func():
         if ret is not None:
             if not isinstance(ret, str): 
                 ret = str(repr(ret))
-            ret = printable(ret, True)
+            ret = stdoutable(ret, True)
             ret = '\n'+ret+'\n'.replace(self.bot.http.token, token)
 
         with suppress(Forbidden, HTTPException):
             await self.ctx.message.add_reaction(self.bot.emojis.hook)
         
-        final = f"{printed}\n{value}{ret if ret else ''}\n# {completed:.3f}ms".replace('`', '′').replace(self.bot.http.token, token)
+        final = f"{stdouted}\n{value}{ret if ret else ''}\n# {completed:.3f}ms".replace('`', '′').replace(self.bot.http.token, token).replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
 
         try:
             await self.ctx.smart_reply(f'```py\n{final}```')

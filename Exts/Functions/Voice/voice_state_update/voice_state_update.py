@@ -8,7 +8,7 @@ from Classes.i18n import _
 from discord import Member, VoiceState, TextChannel, CategoryChannel, VoiceChannel, PermissionOverwrite, Forbidden, HTTPException
 from Classes import ShakeBot, ShakeEmbed
 
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, member: Member, before: VoiceState, after: VoiceState):
         self.member: Member = member
         self.before: VoiceState = before
@@ -16,7 +16,7 @@ class event():
         self.bot: ShakeBot = bot
 
     async def get_creators(self, records) -> Optional[Union[TextChannel, CategoryChannel]]: 
-        valids = {}
+        valids = dict()
         unvalids = []
         for record in records:
             creator_id = record['creator_id']

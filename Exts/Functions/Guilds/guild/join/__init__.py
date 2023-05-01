@@ -34,7 +34,7 @@ class on_guild_join(Cog):
         try:
             guild = await GuildConverter().convert(self, str(guild))
             channel = await TextChannelConverter().convert(self, str(channel)) if channel else None
-            await do.event(guild=guild, channel=channel, bot=self.bot).__await__()
+            await do.Event(guild=guild, channel=channel, bot=self.bot).__await__()
     
         except:
             if test:

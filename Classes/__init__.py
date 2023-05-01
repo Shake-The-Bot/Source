@@ -9,7 +9,7 @@ A basic bot written with a basic wrapper for the Discord API.
 """
 
 from .i18n import (
-    locale, available, locale_doc, 
+    Locale, available, locale_doc, 
     _, current_locale, setlocale, default_locale
 )
 from .helpful import (

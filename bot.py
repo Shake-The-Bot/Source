@@ -11,10 +11,9 @@ from datetime import datetime
 from discord import Message
 from Classes.reddit import Reddit
 from discord.ext.commands import Cog
-from Classes.exceptions import CodeError
 from Classes.helpful import BotBase, MISSING
 from Classes.database.db import _kwargs, Table
-from Classes.i18n import _, locale, current_locale
+from Classes.i18n import _, Locale, current_locale
 
 if TYPE_CHECKING:
     from Classes import __version__
@@ -25,19 +24,15 @@ else:
 
 
 class ShakeBot(BotBase):
-    log: Logger
-    scheduler: AsyncIOScheduler
-    reloading: bool
-
     def __init__(self, **options):
         super().__init__(**options)
-        self.log = getLogger(__name__)
-        self.locales = self.pools = {}
-        self.tests: dict[int, bool] = {}
+        self.log: Logger = getLogger(__name__)
+        self.cache.setdefault('locales', {})
+        self.tests: dict[int, bool] = {1092397505800568834: None}
         self.boot = datetime.now()
         self.lines = source_lines()
-        self.scheduler = AsyncIOScheduler()
-        self.locale = locale(self)
+        self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
+        self.locale: Locale = Locale(self)
         self.reddit: Reddit = Reddit()
         self.__version__ = __version__
         
@@ -85,14 +80,15 @@ class ShakeBot(BotBase):
         async with self.session.post('https://hastebin.com/documents', data=content) as post:
             if post.status < 400: 
                 return f'https://hastebin.com/{(await post.text())[8:-2]}'
+            
+        async with self.session.post('https://api.mystb.in/paste', data=content) as post:
+            if post.status < 400: 
+                return 'https://mystb.in/' + (await post.json())['pastes'][0]['id']
         
         async with self.session.post("https://bin.readthedocs.fr/new", data={'code':content, 'lang': lang}) as post:
             if post.status < 400: 
                 return post.url
 
-        async with self.session.post('MYSTBIN_URLhttps://mystb.in/api/pastes', data=content) as post:
-            if post.status < 400: 
-                return 'https://mystb.in/' + (await post.json())['pastes'][0]['id']
 
 
     async def get_pool(self, _id) -> Pool:
@@ -104,7 +100,7 @@ class ShakeBot(BotBase):
             locale = 'en-US'
         current_locale.set(locale)
 
-        if (pool := self.pools.get(_id, None)):
+        if (pool := self.cache['pools'].get(_id, None)):
             return pool
         connection: Connection = await connect(
             user=self.config.database.user, database=self.config.database.database, password=self.config.database.password, host='localhost'
@@ -115,13 +111,13 @@ class ShakeBot(BotBase):
             pass
         finally:
             import_module('Classes.database.#main') 
-            self.pools[_id] = await Table.create_pool(self.config.database.postgresql+str(_id), **_kwargs)
+            self.cache['pools'][_id] = await Table.create_pool(self.config.database.postgresql+str(_id), **_kwargs)
             try:
                 for table in Table.all_tables():
                     await table.create(item=str(_id), verbose=False, run_migrations=False)
             except exceptions.UniqueViolationError:
                 pass
             await connection.close()
-            return self.pools[_id]
+            return self.cache['pools'][_id]
 #
 ############

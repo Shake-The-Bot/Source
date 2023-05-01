@@ -2,15 +2,14 @@
 #
 from importlib import reload
 from contextlib import suppress
-from discord.ext import commands
 from .utils import systems
 from discord import Message, Member, Forbidden, HTTPException, HTTPException
 from asyncpg import Pool
 from Classes import ShakeBot
 ########
 #
-class event():
-    def __init__(self, message: Message, bot: commands.Bot):
+class Event():
+    def __init__(self, message: Message, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.message: Message = message
         

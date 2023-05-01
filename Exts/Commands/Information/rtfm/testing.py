@@ -42,9 +42,9 @@ class SphinxObjectFileReader:
 
 
 async def build_rtfm_lookup_table(bot):
-    cache = {}
+    cache = dict()
     for key, page in RTFM_PAGE_TYPES.items():
-        cache[key] = {}
+        cache[key] = dict()
         async with bot.session.get(page + "/objects.inv") as resp:
             if resp.status != 200: 
                 raise RuntimeError("RTFM-Nachschlagetabelle kann nicht erstellt werden. Versuche es später erneut.")
@@ -54,7 +54,7 @@ async def build_rtfm_lookup_table(bot):
 
 
 def parse_object_inv(stream, url):
-    result = {}
+    result = dict()
     line = stream.readline()
     entry_regex = compile(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)")
     for line in stream.read_compressed_lines():

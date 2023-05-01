@@ -140,7 +140,7 @@ available = {
 
 
 
-class locale():
+class Locale():
     def __init__(self, bot) -> None:
         self.bot: ShakeBot = bot
         return None
@@ -152,17 +152,17 @@ class locale():
                 UPDATE locale SET locale = $2 WHERE id = $1;""", user_id, locale
             )
         current_locale.set(locale)
-        self.bot.locales[user_id] = locale
+        self.bot.cache['locales'][user_id] = locale
         return True
     
     async def get_user_locale(self, user_id: User.id):
-        if self.bot.locales.get(user_id, None):
-            return self.bot.locales[user_id]
-        self.bot.locales[user_id] = await self.bot.pool.fetchval(
+        if self.bot.cache['locales'].get(user_id, None):
+            return self.bot.cache['locales'][user_id]
+        self.bot.cache['locales'][user_id] = await self.bot.pool.fetchval(
             """WITH insert AS (INSERT INTO locale (id) VALUES ($1) ON CONFLICT (id) DO NOTHING)
             SELECT locale FROM locale WHERE id=$1;""", user_id
         ) or None
-        return self.bot.locales[user_id]
+        return self.bot.cache['locales'][user_id]
 
     async def set_guild_locale(self, guild_id: Guild.id, locale: str):
         async with self.bot.pool.acquire() as conn:
@@ -171,16 +171,16 @@ class locale():
                 UPDATE locale SET locale = $2 WHERE id = $1;""", guild_id, locale
             )
         current_locale.set(locale)
-        self.bot.locales[guild_id] = locale
+        self.bot.cache['locales'][guild_id] = locale
         return True
 
     async def get_guild_locale(self, guild_id: Guild.id):
-        if self.bot.locales.get(guild_id, None):
-            return self.bot.locales[guild_id]
-        self.bot.locales[guild_id] = await self.bot.pool.fetchval(
+        if self.bot.cache['locales'].get(guild_id, None):
+            return self.bot.cache['locales'][guild_id]
+        self.bot.cache['locales'][guild_id] = await self.bot.pool.fetchval(
             """WITH insert AS (INSERT INTO locale (id) VALUES ($1) ON CONFLICT (id) DO NOTHING)
             SELECT locale FROM locale WHERE id=$1;""", guild_id
         ) or None
-        return self.bot.locales[guild_id]
+        return self.bot.cache['locales'][guild_id]
 #
 ############

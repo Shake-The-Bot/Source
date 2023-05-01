@@ -4,7 +4,7 @@ from Classes import ShakeBot, ShakeContext, ShakeEmbed
 from contextlib import suppress
 from typing import Any
 from Exts.Functions.Scheduled.freegames.stores.models import ProductDataType
-from Exts.Functions.Scheduled.freegames.freegames import freegames_event
+from Exts.Functions.Scheduled.freegames.freegames import Event
 from Classes.i18n import _, current_locale
 from discord import PermissionOverwrite, Forbidden, HTTPException
 ########
@@ -44,7 +44,7 @@ class command():
                 price=10000, currency='$', price_with_currency='$100.00', thumbnail=self.bot.user.avatar.url, image=None, url='ttps://top.gg/bot/778938275397632021/vote',
                 publisher='Shake Developement', reviews=None, store='Preview Store', start=None, end=None
             )
-            embed = freegames_event(bot=self.bot, guild=self.ctx.guild).embed_from_product(game=game)
+            embed = Event(bot=self.bot, guild=self.ctx.guild).embed_from_product(game=game)
             await channel.send(embed)
             
         await self.bot.config_pool.execute(
@@ -52,7 +52,7 @@ class command():
             channel.id, self.ctx.guild.id, self.stores
         )
 
-        embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} **Setup completed**. {channel} now will be used to announce newly free games from the selected stores!".format(
-                emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix, channel=channel.mention
+        embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} {__}Setup completed{__}. {channel} now will be used to announce newly free games from the selected stores!".format(
+                emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix, channel=channel.mention, __='**'
         )))
         return await self.ctx.smart_reply(embed=embed)

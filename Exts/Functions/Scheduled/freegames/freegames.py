@@ -27,7 +27,7 @@ _images = {
 }
 ########
 #
-class freegames_event():
+class Event():
     def __init__(self, bot: ShakeBot, guild: Guild, games: List[ProductDataType]):
         self.bot: ShakeBot = bot
         self.guild: Guild = guild

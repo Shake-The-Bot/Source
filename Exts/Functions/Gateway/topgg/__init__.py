@@ -30,7 +30,7 @@ class topgg_extension(Cog):
         reload(topgg)
 
         try:
-            await topgg.event(bot=self.bot, data=data).__await__()
+            await topgg.Event(bot=self.bot, data=data).__await__()
     
         except:
             raise

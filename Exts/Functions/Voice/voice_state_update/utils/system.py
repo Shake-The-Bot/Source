@@ -18,7 +18,7 @@ class TempVoice():
         self.guild: Guild
 
     async def get_channels(self, records): 
-        valids = {}
+        valids = dict()
         unvalids = []
         for record in records:
             channel_id = record['channel_id']

@@ -59,7 +59,7 @@ class on_context_delete(Cog):
         do = testing if test else delete
 
         try:
-            await do.event(bot=self.bot, payload=payload, event='remove_context_messages').__await__()
+            await do.Event(bot=self.bot, payload=payload, event='remove_context_messages').__await__()
     
         except:
             if test:
@@ -82,7 +82,7 @@ class on_context_delete(Cog):
         do = testing if test else delete
 
         try:
-            await do.event(bot=self.bot, payload=payload, event='remove_context_message').__await__()
+            await do.Event(bot=self.bot, payload=payload, event='remove_context_message').__await__()
     
         except:
             if test:
@@ -105,7 +105,7 @@ class on_context_delete(Cog):
         do = testing if test else delete
 
         try:
-            await do.event(bot=self.bot, payload=payload, event='on_command_delete').__await__()
+            await do.Event(bot=self.bot, payload=payload, event='on_command_delete').__await__()
     
         except:
             if test:

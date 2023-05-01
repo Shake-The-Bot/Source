@@ -46,6 +46,7 @@ def setup():
     logger.setLevel(INFO)
     logger.addHandler(stream)
     logger.addHandler(file_handler())
+    logger.addFilter(NoMoreUnclosedSessions())
     cmdlogger = getLogger('command')
     cmdlogger.addHandler(command_handler())
     yield
@@ -59,7 +60,7 @@ async def run_bot():
     def prefix(bot, msg):
         return ['<@!{}> '.format(bot.user.id), '<@{}> '.format(bot.user.id)]
     
-    async with ShakeBot(shard_count=3, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
+    async with ShakeBot(shard_count=1   , command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
         try:
             pool = await _create_pool(config)
         except:

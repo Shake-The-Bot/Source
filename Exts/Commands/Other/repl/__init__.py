@@ -14,7 +14,7 @@ class repl_extension(Cog):
     def __init__(self, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.last: Any = None
-        self.env = {}
+        self.env = dict()
         try:
             reload(repl)
         except:
@@ -53,7 +53,7 @@ class repl_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
         do = testing if ctx.testing else repl
 
         try:    

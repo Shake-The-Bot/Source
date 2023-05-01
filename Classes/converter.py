@@ -6,14 +6,16 @@ from difflib import get_close_matches
 from typing import Union, Literal, Any, Tuple, TYPE_CHECKING, Optional, List
 from re import error, fullmatch, DOTALL, IGNORECASE, Pattern, compile, split
 from dateutil.relativedelta import relativedelta
-from discord import TextChannel
+from discord import TextChannel, Guild
+from discord.app_commands import AppCommand, AppCommandGroup, CommandTree, Command
 import inspect
+from discord.ext import commands
 from discord.ext.commands import Context, Converter, TextChannelConverter, errors, BadArgument
 from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from Classes import _, MISSING
-    from .helpful import ShakeContext
+    from .helpful import ShakeContext, ShakeBot
     from .useful import Duration, RTFM_PAGE_TYPES
 
 
@@ -36,7 +38,7 @@ class ValidKwarg(Converter):
     
     async def convert(cls, ctx: ShakeContext, argument: str) -> Tuple[Any]: # TODO
         args = ()
-        kwargs = {}
+        kwargs = dict()
         for ix, arg in enumerate(argument.split()):
             try: key, value = arg.split('=')
             except (TypeError, ValueError): 
@@ -93,6 +95,63 @@ class Regex(Converter):
         except error as e:
             raise errors.BadArgument(_('Regex error: {e_msg}')).format(e_msg=e.msg)
 
+
+class Slash():
+    bot: commands.Bot
+    tree: CommandTree
+
+    def __init__(self, bot: ShakeBot) -> None:
+        self.bot: ShakeBot = bot
+        self.tree = self.bot.tree
+        self.app_command: AppCommand = None
+        self.command: Command = None
+
+    async def __call__(self, command: Union[Command, str]) -> Any:
+        command = self.bot.get_command(command) if isinstance(command, str) else command
+        if command == None:
+            raise ValueError('Given Command is not found.')
+        self.command = command
+        self.app_command = self.get_command()
+        return self
+
+    @property
+    def is_group(self) -> bool:
+        return any(
+            isinstance(option, AppCommandGroup) 
+                for option in self.app_command.options
+        )
+
+    @property
+    def is_subcommand(self) -> bool:
+        return any(
+            isinstance(option == AppCommandGroup) and self.command.name in option.name
+                for option in self.app_command.options
+        )
+
+    async def get_sub_command(self, sub_command: Command) -> tuple[AppCommand, str]:
+        """Gets the app_command with its sub command(s) + its mention"""
+        app_command = await self.get_command(sub_command.parent)
+        
+        if not self.is_group or not self.is_subcommand:
+            return None
+        
+        custom_mention = f"</{app_command.name} {sub_command.name}:{app_command.id}>"
+        return app_command, custom_mention
+
+
+    async def get_command(self, command: AppCommand) -> AppCommand:
+        """Gets the AppCommand from a command (or command name)"""
+        if (command := command or self.command) is None:
+            raise ValueError('Argument `command` is not given/set')
+        
+        if isinstance(command, AppCommand):
+            return command
+        if isinstance(command, str):
+            return self.bot.tree.get_command(command)
+        for app_command in await self.tree.fetch_commands(guild=None):
+            if command.name == app_command.name:
+                return app_command
+        return None
 
 
 class ValidCog(Converter): # beta, working on it rn

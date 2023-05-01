@@ -18,16 +18,16 @@ class server_extension(Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{INFORMATION SOURCE}')
+        return PartialEmoji(name='ℹ️')
 
     def category(self) -> str: 
         return "information"
 
-    @hybrid_command(name=('serverinfo'), aliases=["si"])
+    @hybrid_command(name='serverinfo', aliases=["si"])
     @guild_only()
     @setlocale()
     @locale_doc
-    async def server(self, ctx: ShakeContext, guild: Optional[str] = None):
+    async def serverinfo(self, ctx: ShakeContext, guild: Optional[str] = None):
         _(
             """Get information about a specific server.
             
@@ -46,9 +46,9 @@ class server_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
+            
         do = testing if ctx.testing else serverinfo
-
         try:    
             try:
                 guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))

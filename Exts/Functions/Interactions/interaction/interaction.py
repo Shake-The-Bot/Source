@@ -9,7 +9,7 @@ from discord import Interaction
 logger = getLogger(__name__)
 ########
 #
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, interaction: Interaction):
         self.bot: ShakeBot = bot
         self.interaction: Interaction = interaction

@@ -9,10 +9,9 @@ from Classes.i18n import _
 from contextlib import suppress
 from Classes.useful import captcha
 from asyncio import TimeoutError
-logger = getLogger(__name__)
 ########
 #
-class event():
+class Event():
     def __init__(self, member: Member, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.member: Member = member

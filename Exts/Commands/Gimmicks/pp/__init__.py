@@ -48,7 +48,7 @@ class pp_extension(Cog):
                 self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
                     name=testing.__file__, type=e.__class__.__name__
                 ))
-                ctx.__testing = False
+                ctx.testing = False
 
         do = testing if ctx.testing else pp
         try:    

@@ -88,8 +88,8 @@ class command():
                     self.add_item(ui.Button(label=_("Support"), url=bot.config.other.server))
 
             await self.ctx.smart_reply(
-                "{emoji} **Setup completed**. {channel} can now be used to create temporary channels on this Discord server!"
-                .format(emoji=self.bot.emojis.hook, channel=creator.mention), view=Buttons(self.bot), ephemeral=True
+                "{emoji} {__}Setup completed{__}. {channel} can now be used to create temporary channels on this Discord server!"
+                .format(emoji=self.bot.emojis.hook, channel=creator.mention, __='**'), view=Buttons(self.bot), ephemeral=True
             )
         return
 

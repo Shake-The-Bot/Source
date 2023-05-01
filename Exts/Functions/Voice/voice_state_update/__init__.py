@@ -33,7 +33,7 @@ class on_voice_state_update(Cog):
         do = testing if test else voice_state_update
 
         try:
-            await do.event(bot=self.bot, member=member, before=before, after=after).__await__()
+            await do.Event(bot=self.bot, member=member, before=before, after=after).__await__()
     
         except:
             if test:

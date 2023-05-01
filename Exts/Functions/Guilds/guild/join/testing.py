@@ -9,7 +9,7 @@ from Classes.database import db
 from Classes import ShakeBot, ShakeEmbed
 ########
 #
-class event():
+class Event():
     def __init__(self, bot: ShakeBot, guild: Guild, channel: Optional[TextChannel]=None):
         self.channel: Optional[TextChannel] = channel
         self.bot: ShakeBot = bot
@@ -77,7 +77,7 @@ class event():
     
         # „Database stuff“
         with suppress(Exception):
-            if self.bot.pools.get(self.guild.id, None):
+            if self.bot.cache['pools'].get(self.guild.id, None):
                 await db.delete_database(self.guild.id,)
             await self.bot.get_pool(self.guild.id)
 #

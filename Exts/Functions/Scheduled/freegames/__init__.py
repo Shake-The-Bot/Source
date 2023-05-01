@@ -54,7 +54,7 @@ class on_freegame(Cog):
 
 	async def on_freegame(self, games: Set[ProductDataType]):
 		reload(freegames)
-		return await freegames.freegames_event(bot=self.bot, games=games).__await__()
+		return await freegames.freegames_Event(bot=self.bot, games=games).__await__()
 	
 async def setup(bot: ShakeBot): 
 	await bot.add_cog(on_freegame(bot))

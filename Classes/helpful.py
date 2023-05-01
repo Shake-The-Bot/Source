@@ -11,7 +11,7 @@ from Classes.useful import MISSING
 from aiohttp import ClientSession
 from Classes.tomls.emojis import Emojis
 from asyncio import TimeoutError
-from traceback import print_exc
+from traceback import print_exc as pexc
 from contextlib import suppress
 from inspect import signature
 from datetime import datetime
@@ -114,7 +114,7 @@ class Migration():
                 pool = await Table.create_pool(config.database.postgresql + str(self.item.id), **_kwargs)
 
             except Exception:
-                return print_exc()
+                return pexc()
 
         except:
             pool = await Table.create_pool(config.database.postgresql + self.item.id, **_kwargs)
@@ -219,10 +219,11 @@ class ShakeContext(Context):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
         self.__dict__.update(dict.fromkeys(["waiting", "result", "channel_used", "running", "failed", "done"]))
-        self.pool: Pool = self.bot.pools.get(self.guild.id, None)
+        self.pool: Pool = self.bot.cache['pools'].get(self.guild.id, None)
         self.__testing = True if any(x.id in list(self.bot.tests.keys()) for x in (self.author, self.guild, self.channel)) else False
-        self.messages: Dict[int, Message] = {}
-        self.reinvoked = False
+        self.messages: Dict[int, Message] = dict()
+        self.reinvoked: bool = False
+        self.done: bool = False
 
 
     def reference(self) -> Optional[MessageReference]:
@@ -230,7 +231,6 @@ class ShakeContext(Context):
         if ref and isinstance(ref.resolved, Message):
             return ref.resolved.to_reference()
         return None
-
 
     @property
     def created_at(self) -> datetime:
@@ -243,6 +243,10 @@ class ShakeContext(Context):
     @property
     def testing(self) -> bool:
         return self.__testing
+    
+    @testing.setter
+    def testing(self, value):
+        self.__testing: bool = value
 
     @property
     def session(self) -> ClientSession:
@@ -396,9 +400,8 @@ class ShakeContext(Context):
 class BotBase(AutoShardedBot):
 
     user: ClientUser
-    pools: Dict[int, Pool]
     gateway_handler: Any
-    command_running = {}
+    cache = dict()
     session: ClientSession
     bot_app_info: AppInfo
     _config: Config
@@ -409,9 +412,10 @@ class BotBase(AutoShardedBot):
         owner_ids = options.pop("owner_ids")
         self.shake_id, *_ = owner_ids
         owner_ids=set(owner_ids)
+        self.cache.setdefault('pools', {})
         super().__init__(**options)
         self.cached_context = deque(maxlen=100)
-        self.cached_posts: Dict[int, deque(maxlen=1000)] = {}
+        self.cached_posts: Dict[int, deque(maxlen=1000)] = dict()
         self._session = None
         self._config = config
         self._emojis = emojis
@@ -441,15 +445,6 @@ class BotBase(AutoShardedBot):
         if user := (self.get_user(user_id) or await self.fetch_user(user_id)):
             return user
         return None
-
-    async def close(self) -> None:
-        for pool in self.pools.values():
-            try:
-                await pool.release()
-            except:
-                pass
-            finally:
-                await pool.close()
 
     async def running_command(self, ctx: ShakeContext, typing: bool = True, **flags):
         dispatch = flags.pop('dispatch', True)
@@ -483,7 +478,7 @@ class BotBase(AutoShardedBot):
                 command_task = self.loop.create_task(
                     self.running_command(ctx, typing=typing, **flags)
                 )
-                self.command_running.update({ctx.message.id: command_task})
+                self.cache.setdefault('command_running', {}).update({ctx.message.id: command_task})
             else:
                 await self.running_command(ctx, typing=typing, **flags)
         elif ctx.invoked_with:
@@ -515,6 +510,13 @@ class BotBase(AutoShardedBot):
         await error(bot=self, event=event).__await__()
 
     async def close(self) -> None:
+        for pool in self.cache['pools'].values():
+            try:
+                await pool.release()
+            except:
+                pass
+            finally:
+                await pool.close()
         await super().close()
 
     @staticmethod
@@ -551,7 +553,7 @@ class ShakeEmbed(Embed):
         return instance
     
     @classmethod
-    def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = embed_colour, **kwargs: Any) -> ShakeEmbed:
+    def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = 0x08af77, **kwargs: Any) -> ShakeEmbed:
         bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
@@ -560,7 +562,7 @@ class ShakeEmbed(Embed):
         return instance
 
     @classmethod
-    def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = embed_error_colour, **kwargs: Any) -> ShakeEmbed:
+    def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = 0xe80505, **kwargs: Any) -> ShakeEmbed:
         bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.cross} {bot.emojis.prefix} **{description}**"

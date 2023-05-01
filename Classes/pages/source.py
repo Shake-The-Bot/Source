@@ -14,18 +14,18 @@ else:
     from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
     from discord import Embed as ShakeEmbed
 
-class ItemPageSource(menus.PageSource):
+class ItemsPageSource(menus.PageSource):
     def is_paginating(self) -> bool: 
         return True
     
     def get_max_pages(self) -> Optional[int]:
         return 1
 
-    async def get_page(self, item: int) -> Any:
-        self.item = item
+    async def get_page(self, page: int) -> Any:
+        self.page = page
         return self
 
-    def format_page(self, menu: page.menus) -> Tuple[ShakeEmbed, File]:
+    def format_page(self, menu: page.menus, items: Any) -> Tuple[ShakeEmbed, File]:
         raise NothingHereYet
 
 
@@ -46,7 +46,9 @@ class ListPageSource(menus.ListPageSource):
         super().__init__(entries=items, per_page=per_page)
 
     def add_field(self, embed: ShakeEmbed, item: Any):
-        raise NothingHereYet
+        if not hasattr(item, 'name') or not hasattr(item, 'value'):
+            raise NothingHereYet
+        embed.add_field(name=item.name, value=item.value)
     
     def is_paginating(self) -> bool:
         return self.paginating
