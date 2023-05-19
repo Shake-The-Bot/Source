@@ -1,10 +1,9 @@
 ############
 #
-from random import choice
 from typing import Optional
 from discord import Status
 from Classes.i18n import _
-from Classes import ShakeContext, ShakeBot
+from Classes import ShakeContext, ShakeBot, choice
 ########
 #
 class command():
@@ -14,12 +13,12 @@ class command():
         self.ctx: ShakeContext = ctx
 
     async def __await__(self):
-        users = list(
+        members = list(
             filter(
                 lambda user: (True if self.offline else user.status == Status.online) and user.bot == False, 
                 self.ctx.guild.members
             )
         )
-        return await self.ctx.invoke(self.bot.get_command('userinfo'), user=choice(users))
+        return await self.ctx.invoke(self.bot.get_command('userinfo'), user=choice(members))
 #
 ############

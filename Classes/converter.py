@@ -106,12 +106,12 @@ class Slash():
         self.app_command: AppCommand = None
         self.command: Command = None
 
-    async def __call__(self, command: Union[Command, str]) -> Any:
+    async def __await__(self, command: Union[Command, str]) -> Slash:
         command = self.bot.get_command(command) if isinstance(command, str) else command
         if command == None:
             raise ValueError('Given Command is not found.')
         self.command = command
-        self.app_command = self.get_command()
+        self.app_command = await self.get_command()
         return self
 
     @property
@@ -139,7 +139,7 @@ class Slash():
         return app_command, custom_mention
 
 
-    async def get_command(self, command: AppCommand) -> AppCommand:
+    async def get_command(self, command: Optional[AppCommand] = None) -> AppCommand:
         """Gets the AppCommand from a command (or command name)"""
         if (command := command or self.command) is None:
             raise ValueError('Argument `command` is not given/set')
@@ -154,74 +154,58 @@ class Slash():
         return None
 
 
-class ValidCog(Converter): # beta, working on it rn
+class ValidCog(Converter):
     """Tries to find a matching extension and returns it
 
     Triggers a BadArgument error if you specify the extensions "load", "unload" or "reload", 
     because they are excluded before this function
     """
-    # extension: str = (get some pingext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Exts.Commands.Other.reload.__init__ -> reload
+    # extension: str = (ext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Exts.Commands.Other.reload.__init__ -> reload
     async def convert(self, ctx: ShakeContext, argument: str) -> str:
 
-        def final(ext: str):
-            if any(x in str(ext) for x in ('load', 'unload', 'reload')):
-                raise BadArgument(message=str(ext) + ' is not a valid module to work with')
-            return ext
+        def validation(final: str):
+            if any(_ in str(final) for _ in ['load', 'unload', 'reload']):
+                raise BadArgument(message=str(final) + ' is not a valid module to work with')
+            return final
 
         if command := ctx.bot.get_command(argument):
             file = inspect.getfile(command.cog.__class__).removesuffix('.py')
             path = file.split('/')
-            index = path.index('Exts')
-            correct = path[index:]
-            return final('.'.join(correct))
+            Exts = path.index('Exts')
+            build = path[Exts:]
+            return validation('.'.join(build))
 
-        if argument in ctx.bot.config.client.extensions:
-            return final(argument)
+        elif argument in ctx.bot.config.client.extensions:
+            return validation(argument)
         
-        if len(parts := split('.|/', argument)) > 1:
-            ext = '.'.join(filter(lambda x: not any(x == y for y in ('py', '__init__')), parts)) + '.__init__'
-            if ext in ctx.bot.config.client.extensions:
-                return final(ext)
+        
+
+        elif len(parts := split(r'[./]', argument)) > 1:
+            build = list(filter(lambda x: not x in ['__init__', 'py'], parts))
+
+            try:
+                Exts = build.index('Exts')
+            except ValueError:
+                fallback = '.'.join(build)
+                if matches := ([_ for _ in ctx.bot.config.client.extensions if fallback in _] or get_close_matches(fallback, ctx.bot.config.client.extensions)):
+                    return validation(matches[0])
+                raise BadArgument(message='Specified module has an incorrect structure')
+
+            extension = '.'.join(build[Exts:]) + '.__init__'
+
+            if extension in ctx.bot.config.client.extensions:
+                return validation(extension)
             
-        if matches := (
-            [ext for ext in ctx.bot.config.client.extensions if ext in ctx.bot.config.client.extensions] or 
-            get_close_matches(argument, ctx.bot.config.client.extensions)
-        ):
-            return final(matches[0])
+            elif matches := ([_ for _ in ctx.bot.config.client.extensions if extension in _] or get_close_matches(extension, ctx.bot.config.client.extensions)):
+                return validation(matches[0])
+            
         else:
-            shortened_exts = [ext.split('.')[-1].lower() for ext in ctx.bot.config.client.extensions]
-
-            if argument in shortened_exts:
-                return final(ctx.bot.config.client.extensions[shortened_exts.index(argument)])
-            elif matches := get_close_matches(argument, shortened_exts):
-                return final(ctx.bot.config.client.extensions[shortened_exts.index(matches[0])])
-            else:
-                raise BadArgument(message='Specify either the module name or the path to the module')
+            shortened = [_.split('.')[-1].lower() for _ in ctx.bot.config.client.extensions]
+            if argument.lower() in shortened:
+                return validation(ctx.bot.config.client.extensions[shortened.index(argument)])
+            elif matches := get_close_matches(argument.lower(), shortened):
+                return validation(ctx.bot.config.client.extensions[shortened.index(matches[0])])
         
-
-# class ValidCog(Converter):
-#     """Tries to convert into a valid cog"""
-#     @classmethod
-#     async def convert(cls, ctx: ShakeContext, argument: str) -> List[str]: # TODO: discord.utils._unique, invite_tracking 
-#         if (command := ctx.bot.get_command(argument)) and getattr(ctx.bot.get_command(argument).cog, 'category', None):
-#             if path.isfile(f'./exts/commands/{command.cog.category()}/{command.qualified_name}/__init__.py'): 
-#                 return [f'exts.commands.{command.cog.category()}.{command.qualified_name}.__init__']
-#         extensions = {
-            
-#                 'exts.{}.{}.{}.__init__'.format(precategory, category, folder) if path.isfile('./exts/{}/{}/{}/__init__.py'.format(precategory, category, folder)) 
-#                 else 'exts.{}.{}.{}.{}.__init__'.format(precategory, category, folder, subfolder) if path.isfile('./exts/{}/{}/{}/{}/__init__.py'.format(precategory, category, folder, subfile))
-#                 else None
-            
-#             for precategory in listdir(f'./exts') if path.isdir(f'./exts/{precategory}')
-#             for category in listdir(f'./exts/{precategory}') if path.isdir(f'./exts/{precategory}/{category}')
-#             for folder in listdir(f'./exts/{precategory}/{category}') if path.isdir(f'./exts/{precategory}/{category}/{folder}')
-#             for subfolder in listdir(f'./exts/{precategory}/{category}/{folder}') if path.isdir(f'./exts/{precategory}/{category}/{folder}/{subfolder}')
-#             for subfile in listdir(f'./exts/{precategory}/{category}/{folder}/{subfolder}')
-#             for file in listdir(f'./exts/{precategory}/{category}/{folder}') if file[-11:] == "__init__.py"
-            
-#         }
-#         rturn = ['bot'] if argument in ('bot', 'client', 'self') else (list(extensions) if (not argument or argument in ('all', '*', 'everything', 'every')) else [argument.replace('.__init__', '')+'.__init__' if argument.replace('.__init__', '') in [x.replace('.__init__', '') for x in extensions] else None])
-#         if bool(rturn) and not None in rturn: return rturn
-#         raise BadArgument()
+        raise BadArgument(message='Specify either the module name or the path to the module')
 #
 ############

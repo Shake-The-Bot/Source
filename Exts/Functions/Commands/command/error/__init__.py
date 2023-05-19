@@ -22,7 +22,7 @@ class on_command_error(Cog):
             return
         
         author: ShakeBot = ctx.author if isinstance(ctx, ShakeContext) else ctx.user
-        test = any(x.id in list(self.bot.tests.keys()) for x in (author, ctx.guild, ctx.channel))
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [author, ctx.guild, ctx.channel])
         
         if test:
             try:

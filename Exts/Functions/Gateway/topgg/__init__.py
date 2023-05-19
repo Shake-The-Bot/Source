@@ -2,10 +2,8 @@
 #
 from importlib import reload
 from . import topgg
-from logging import getLogger
 from Classes import ShakeBot
 from discord.ext.commands import Cog
-logger = getLogger(__name__)
 ########
 #
 class topgg_extension(Cog):
@@ -18,7 +16,7 @@ class topgg_extension(Cog):
 
     @Cog.listener()
     async def on_autopost_success(self):
-        logger.info(f"Posted server count ({self.bot.topggpy.guild_count}), shard count ({self.bot.shard_count})")
+        self.bot.log.info(f"Posted server count ({self.bot.topggpy.guild_count}), shard count ({self.bot.shard_count})")
 
     @Cog.listener()
     async def on_dbl_vote(self, data):
@@ -40,7 +38,7 @@ class topgg_extension(Cog):
     @Cog.listener()
     async def on_dbl_test(self, data):
         """An event that is called whenever someone tests the webhook system for your bot on Top.gg."""
-        logger.info(f'Received a test vote:\n{data}')
+        self.bot.log.info(f'Received a test vote:\n{data}')
         return
     
 async def setup(bot: ShakeBot): 

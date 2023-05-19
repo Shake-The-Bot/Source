@@ -40,7 +40,7 @@ class command():
                     discordbots=self.bot.config.other.discordbots.link, discords=self.bot.config.other.discords.link
                 )
         )
-        file = File(fp='./assets/shake/banner.png', filename='banner.png')
+        file = File(fp='./Assets/shake/banner.png', filename='banner.png')
         embed.set_image(url='attachment://banner.png')
         return await self.ctx.smart_reply(ephemeral=True, file=file, embed=embed, view=Button(self.bot))
 

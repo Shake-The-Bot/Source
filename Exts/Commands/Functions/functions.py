@@ -15,6 +15,7 @@ class functions(commands.Cog):
 
     @property
     def display_emoji(self) -> PartialEmoji: 
+        return PartialEmoji(name='⚙️')
         return PartialEmoji(name='\N{VIDEO GAME}')
         #https://discord.com/assets/f1426431eb7c60fb8c072f90acb07ceb.svg
 
@@ -24,6 +25,10 @@ class functions(commands.Cog):
         
     def long_doc_title(self) -> str: 
         return _("🧷︱Functions")
+
+    @property
+    def describe(self) -> bool:
+        return False
 
     @property
     def label(self) -> str: 

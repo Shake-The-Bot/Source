@@ -18,7 +18,7 @@ class on_message_edit(Cog):
     @Cog.listener()
     @event_check(lambda self, before, after:  (before.content and after.content) or before.author.bot)
     async def on_message_edit(self, before: Message, after: Message):
-        test = any(x.id in list(self.bot.tests.keys()) for x in (getattr(before, 'channel', None), getattr(before, 'guild', None), getattr(before, 'author', None)) if x is not None)
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [getattr(before, 'channel', None), getattr(before, 'guild', None), getattr(before, 'author', None)] if x is not None)
         
         if test:
             try:

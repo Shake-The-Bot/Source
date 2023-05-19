@@ -11,7 +11,7 @@ from discord.ext.commands import CommandError, Command as _Command, Group, Cog a
 from discord.ext import commands, menus
 from Classes.useful import Categorys
 from Classes.pages import (
-    ListPageSource, ItemsPageSource, FrontPageSource, CategoricalMenu, 
+    ListPageSource, ItemPageSource, FrontPageSource, CategoricalMenu, 
     CategoricalSelect, Pages
 )
 from typing import (
@@ -80,7 +80,6 @@ class command():
             await help.send_command_help(cmd)
             return
 
-
 class HelpPaginatedCommand():
     ctx: ShakeContext
 
@@ -92,7 +91,7 @@ class HelpPaginatedCommand():
         return
 
     def command_not_found(self: HelpPaginatedCommand, string: str, /) -> ShakeEmbed:
-        error = errors.BadArgument(message=_("Unknown command/category `{argument}`. Use \"/help\" for help.").format(argument=string))
+        error = errors.BadArgument(("Unknown command `{argument}`. Use \"/help\" for help.").format(argument=string))
         self.ctx.bot.dispatch('command_error', self.ctx, error)
 
 
@@ -189,7 +188,7 @@ class HelpPaginatedCommand():
     async def send_bot_help(self: HelpPaginatedCommand):
         menu = HelpMenu(ctx=self.ctx, source=Front())
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
-        menu.add_categories(commands)
+        menu.add_categories(categories=commands)
         
         if await menu.setup():
             await menu.send()
@@ -222,7 +221,8 @@ class HelpPaginatedCommand():
         commands = await self.commands_from_cog(cog)
         source = Cog(self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True)
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
-        menu.add_categories(await self.all_commands(self.ctx.bot, self.ctx.author))
+        commands = await self.all_commands(self.ctx.bot, self.ctx.author)
+        menu.add_categories(categories=commands)
         if setup := await menu.setup():
             await menu.send()
 
@@ -236,7 +236,8 @@ class HelpPaginatedCommand():
         commands = await self.commands_from_cog(category)
         source = Cog(self.ctx, category, commands, paginating=True)
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
-        menu.add_categories(await self.all_commands(self.ctx.bot, self.ctx.author))
+        commands = await self.all_commands(self.ctx.bot, self.ctx.author)
+        menu.add_categories(categories=commands)
         if not await menu.setup():
             raise
 
@@ -373,13 +374,13 @@ def get_signature( self: commands.Command, menu: ui.View,):
     required = dict()
 
     all_text_channel = {str(channel.name): channel.mention for channel in guild.text_channels}
-    text_channel = (all_text_channel.get(sorted(list(all_text_channel.keys()), key=len, reverse=False)[0]) if bool(guild.text_channels) else None)
-    
+    text_channel = (all_text_channel.get(sorted(set(all_text_channel.keys()), key=len, reverse=False)[0]) if bool(guild.text_channels) else None)
+
     all_members = {str(member.name): member.mention for member in guild.members}
-    member = (all_members.get(sorted(list(all_members.keys()), key=len, reverse=False)[0]) if bool(guild.members) else None)
+    member = (all_members.get(sorted(set(all_members.keys()), key=len, reverse=False)[0]) if bool(guild.members) else None)
 
     all_voice_channel = {str(channel.name): channel.mention for channel in guild.voice_channels}
-    voice_channel = (all_voice_channel.get(sorted(list(all_voice_channel.keys()), key=len, reverse=False)[0]) if bool(guild.voice_channels) else None)
+    voice_channel = (all_voice_channel.get(sorted(set(all_voice_channel.keys()), key=len, reverse=False)[0]) if bool(guild.voice_channels) else None)
 
     examples = {
         int: [choice(range(0, 100))],
@@ -452,8 +453,8 @@ def get_signature( self: commands.Command, menu: ui.View,):
     return required, optionals
 
 
-class Command(ItemsPageSource):
-    def format_page(self, menu: ui.View, item: int):
+class Command(ItemPageSource):
+    def format_page(self, menu: ui.View, **kwargs):
         command = {i: command for i, command in enumerate(menu.items)}[self.item]
         
         embed = ShakeEmbed.default(menu.ctx,
@@ -518,7 +519,7 @@ class Cog(ListPageSource):
     def getsig(self, command: commands.Command):
         signature = []
         count = 28 + command.signature.count('…') + command.signature.count(' ') + command.signature.count('...')
-        for argument in (command.signature if command.signature else '').replace('...', '…').split(' '):
+        for argument in [command.signature if command.signature else ''].replace('...', '…').split(' '):
             if not bool(argument):
                 continue
             if len(''.join(signature)+argument)+1 > count:
@@ -530,11 +531,15 @@ class Cog(ListPageSource):
     def add_field(self, embed: ShakeEmbed, item: Any, config):
         suffix: dict[str, dict] = {
             extra: config[extra]
-                for extra, key in getattr(item.callback, 'extras', {}).items() if key is True and extra in list(config.keys())
+                for extra, key in getattr(item.callback, 'extras', {}).items() if key is True and extra in set(config.keys())
         }
         self.suffixes.update(set(suffix.keys()))
         arguments = (' `' + ' '.join(sig) + '`') if bool(sig := self.getsig(item)) else ''
-        badges = (' **➜** '+' '.join([str(configuration['suffix']) for configuration in list(suffix.values())])) if bool(suffix) else ''
+        badges = (
+            ' **➜** '+' '.join([
+                str(configuration['suffix']) for configuration in suffix.values()
+            ])
+        ) if bool(suffix) else ''
         emoji = getattr(item.cog, 'display_emoji', '👀')
 
         signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}" 

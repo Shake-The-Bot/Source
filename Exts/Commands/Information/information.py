@@ -27,6 +27,10 @@ class information(commands.Cog):
         return _("Information")
 
     @property
+    def describe(self) -> bool:
+        return False
+
+    @property
     def help_command_title(self) -> str: 
         return _("Information Commands")
 

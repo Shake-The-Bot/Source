@@ -24,10 +24,10 @@ class on_freegame(Cog):
 	async def freegames(self):
 
 		old_games: Set = set(
-			tuple(k) for k, v in (
+			list(k) for k, v in [
 				await self.bot.pool.fetchval(
 					"SELECT games FROM freegames WHERE id = $1", self.bot.user.id
-				) or {})
+				) or {}]
 			.items()
 		)
 

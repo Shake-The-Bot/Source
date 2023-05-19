@@ -20,7 +20,7 @@ class on_raw_reaction_add(Cog):
         if (not payload.guild_id) or payload.member.bot: 
             return None
         
-        test = any(x in list(self.bot.tests.keys()) for x in (payload.channel_id, payload.guild_id, payload.user_id))
+        test = any(x in set(self.bot.cache['testing'].keys()) for x in [payload.channel_id, payload.guild_id, payload.user_id])
         
         if test:
             try:

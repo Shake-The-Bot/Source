@@ -20,10 +20,11 @@ from .checks import (
 )
 from .useful import (
     captcha, perform_operation, human_join, source_lines, levenshtein, high_level_function, 
-    calc, votecheck, votecheck, cogshandler, MISSING, RTFM_PAGE_TYPES
+    calc, votecheck, votecheck, cogshandler, MISSING, RTFM_PAGE_TYPES, safechoice as choice
 )
 from .converter import (
-    DurationDelta, ValidArg, ValidKwarg, ValidCog, CleanChannels, Age, Regex
+    DurationDelta, ValidArg, ValidKwarg, ValidCog, CleanChannels, Age, Regex,
+    Slash
 )
 from .exceptions import (
     ShakeError, ShakeMissingPermissions, CodeError, NothingHereYet, CheckFailure, 

@@ -18,7 +18,7 @@ class on_command_completion(Cog):
     @Cog.listener()
     async def on_command_completion(self, ctx: ShakeContext):
         
-        test = any(x.id in list(self.bot.tests.keys()) for x in (ctx.author, ctx.guild, ctx.channel))
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [ctx.author, ctx.guild, ctx.channel])
         
         if test:
             try:

@@ -17,7 +17,7 @@ class command():
 
     async def __await__(self):
         owner_ids = self.bot.owner_ids if bool(self.bot.owner_ids) else self.bot.owner_id or []
-        owners = human_join(seq=[(await self.bot.get_user_global(owner_id)).mention for owner_id in owner_ids if await self.bot.get_user_global(owner_id)], final=_('and'))
+        owners = human_join(seq=[(await self.bot.get_user_global(owner_id)).mention for owner_id in owner_ids if await self.bot.get_user_global(owner_id)])
 
         embed = ShakeEmbed.default(self.ctx, title=_("Shake Statistics"), )
         embed.description=cleandoc(f"""

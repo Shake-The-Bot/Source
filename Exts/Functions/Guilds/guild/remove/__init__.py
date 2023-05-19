@@ -17,7 +17,7 @@ class on_guild_remove(Cog):
 
     @Cog.listener()
     async def on_guild_remove(self, guild: Guild):
-        test = guild.id in list(self.bot.tests.keys())
+        test = guild.id in set(self.bot.cache['testing'].keys())
         
         if test:
             try:

@@ -28,7 +28,7 @@ class wouldyou_extension(Cog):
     @guild_only()
     @setlocale(guild=True)
     @locale_doc
-    async def wouldyou(self, ctx: ShakeContext, utility: Literal['useful', 'useless'] = 'useful', voting: Optional[bool] = True, rather: Optional[bool] = False) -> None:
+    async def wouldyou(self, ctx: ShakeContext, utility: Literal['useful', 'useless'] = 'useless', voting: Optional[bool] = True, rather: Optional[bool] = False) -> None:
         _(
             """Random selection of two counterparts 
             

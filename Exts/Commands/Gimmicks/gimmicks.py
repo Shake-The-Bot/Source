@@ -30,6 +30,10 @@ class gimmicks(commands.Cog):
         return _("Gimmicks")
 
     @property
+    def describe(self) -> bool:
+        return False
+
+    @property
     def help_command_title(self) -> str: 
         return _("Gimmick Commands")
 

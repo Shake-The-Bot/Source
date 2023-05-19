@@ -49,13 +49,14 @@ class server_extension(Cog):
                 ctx.testing = False
             
         do = testing if ctx.testing else serverinfo
-        try:    
-            try:
-                guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))
-            except _GuildNotFound as argument:
-                raise GuildNotFound(argument, _("Either this server does not exist or I am not on it."))
+         
+        try:
+            guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))
+        except _GuildNotFound as argument:
+            raise GuildNotFound(argument, _("Either this server does not exist or I am not on it."))
+        
+        try:
             await do.command(ctx=ctx, guild=guild).__await__()
-    
         except:
             if ctx.testing:
                 raise Testing

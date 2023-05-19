@@ -1,6 +1,5 @@
 ############
 #
-import requests
 from .models import ProductDataType
 from typing import List, Dict
 from Classes import ShakeBot
@@ -52,4 +51,4 @@ class GogStoreAPI:
         endpoint = 'https://www.gog.com/games/ajax/filtered?mediaType=game&sort=popularity&price=free'
         # name = game['title']
         # link = game['url']
-        return requests.get(endpoint).json()
+        return self._session.get(endpoint).json()

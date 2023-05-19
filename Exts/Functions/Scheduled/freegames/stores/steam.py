@@ -1,7 +1,6 @@
 ############
 #
 import itertools
-import requests
 from Classes import ShakeBot
 from .models import ProductDataType, _currency
 from typing import List, Dict
@@ -82,7 +81,7 @@ class SteamStoreAPI:
         endpoint = 'https://store.steampowered.com/api/featuredcategories'
         # 'https://store.steampowered.com/api/featuredcategories' 
         # 'https://api.steampowered.com/ISteamApps/GetAppList/v2'
-        request = requests.get(endpoint).json()
+        request = self._session.get(endpoint).json()
         specials = request['specials']['items']
         top_sellers = request['top_sellers']['items']
         new_releases = request['new_releases']['items']
@@ -95,7 +94,7 @@ class SteamStoreAPI:
 
     def get_product(self, _id) -> dict:
         endpoint = f'https://store.steampowered.com/api/appdetails?appids={_id}'
-        request = requests.get(endpoint)
+        request = self._session.get(endpoint)
         if request.status_code == 400:
             return None
         return (request.json() or {}).get(str(_id), None)

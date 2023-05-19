@@ -17,7 +17,7 @@ class on_member_join(Cog):
 
     @Cog.listener()
     async def on_member_join(self, member: Member):
-        test = any(x.id in list(self.bot.tests.keys()) for x in (member, member.guild))
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [member, member.guild])
         
         if test:
             try:

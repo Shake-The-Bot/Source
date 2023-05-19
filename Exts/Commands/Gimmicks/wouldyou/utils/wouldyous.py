@@ -79,6 +79,8 @@ useless = {
 
 useful = {
     "Power": [
+        "Master all the languages in the world",
+        "Be a genius in mathematics",
         "Whenever you need to remember something, you can instantly recall it with perfect clarity",
         "You can speak and understand every language in the world fluently",
         "You never have to sleep and always feel rested and energized",

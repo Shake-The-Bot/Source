@@ -50,34 +50,32 @@ class command():
         self.ctx: ShakeContext = ctx
 
     def get_locale_by_name(self, name: str) -> str:
-        for locale in available:
+        for locale in available.keys():
             language = available[locale]['language']
             simplified = available[locale]['simplified']
-            if name in [language, locale] or name in simplified:
+            if name.lower() in [x.lower() for x in [language, locale] + simplified]:
                 return locale
         return None
 
 
     def check(self, name: str) -> Union[ShakeEmbed, bool]:
-        if not name in locales:
-            embed = ShakeEmbed.default(self.ctx, description = _(
-                "{emoji} {prefix} **I'm sorry to say that I dont have your given locale ready.** \nTry to contribute [here]({link}) if you want to!").format(
-                emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix, link="https://github.com/Shake-Developement/Locales/"))
+        locale = self.get_locale_by_name(name)
+        if locale is None:
+            embed = ShakeEmbed.to_error(self.ctx, description=_("Your given language is not valid."))
+            embed.description += '\n'+_("Use {command} to get a list of all available languages").format(command='</language list>')
+        elif not name in locales:
+            embed = ShakeEmbed.to_error(self.ctx, description=_("I'm sorry to say that I dont have your given locale ready."))
+            embed.description += '\n'+_("Try to contribute [here]({link}) if you want to!").format(link="https://github.com/Shake-Developement/Locales/")
             locale = None
-        elif (locale := self.get_locale_by_name(name)) is None:
-            embed = ShakeEmbed.default(self.ctx, description = _("{emoji} {prefix} **Your given language is not valid. Use </language list> to get a list of all available languages**").format(
-                emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix))
         else:
-            embed = ShakeEmbed.default(self.ctx, description = _(
-                """{emoji} {prefix} **The specified language was set successfully!**""").format(
-                    emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix))
+            embed = ShakeEmbed.to_success(self.ctx, description=_("{name} was successfully set as language!").format(name=available[locale]['simplified'][-1].capitalize()))
             locale = name
         return embed, locale
 
 
     async def list(self): 
         items = [
-            L(x) for x in list(
+            L(x) for x in set(
                 x for x, y in gettext_translations.items() if isinstance(y, GNUTranslations)
             )
         ]

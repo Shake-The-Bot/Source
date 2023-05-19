@@ -1,23 +1,18 @@
 ############
 #
-from logging import getLogger
-from statcord import Client as StatClient
 from Classes import ShakeBot, ShakeContext, MISSING
-
-logger = getLogger('command')
+from statcord import Client
+from logging import getLogger
+log = getLogger('command')
 ########
 #
+
 class Event():
-    def __init__(self, ctx: ShakeContext, bot: ShakeBot):
+    def __init__(self, ctx: ShakeContext, bot: ShakeBot, api: Client):
         self.bot: ShakeBot = bot
+        self.api: Client = api
         self.ctx: ShakeContext = ctx
-        try:
-            self.api = StatClient(bot=self.bot, token=self.bot.config.statcord.key)
-        except:
-            self.api = MISSING
-        else:
-            self.api.start_loop()
-    
+
     async def __await__(self):
         if self.api != MISSING:
             try:
@@ -25,18 +20,17 @@ class Event():
             except:
                 pass
         
-        query = """
-            WITH insert AS (INSERT INTO commands (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING)
-            UPDATE commands SET used_commands = used_commands+1 WHERE id = $1;
-        """
-        
-        if not self.ctx.command in ("stats", "help",):
+        if not self.ctx.command in ["stats", "help",]:
+            query = """
+                WITH insert AS (INSERT INTO commands (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING)
+                UPDATE commands SET used_commands = used_commands+1 WHERE id = $1;
+            """
             await self.bot.pool.execute(query, self.ctx.guild.id, 'guild')
             await self.bot.pool.execute(query, self.bot.user.id, 'global')
             if self.ctx.author: 
                 await self.bot.pool.execute(query, self.ctx.author.id, 'user')
         
-        logger.info(f'{self.ctx.guild.id} > {self.ctx.author.id} (\"@{self.ctx.author}\"): {self.ctx.command}'+(' (failed)' if self.ctx.command_failed else ''))
+        log.info(f'{self.ctx.guild.id} > {self.ctx.author.id} (\"@{self.ctx.author}\"): {self.ctx.command}'+(' (failed)' if self.ctx.command_failed else ''))
 
 #
 ############

@@ -9,6 +9,7 @@ from importlib import import_module
 from discord.abc import Snowflake
 from datetime import datetime
 from discord import Message
+from urllib.parse import quote
 from Classes.reddit import Reddit
 from discord.ext.commands import Cog
 from Classes.helpful import BotBase, MISSING
@@ -28,7 +29,7 @@ class ShakeBot(BotBase):
         super().__init__(**options)
         self.log: Logger = getLogger(__name__)
         self.cache.setdefault('locales', {})
-        self.tests: dict[int, bool] = {1092397505800568834: None}
+        self.cache.setdefault('testing', {1092397505800568834: None})
         self.boot = datetime.now()
         self.lines = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
@@ -77,17 +78,24 @@ class ShakeBot(BotBase):
 
 
     async def dump(self, content: str, lang: Optional[str] = 'txt'):
-        async with self.session.post('https://hastebin.com/documents', data=content) as post:
-            if post.status < 400: 
-                return f'https://hastebin.com/{(await post.text())[8:-2]}'
+        async with self.session.post('https://hastepaste.com/api/create', data=f'raw=false&text={quote(content)}', headers={'User-Agent': 'Shake', 'Content-Type': 'application/x-www-form-urlencoded'}) as post:
+            if 200 <= post.status < 400: 
+                return await post.text()
+
+
+        async with self.session.post('https://hastebin.com/documents', data=content, headers={'Authorization': 'Bearer 27e4168ab6efb5fc22135cdea73f9f04b6581de99785b84daf1c2c3803e61e28c0f4881710e29cc0e9706b35a11cff8e46ef2b00999db3010ee1dc818f9be255'}) as post:
+            if 200 <= post.status < 400: 
+                return f'https://hastebin.com/share/{(await post.text())[8:-2]}'
             
         async with self.session.post('https://api.mystb.in/paste', data=content) as post:
-            if post.status < 400: 
+            if 200 <= post.status < 400: 
                 return 'https://mystb.in/' + (await post.json())['pastes'][0]['id']
         
         async with self.session.post("https://bin.readthedocs.fr/new", data={'code':content, 'lang': lang}) as post:
-            if post.status < 400: 
+            if 200 <= post.status < 400: 
                 return post.url
+        
+        raise
 
 
 

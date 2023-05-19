@@ -7,7 +7,7 @@ from typing import Union
 from Classes.i18n import _
 from difflib import get_close_matches
 from discord.ext.commands import errors, Command
-from Classes import ShakeBot, ShakeContext, ShakeEmbed
+from Classes import ShakeBot, ShakeContext, ShakeEmbed, Slash
 ########
 #
 class Event():
@@ -17,6 +17,8 @@ class Event():
         self.error: errors.CommandError = error
 
     async def __await__(self):
+        if not self.ctx in self.bot.cache['context']:
+            self.bot.cache['context'].append(self.ctx)
         original = getattr(self.error, "original", self.error)
         raisable: bool = False
 
@@ -27,9 +29,9 @@ class Event():
             return
 
         elif isinstance(original, (ShakeMissingPermissions,)):
-            description =  original.message or _("I am missing `{permissions}` permission(s) to run this command.").format(permissions=', '.join(original.missing_permissions))
+            description =  original.message or _("I am missing [`{permissions}`](https://support.discord.com/hc/en-us/articles/206029707) permission(s) to run this command.").format(permissions=', '.join(original.missing_permissions))
 
-        if isinstance(original, (errors.BadArgument)):    
+        if isinstance(original, (errors.BadArgument)):
             description = getattr(original, "message", None) or _("You typed in some bad arguments, try !help")
 
         elif isinstance(original, (errors.MissingRequiredArgument, errors.MissingRequiredAttachment, errors.TooManyArguments , errors.BadUnionArgument, errors.BadLiteralArgument, errors.UserInputError)):
@@ -81,20 +83,25 @@ class Event():
             if allowed and not hidden:
                commands[command.name] = command 
         matches: Optional[List[Command]] = get_close_matches(invoked, list(commands.keys()))
+        help = await Slash(self.bot).__await__('help')
         description=_(
-            "No command named `{invoked_command}` found. Use \"{prefix}help\" for help."
-        ).format(invoked_command=invoked, prefix=ctx.prefix)
+            "No command named `{invoked}` found. Use {help} for help."
+        ).format(invoked=invoked, help=help.app_command.mention)
         if bool(matches):
+            command = await Slash(self.bot).__await__(commands[matches[0]])
             description = _(
-                """Nothing named `{invoked_command}` found. Did you mean **/{closest}** ?"""
-            ).format(invoked_command=invoked, prefix=ctx.prefix, closest=commands[matches[0]].qualified_name)
+                """Nothing named `{invoked}` found. Did you mean {closest}?"""
+            ).format(invoked=invoked, closest=command.app_command.mention)
         await self.send(description)
         return
 
 
     async def send(self, description, raisable: bool = False):
         if raisable:
-            dumped = await self.bot.dump(f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}")
+            try:
+                dumped = await self.bot.dump(f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}")
+            except:
+                print(''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__)))
             if not self.testing:
                 self.bot.log.warning(f"{self.ctx.guild.id} > {(self.ctx.author if isinstance(self.ctx, ShakeContext) else self.ctx.user).id} > {self.ctx.command}: {dumped} ({self.error.__class__.__name__})")
 

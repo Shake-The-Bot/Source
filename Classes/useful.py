@@ -7,8 +7,10 @@ from asyncio import gather
 from numpy import zeros
 from io import BytesIO
 from math import floor
+from time import time
 from enum import Enum
 from Classes.i18n import _
+from threading import Timer
 from Classes.converter import ValidCog
 from PIL import ImageFont, ImageDraw, Image
 from random import random, choice, randrange
@@ -169,12 +171,100 @@ def perform_operation(images, grid_width=4, grid_height=4, magnitude=14):
 
     return augmented_images
 
+USER = r'<@!?(\d+)>'
+ROLE = r'<@&(\d+)>'
+CHANNEL = r'<#(\d+)>'
+COMMAND = r'<\/([-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32})/:(\d+)>'
 
+"""     Sequence    """
+
+
+
+def safechoice(seq):
+    """Choose a random element from a non-empty sequence.
+    if an empty sequence is given, None is returned"""
+    # raises IndexError if seq is empty
+    if len(seq) == 0:
+        return None
+    else:
+        return choice(seq)
 
 
 """     Text     """
 
-def human_join(seq: Sequence[str], delimiter: str = ', ', final: Literal['or', 'and'] = 'or', joke: bool = False) -> str:
+
+class Formats(Enum):
+    italics = ('_')
+    bold = ('**')
+    bolditalics = ('***')
+    underline = ('__')
+    underlinebold = ('__', '**')
+    underlinebolditalics = ('__', '***')
+    strikethrough = ('~~')
+    codeblock = ('`')
+    mlcb = ('```')
+    blockquotes = ('>')
+    mlbq = ('>>>')
+    spoiler = ('||')
+
+
+class TextFormat:
+    @staticmethod
+    def final(text: str, *format: str, front: bool = True, end: bool = True):
+        front = ''.join(format) if front else ''
+        end = ''.join(reversed(format)) if end else ''
+        return f"{front}{str(text)}{end}"
+
+    @staticmethod
+    def italics(t: str):
+        return TextFormat.final(t, '_')
+
+    @staticmethod
+    def bold(t: str):
+        return TextFormat.final(t, '**', )
+
+    @staticmethod
+    def bolditalics(t: str):
+        return TextFormat.final(t, '***')
+    
+    @staticmethod
+    def underline(t: str):
+        return TextFormat.final(t, '__')
+
+    @staticmethod
+    def underlinebold(t: str):
+        return TextFormat.final(t, '__', '**')
+
+    @staticmethod
+    def underlinebolditalics(t: str):
+        return TextFormat.final(t, '__', '***')
+
+    @staticmethod
+    def strikethrough(t: str):
+        return TextFormat.final(t, '~~')
+
+    @staticmethod
+    def codeblock(t: str):
+        return TextFormat.final(t, '`')
+
+    @staticmethod
+    def mlcb(t: str):
+        return TextFormat.final(t, '```')
+
+    @staticmethod
+    def blockquotes(t: str):
+        return TextFormat.final(t, '> ', end=False)
+
+    @staticmethod
+    def mlbq(t: str):
+        return TextFormat.final(t, '>>> ', end=False)
+
+    @staticmethod
+    def spoiler(t: str):
+        return TextFormat.final(t, '||')
+
+
+def human_join(seq: Sequence[str], delimiter: str = ', ', final: Literal['or', 'and'] = 'and', joke: bool = False) -> str:
     if joke:
         return ''
     _('or'); _('and') # „Just in case gettext gets this“
@@ -195,7 +285,7 @@ def source_lines(root: Optional[str] = None) -> int:
             _path = f"{root}/{child}"
             if path.isdir(_path):
                 yield from _iterate_source_line_counts(_path)
-            if (child.startswith(".") or child.endswith('.toml') or child in ('LICENSE', 'README.md')): 
+            if (child.startswith(".") or child.endswith('.toml') or child in ['LICENSE', 'README.md']): 
                 continue
             else:
                 if _path.endswith((".py")):
@@ -262,24 +352,22 @@ def Duration(duration: str) -> Optional[relativedelta]:
 
     return delta
 
-
 # outdated
 def high_level_function():
-    with open("POTFILES.in") as f:
-        files = f.read().splitlines()
-
-    for file in files:
-        with open(f"../{file}", "r+") as f:
-            stuff = f.read().splitlines()
-            stuff2 = stuff
-            done = 0
-            for idx, line in enumerate(stuff):
-                if "@" in line and (".group" in line or ".command" in line):
-                    stuff2.insert(idx + 1, "    @locale_doc")
-                    done += 1
-            f.seek(0)
-            f.write("\n".join(stuff2))
-            f.truncate()
+    with open("POTFILES.in") as mfile:
+        paths = mfile.read().splitlines()
+        for path in paths:
+            with open(f"{path}", "r+") as file:
+                lines = file.read().splitlines()
+                newlines = lines.copy()
+                done = 0
+                for idx, line in enumerate(lines):
+                    if "@" in line and (".group" in line or ".command" in line):
+                        newlines.insert(idx + 1, "    @locale_doc")
+                        done += 1
+                file.seek(0)
+                file.write("\n".join(newlines))
+                file.truncate()
 
 """     Numbers     """
 
@@ -293,6 +381,40 @@ def calc(expression):
     except:
         result = "Invalid expression"
     return result
+
+"""     Timing      """
+
+class TimedDict(dict):
+    def __init__(self, limit: int):
+        self.__timers = dict()
+        self.limit = limit
+        super().__init__()
+    
+    def __setitem__(self, __key: Any, __value: Any) -> None:
+        if __key in self:
+            timer: Timer = self.__timers.get(__key, None)
+            if timer is not None:
+                timer.cancel()
+                del self.__timers[__key]
+        self._timer(__key)
+        return super().__setitem__(__key, __value)
+
+    def __delitem__(self, __key: Any) -> None:
+        timer: Timer = self.__timers.get(__key, None)
+        if timer is not None:
+            timer.cancel()
+            del self.__timers[__key]
+        return super().__delitem__(__key)
+
+    def _expired(self, __key: Any):
+        if __key in self:
+            self.__delitem__(__key)
+
+    def _timer(self, __key: Any):
+        timer = Timer(self.limit, self._expired, args=[__key])
+        timer.daemon = True
+        timer.start()
+        self.__timers[__key] = timer
 
 
 """     Others      """
@@ -356,17 +478,24 @@ async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Met
 
         return None
 
-    failures = dict()
-    for extension in extensions:
+    
+    embed = ShakeEmbed()
+
+    failures: int = 0
+    for i, extension in enumerate(extensions, 1):
+
         handling = await handle(method, extension)
         error = getattr(handling, "original", handling) if handling else MISSING
-        if error:
-            failures[str(extension)] = error
 
-    
-    embed = ShakeEmbed(description=f"**{len(extensions) - len(failures)} / {len(extensions)} extensions {method.name.lower()}ed.**")
-    for i, (ext, err) in enumerate(failures.items(), 1):
-        ext = ext.replace(ext, '`'+ext+'`')
-        err = str(err).replace(ext, '`'+ext+'`')
-        embed.add_field(name=f"` {i}. ` {ext}", value=err)
+        ext = f'`{extension}`'
+        name = f'` {i}. ` {ext}'
+        if error:
+            failures += 1
+            value = '> ❌ {}'.format(error.replace(extension, ext))
+        else:
+            value = f'> ☑️ {method.name.lower().capitalize()}ed'
+        embed.add_field(name=name, value=value)
+
+    embed.description=f"**{len(extensions) - failures} / {len(extensions)} extensions successfully {method.name.lower()}ed.**"
+
     return embed

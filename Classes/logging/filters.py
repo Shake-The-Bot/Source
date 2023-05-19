@@ -20,6 +20,16 @@ class NoMoreRatelimit(Filter):
         return True
 ########
 #
+class NoMoreStatcord(Filter):
+    def __init__(self):
+        super().__init__(name='statcord')
+
+    def filter(self, record):
+        if record.levelname == 'ERROR' and 'posting' in record.msg:
+            return False
+        return True
+########
+#
 class NoMoreUnclosedSessions(Filter):
     def __init__(self):
         super().__init__(name='asyncio')
@@ -42,10 +52,10 @@ class NoMoreAttemps(Filter):
         super().__init__(name='lavalink.websocket')
 
     def filter(self, record):
-        if record.levelname in ('WARNING', 'INFO') and any(snipped in record.msg for snipped in (
+        if record.levelname in ['WARNING', 'INFO'] and any(snipped in record.msg for snipped in [
             'Invalid response received', 'this may indicate that Lavalink is not running', 'or is running on a port different to the one you provided to', 
             'Attempting to establish WebSocket connection', 'A WebSocket connection could not be established within'
-        )):
+        ]):
             return False
         return True
 ########
@@ -55,7 +65,7 @@ class NoJobs(Filter):
         super().__init__(name='apscheduler.scheduler')
 
     def filter(self, record):
-        if record.levelname == 'INFO' and any(snippets in record.msg for snippets in ('Added job', 'Adding job tentatively')):
+        if record.levelname == 'INFO' and any(snippets in record.msg for snippets in ['Added job', 'Adding job tentatively']):
             return False
         return True
 ########

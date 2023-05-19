@@ -2,6 +2,8 @@
 #
 from typing import Union, Optional
 from discord import PartialEmoji, Member, User
+from discord.ext.commands.converter import MemberConverter, MemberNotFound
+from random import choice
 from importlib import reload
 from . import userinfo, testing
 from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext, Testing
@@ -27,16 +29,15 @@ class userinfo_extension(Cog):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def userinfo(self, ctx: ShakeContext, user: Optional[Union[Member, User]] = None):
+    async def userinfo(self, ctx: ShakeContext, user: Optional[Union[User, Member]] = None):
         _(
             """Get information about you or a specified user.
             
             Parameters
             -----------
             user: Optional[Union[Member, User]]
-                @mention, ID or name."""
+                @mention, ID or name of the user you want to get information about."""
         )
-
         if ctx.testing:
             try:
                 reload(testing)
@@ -45,10 +46,49 @@ class userinfo_extension(Cog):
                     name=testing.__file__, type=e.__class__.__name__
                 ))
                 ctx.testing = False
+
+
         do = testing if ctx.testing else userinfo
 
-        try:    
-            await do.command(ctx=ctx, user=user or ctx.author).__await__()
+        member = None
+        if not user is None:
+            try:
+                member = await MemberConverter().convert(ctx=ctx, argument=str(user))
+            except MemberNotFound:
+                pass
+
+
+        fallback = None
+        if user is None:
+            user = await self.bot.fetch_user(ctx.author.id)
+            try:
+                member = await MemberConverter().convert(ctx=ctx, argument=str(ctx.author))
+            except MemberNotFound:
+                pass
+
+        elif not user is None:
+            if isinstance(user, Member):
+                user = await self.bot.fetch_user(user.id)
+                member = user
+
+            if isinstance(user, User):
+                user = await self.bot.fetch_user(user.id)
+
+                try:
+                    member = await MemberConverter().convert(ctx=ctx, argument=str(user))
+                except MemberNotFound:
+                    if bool(user.mutual_guilds):
+                        guild = choice(user.mutual_guilds)
+                        fallback = guild.get_member(user.id)
+                    else:
+                        pass
+
+            else:
+                self.bot.log.debug('userinfo command passed unknown <user> arg: {}'.format(user))
+                member = None
+
+        try:
+            await do.command(ctx=ctx, user=user or ctx.author, member=member, fallback=fallback).__await__()
     
         except:
             if ctx.testing:

@@ -37,7 +37,10 @@ extensions = [
     'Exts.Functions.Commands.command.error.__init__',  'Exts.Functions.Commands.command.completion.__init__', 
     'Exts.Functions.Commands.command.delete.__init__', 
     
+    'Exts.Functions.Debug.code_update.__init__',
+
     'Exts.Functions.Gateway.ready.__init__',
+    
 
     'Exts.Functions.Guilds.guild.join.__init__', 
     'Exts.Functions.Guilds.guild.remove.__init__', 

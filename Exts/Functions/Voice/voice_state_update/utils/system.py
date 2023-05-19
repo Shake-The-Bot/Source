@@ -158,8 +158,8 @@ class TempVoice():
                     return False
 
                 overwrite = channel.overwrites_for(self.guild.default_role)
-                connect = (True if value == 'tempvoice-privacy-request-unlocked' else False) if value in ('tempvoice-privacy-request-locked', 'tempvoice-privacy-request-unlocked') else overwrite.connect
-                view_channel = (True if value == 'tempvoice-privacy-request-visible' else False) if value in ('tempvoice-privacy-request-invisible', 'tempvoice-privacy-request-visible') else overwrite.view_channel
+                connect = (True if value == 'tempvoice-privacy-request-unlocked' else False) if value in ['tempvoice-privacy-request-locked', 'tempvoice-privacy-request-unlocked'] else overwrite.connect
+                view_channel = (True if value == 'tempvoice-privacy-request-visible' else False) if value in ['tempvoice-privacy-request-invisible', 'tempvoice-privacy-request-visible'] else overwrite.view_channel
                 
                 await channel.set_permissions(
                     self.guild.default_role, connect=connect, view_channel=view_channel, 
@@ -175,7 +175,7 @@ class TempVoice():
         class View(ui.View):
             def __init__(self, tempvoice: TempVoice):
                 super().__init__()
-                self.options: list = []
+                self.options: List = []
                 self.channel = tempvoice.channel
                 self.guild = tempvoice.guild
                 self.get_options()
@@ -280,16 +280,16 @@ class TempVoice():
                     users.remove(self.member)
 
                 record: Dict = await self.db.fetchrow("SELECT * FROM tempvoice WHERE user_id = $1", self.member.id)
-                trusted: Set[int] = set(list(record.get('trusted', None) or {}))
+                trusted: Set[int] = set(record.get('trusted', None) or {})
                 trusted.update(list(x.id for x in users))
-                blocked: List[int] = list(record.get('blocked', None) or {})
+                blocked: List[int] = set(record.get('blocked', None) or {})
                 with suppress(ValueError):
                     for user in users:
                         blocked.remove(user.id)
                 blocked: Set[int] = set(blocked)
                 
 
-                for overwrite in (overwrites := {user: PermissionOverwrite(view_channel=True, connect=True) for user in users}):
+                for overwrite in [overwrites := {user: PermissionOverwrite(view_channel=True, connect=True) for user in users}]:
                     await channel.set_permissions(target=overwrite, overwrite=overwrites[overwrite], reason="TempVoice - executed by {}".format(self.member))
 
                 await self.db.execute("UPDATE tempvoice SET trusted = $2, blocked = $3 WHERE channel_id = $1", channel.id, trusted, blocked)
@@ -338,7 +338,7 @@ class TempVoice():
                         trusted.remove(user.id)
                 trusted: Set[int] = set(trusted)
 
-                for user in (overwrites := {user: PermissionOverwrite(view_channel=False) for user in users}):
+                for user in [overwrites := {user: PermissionOverwrite(view_channel=False) for user in users}]:
                     await channel.set_permissions(target=user, overwrite=overwrites[user], reason="TempVoice - executed by {}".format(self.member))
                     if user.voice and user.voice.channel == channel:
                         await user.move_to(None, reason="TempVoice - executed by {}".format(self.member))
@@ -419,7 +419,7 @@ class TempVoice():
         record: Dict = await self.db.fetchrow("SELECT * FROM tempvoice WHERE channel_id = $1", channel.id)
         config = await self.bot.config_pool.fetchrow("SELECT * FROM tempvoice WHERE creator_id = $1", record['creator_id'])
         old_owner = self.guild.get_member(record['user_id'])
-        if old_owner == self.member or (self.member.id in list(record['user_id'] for record in records)):
+        if old_owner == self.member or (self.member.id in set(record['user_id'] for record in records)):
             await self.interaction.response.send_message(
             ephemeral=True, content=_('{emoji} Selected user is alredy owner of a temporary channel!').format(
                 emoji=self.bot.emojis.cross))
@@ -482,7 +482,7 @@ class TempVoice():
                     for user in users: trusted.remove(user.id)
                 trusted: Set[int] = set(trusted)
 
-                for overwrite in (overwrites := {user: PermissionOverwrite(view_channel=None, connect=None) for user in select.values}):
+                for overwrite in [overwrites := {user: PermissionOverwrite(view_channel=None, connect=None) for user in select.values}]:
                     await channel.set_permissions(overwrite, overwrites[overwrite], reason="TempVoice - executed by {}".format(self.member))
 
                 await self.db.execute("UPDATE tempvoice SET trusted = $2 WHERE channel_id = $2", channel.id, trusted)
@@ -533,7 +533,7 @@ class TempVoice():
                     for user in users: blocked.remove(user.id)
                 blocked: Set[int] = set(blocked)
 
-                for overwrite in (overwrites := {user: PermissionOverwrite(view_channel=None, connect=None) for user in select.values}):
+                for overwrite in [overwrites := {user: PermissionOverwrite(view_channel=None, connect=None) for user in select.values}]:
                     await channel.set_permissions(overwrite, overwrites[overwrite], reason="TempVoice - executed by {}".format(self.member))
 
                 await self.db.execute("UPDATE tempvoice SET blocked = $2 WHERE channel_id = $2", channel.id, blocked)

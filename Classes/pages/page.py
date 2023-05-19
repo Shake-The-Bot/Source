@@ -1,22 +1,15 @@
 ############
 #
 from __future__ import annotations
-from contextlib import suppress
-from asyncio import Lock
-from time import monotonic
-
 from discord.ext.menus import PageSource
-from discord.ui.view import _ViewCallback
 from discord.utils import maybe_coroutine
 from discord import (
-    Message, ui, Interaction, PartialEmoji, ButtonStyle, 
-    File, User, Member, HTTPException
+    Message, ui, Interaction, PartialEmoji, ButtonStyle, File,
 )
 from Classes.i18n import _
 from Classes.exceptions import ShakeMissingPermissions
 from typing import (
-    Any, Dict, Optional, Union, Tuple, Coroutine, Callable, 
-    Awaitable, TYPE_CHECKING
+    Any, Dict, Optional, Union, Tuple, TYPE_CHECKING
 )
 
 if TYPE_CHECKING:
@@ -27,7 +20,7 @@ else:
     from discord import Embed as ShakeEmbed
     from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
 
-Sources = PageSource # Union[PageSource, FrontPageSource, GroupPageSource, ItemsPageSource]
+Sources = PageSource # Union[PageSource, FrontPageSource, GroupPageSource, ItemPageSource]
 
 firstemoji = PartialEmoji(name='topleft', id=1033551840744312832)
 previousemoji = PartialEmoji(name='left', id=1033551843210579988)
@@ -40,8 +33,8 @@ class Pages(ui.View):
     page: int = 0
     message: Optional[Message] = None
     """ The Base of all interactive ui.View of Shake"""
-    def __init__(self, source: PageSource, ctx: ShakeContext, ):
-        super().__init__()
+    def __init__(self, source: PageSource, ctx: ShakeContext, timeout: Optional[float] = 180.0):
+        super().__init__(timeout=timeout)
         self.cache = dict()
         self.source: PageSource = source
         self.ctx: ShakeContext = ctx
@@ -63,7 +56,7 @@ class Pages(ui.View):
     def embed(self, embed: ShakeEmbed):
         return embed
 
-    async def _get_from_page(self, item: int) -> Tuple[Dict[str, Any], File]:
+    async def _get_from_page(self, item: Any) -> Tuple[Dict[str, Any], File]:
         locale = await self.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US'
         await self.bot.locale.set_user_locale(self.ctx.author.id, locale)
         
@@ -122,8 +115,9 @@ class Pages(ui.View):
 
         if timeouted:
             for item in self._children:
-                if isinstance(item, ui.Button) or isinstance(item, ui.Select):
-                    item.disabled = True
+                if isinstance(item, (ui.Select, ui.Button)):   
+                    item.disabled = True 
+                if isinstance(item, ui.Button):
                     item.style = ButtonStyle.grey
 
 

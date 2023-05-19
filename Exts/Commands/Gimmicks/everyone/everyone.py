@@ -19,7 +19,7 @@ class command():
     async def __await__(self):
         description = (
             _("{members} stop spamming @everyone! \nIt's not that important...").format(members=human_join(
-                seq=[member.mention for member in self.member], final=_('and'), joke=self.member == [self.ctx.author]
+                seq=[member.mention for member in self.member], joke=self.member == [self.ctx.author]
         )   ))
         embed = ShakeEmbed.default(self.ctx, description=description)
         embed.set_author(name=f"@everyone?!")

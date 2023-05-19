@@ -114,7 +114,7 @@ class command():
                 if q == name:
                     obj = f"abc.Messageable.{name}"
                     break
-        cache = list(self.bot._rtfm_cache[self.key].items())
+        cache = set(self.bot._rtfm_cache[self.key].items())
         matches = finder(obj, cache, key=lambda t: t[0], lazy=False)[:8]
         if len(matches) == 0: 
             return await self.ctx.smart_reply(_("Couldn't find anything."))

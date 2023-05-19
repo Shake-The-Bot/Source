@@ -92,7 +92,7 @@ class Event():
                 oneword = await self.await_oneword()
             
             if await self.config.fetchrow("""SELECT * FROM level WHERE guild_id = $1 AND turn = $2""", self.message.guild.id, True) or []: 
-                if not any(x for x in (counting, aboveme, oneword)):
+                if not any(x for x in [counting, aboveme, oneword]):
                     level_response = await self.await_level()
         return
 #

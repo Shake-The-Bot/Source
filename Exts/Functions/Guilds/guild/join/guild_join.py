@@ -19,7 +19,7 @@ class Event():
         # // logging
         rep = dict((escape(k), '') for k in ['discord', 'Discord', 'everyone', 'Everyone']) 
         guild_name = compile("|".join(rep.keys())).sub(lambda m: rep[escape(m.group(0))], self.guild.name)
-        webhooks = list(filter(lambda item: item is not None, [Webhook.from_url(url, session=self.bot.session) for url in self.bot.config.bot.webhook_urls]))
+        webhooks = list(filter(lambda item: item is not None, [Webhook.from_url(url, client=self.bot) for url in self.bot.config.bot.webhook_urls]))
         for webhook in webhooks:
             try:
                 await webhook.edit(name=guild_name, avatar=await self.guild.icon.read(), reason='Logs')

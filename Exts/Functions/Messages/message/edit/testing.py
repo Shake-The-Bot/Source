@@ -15,7 +15,7 @@ class Event():
             return
         if self.before.clean_content.strip() == self.after.clean_content.strip():
             return
-        context: ShakeContext = utils.find(lambda ctx: ctx.message == self.after, self.bot.cached_context)
+        context: ShakeContext = utils.find(lambda ctx: ctx.message == self.after, self.bot.cache['context'])
         if context:
             await context.reinvoke(message=self.after)
         else: 

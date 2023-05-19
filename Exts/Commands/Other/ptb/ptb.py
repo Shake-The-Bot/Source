@@ -42,11 +42,11 @@ class command():
         else:
             current = (guild or channel or user)
             name = getattr(current, 'mention', current.name)
-            if current.id in list(self.bot.tests.keys()):
-                del self.bot.tests[current.id]
+            if current.id in set(self.bot.cache['testing'].keys()):
+                del self.bot.cache['testing'][current.id]
                 description=_("{name} is __removed__ from the public test build").format(name=name)
             else:
-                self.bot.tests[current.id] = guild or channel or user
+                self.bot.cache['testing'][current.id] = guild or channel or user
                 description = _("{name} is temporarily __added__ to the public test build").format(name=name)
             
             embed = ShakeEmbed.to_success(self.ctx, description=description)

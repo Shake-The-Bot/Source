@@ -18,7 +18,7 @@ class on_interaction(Cog):
     @Cog.listener()
     async def on_interaction(self, interaction: Interaction):
         
-        test = any(x.id in list(self.bot.tests.keys()) for x in (interaction.user, interaction.guild, interaction.channel))
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [interaction.user, interaction.guild, interaction.channel])
         
         if test:
             try:

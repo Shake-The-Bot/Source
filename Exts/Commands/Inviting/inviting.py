@@ -25,6 +25,10 @@ class inviting(commands.Cog):
         return _("Inviting")
 
     @property
+    def describe(self) -> bool:
+        return False
+
+    @property
     def help_command_title(self) -> str: 
         return "invite Befehle"
 

@@ -1,19 +1,17 @@
 ############
 #
-from __future__ import annotations
-from asyncio import set_event_loop_policy, run
-from Classes import Migration, config
-from Classes.logging.filters import *
-from Classes.database.db import _create_pool
-from discord import Intents
-from re import compile
 import sys
+from re import compile
+from discord import Intents
+from contextlib import contextmanager
+from click import option, group, argument, pass_context, Context
+from Classes.database.db import _create_pool
+from Classes import Migration, config
 from bot import ShakeBot
 from logging import getLogger, INFO
-from contextlib import contextmanager
-from asyncpg.exceptions import InvalidCatalogNameError
+from discord import ActivityType, Activity
+from asyncio import set_event_loop_policy, run
 from Classes.logging.logger import stream, file_handler, command_handler
-from click import option, group, argument, pass_context, Context
 
 try:
     from uvloop import EventLoopPolicy # type: ignore
@@ -46,7 +44,6 @@ def setup():
     logger.setLevel(INFO)
     logger.addHandler(stream)
     logger.addHandler(file_handler())
-    logger.addFilter(NoMoreUnclosedSessions())
     cmdlogger = getLogger('command')
     cmdlogger.addHandler(command_handler())
     yield
@@ -60,7 +57,12 @@ async def run_bot():
     def prefix(bot, msg):
         return ['<@!{}> '.format(bot.user.id), '<@{}> '.format(bot.user.id)]
     
-    async with ShakeBot(shard_count=1   , command_prefix=prefix, case_insensitive=True, intents=Intents.all(), description=config.bot.description, help_command=None, fetch_offline_members=True, owner_ids=config.bot.owner_ids, strip_after_prefix=True) as bot:
+    async with ShakeBot(
+            shard_count=1, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), 
+            description=config.bot.description, help_command=None, fetch_offline_members=True, 
+            owner_ids=config.bot.owner_ids, strip_after_prefix=True,
+            activity=Activity(type=getattr(ActivityType, config.bot.presence[0], ActivityType.playing), name=config.bot.presence[1])
+        ) as bot:
         try:
             pool = await _create_pool(config)
         except:

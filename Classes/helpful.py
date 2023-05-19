@@ -7,7 +7,7 @@ from Classes.exceptions import ChannelNotFound
 from asyncpg import Pool, connect, UndefinedTableError
 from Exts.Functions.Debug.error import error
 from discord.abc import T
-from Classes.useful import MISSING
+from Classes.useful import MISSING, TimedDict
 from aiohttp import ClientSession
 from Classes.tomls.emojis import Emojis
 from asyncio import TimeoutError
@@ -218,9 +218,12 @@ class ShakeContext(Context):
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
-        self.__dict__.update(dict.fromkeys(["waiting", "result", "channel_used", "running", "failed", "done"]))
+        self.__dict__.update(dict.fromkeys(["waiting", "result", "running", "failed", "done"]))
         self.pool: Pool = self.bot.cache['pools'].get(self.guild.id, None)
-        self.__testing = True if any(x.id in list(self.bot.tests.keys()) for x in (self.author, self.guild, self.channel)) else False
+        self.__testing = True if any(_.id in set(self.bot.cache['testing'].keys()) for _ in [self.author, self.guild, self.channel]) else False
+        if self.__testing and getattr(self.command, 'name', None):
+            tests: TimedDict = self.bot.cache['tests']
+            tests[self.command] = self
         self.messages: Dict[int, Message] = dict()
         self.reinvoked: bool = False
         self.done: bool = False
@@ -273,8 +276,8 @@ class ShakeContext(Context):
                 if files := kwargs.pop('files', None):
                     kwargs['attachments'] += files
                 
-                allowed_kwargs = list(signature(Message.edit).parameters)
-                for key in list(kwargs):
+                allowed_kwargs = set(signature(Message.edit).parameters)
+                for key in set(kwargs):
                     if key not in allowed_kwargs:
                         kwargs.pop(key)
                 kwargs = {k: v for k, v in kwargs.items() if v != None}
@@ -358,7 +361,7 @@ class ShakeContext(Context):
                 author = ref.cached_message.author
                 kwargs['mention_author'] = (author in self.message.mentions and author.id not in self.message.raw_mentions)
             return await self.send(**kwargs)
-        if getattr(self.channel, "last_message", MISSING) not in (self.message, MISSING):
+        if getattr(self.channel, "last_message", MISSING) not in [self.message, MISSING]:
             return await self.reply(**kwargs)
         return await self.send(**kwargs)
 
@@ -390,10 +393,10 @@ class ShakeContext(Context):
             self.messages.update({message.id: message})
         return message
 
-    def get_message(self, message_id: int) -> Optional[Message]:
+    def get(self, message_id: int) -> Optional[Message]:
         return self.messages.get(message_id)
 
-    def pop_message(self, message_id: int) -> Optional[Message]:
+    def pop(self, message_id: int) -> Optional[Message]:
         return self.messages.pop(message_id, None)
 
 
@@ -413,13 +416,15 @@ class BotBase(AutoShardedBot):
         self.shake_id, *_ = owner_ids
         owner_ids=set(owner_ids)
         self.cache.setdefault('pools', {})
+        self.cache.setdefault('context', deque(maxlen=100))
+        self.cache.setdefault('tests', TimedDict(60*5))
         super().__init__(**options)
-        self.cached_context = deque(maxlen=100)
         self.cached_posts: Dict[int, deque(maxlen=1000)] = dict()
         self._session = None
         self._config = config
         self._emojis = emojis
     
+
     @property
     def session(self) -> ClientSession:
         return self._session
@@ -437,18 +442,31 @@ class BotBase(AutoShardedBot):
         """Returns the owner as a discord.User Object """
         return self.get_user_global(self.shake_id)
 
+
+    def get_emoji_local(self, dictionary: Any, name: str) -> Any:
+        dictionary = getattr(self.emojis, dictionary, MISSING)
+        if dictionary is MISSING:
+            pass
+            return None
+        emoji = getattr(dictionary, name, MISSING)
+        if emoji is MISSING:
+            return None
+        return emoji
+
+
     async def get_user_global(self, user_id: int) -> Optional[User]:
         """Returns/Retrieves a :class:`~discord.User` based on the given ID.
         You do not have to share any guilds with the user to get this information"""
         if not user_id or not isinstance(user_id, int):
             return None
-        if user := (self.get_user(user_id) or await self.fetch_user(user_id)):
+        if user := (await self.fetch_user(user_id) or self.get_user(user_id)):
             return user
         return None
 
+
     async def running_command(self, ctx: ShakeContext, typing: bool = True, **flags):
         dispatch = flags.pop('dispatch', True)
-        self.cached_context.append(ctx)
+        self.cache['context'].append(ctx)
         if dispatch:
             self.dispatch('command', ctx)
         try:
@@ -473,6 +491,9 @@ class BotBase(AutoShardedBot):
     async def invoke(self, ctx: ShakeContext, typing: bool = True, **flags) -> None:
         dispatch = flags.get('dispatch', True)
         if ctx.command is not None:
+            if ctx.testing:
+                tests: TimedDict = self.cache['tests']
+                tests[ctx.command] = ctx
             run_in_task = flags.pop('in_task', True)
             if run_in_task:
                 command_task = self.loop.create_task(
@@ -500,7 +521,7 @@ class BotBase(AutoShardedBot):
         if not message.guild:
             return
         ctx: ShakeContext = await self.get_context(message)
-        await self.invoke(ctx, typing=ctx.valid and not ctx.command.qualified_name in ('clear', 'dispatch'))
+        await self.invoke(ctx, typing=ctx.valid and not ctx.command.qualified_name in ['clear', 'dispatch'])
 
     
     async def setup_hook(self):
@@ -536,9 +557,9 @@ class BotBase(AutoShardedBot):
 
 class ShakeEmbed(Embed):
     """"""
-    def __init__(self, colour: Union[Colour, int] = embed_colour, timestamp: Optional[datetime] = None,
+    def __init__(self, colour: Union[Colour, int] = embed_colour, timestamp: Optional[datetime] = MISSING,
                  fields: Iterable[Tuple[str, str]] = (), field_inline: bool = False, **kwargs: Any):
-        super().__init__(colour=colour, timestamp=timestamp or utils.utcnow(), **kwargs)
+        super().__init__(colour=colour, timestamp=timestamp if not timestamp is MISSING else utils.utcnow(), **kwargs)
         for n, v in fields:
             self.add_field(name=n, value=v, inline=field_inline)
 

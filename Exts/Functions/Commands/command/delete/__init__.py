@@ -10,28 +10,31 @@ if TYPE_CHECKING:
     from Classes import ShakeBot
 
 
-def message_getter(message_id: int) -> Callable[[ShakeContext], Optional[Message]]:
+def getter(message_id: int) -> Callable[[ShakeContext], Optional[Message]]:
     def inner(context: ShakeContext) -> Optional[Message]:
-        return context.get_message(message_id)
+        if isinstance(context, ShakeContext):
+            return context.get(message_id)
     return inner
 
-def is_message_older_context(bot: ShakeBot, message_id: int) -> bool:
-    if not (cached_context := bot.cached_context): return False
-    return message_id < cached_context[0].message.id
+def is_old(bot: ShakeBot, message_id: int) -> bool:
+    if not (context := bot.cache['context']): 
+        return False
+    return message_id < context[0].message.id
 
-def is_command_message():
+def is_command():
     def inner(self, payload):
         bot = self.bot
-        if is_message_older_context(bot, payload.message_id): 
+        if is_old(bot, payload.message_id): 
             return False
-        return utils.get(bot.cached_context, message__id=payload.message_id) is not None
+        return utils.get(bot.cache['context'], message__id=payload.message_id) is not None
     return event_check(inner)
 
-def is_message_context():
+def is_context():
     async def inner(self, payload):
         bot = self.bot
-        if is_message_older_context(bot, payload.message_id): return False
-        return utils.find(message_getter(payload.message_id), bot.cached_context)
+        if is_old(bot, payload.message_id): 
+            return False
+        return utils.find(getter(payload.message_id), bot.cache['context'])
     return event_check(inner)
 
 class on_context_delete(Cog):
@@ -46,7 +49,7 @@ class on_context_delete(Cog):
     @Cog.listener('on_raw_bulk_message_delete')
     async def remove_context_messages(self, payload: RawBulkMessageDeleteEvent):
         
-        test = any(x in list(self.bot.tests.keys()) for x in (payload.channel_id, payload.guild_id))
+        test = any(x in set(self.bot.cache['testing'].keys()) for x in [payload.channel_id, payload.guild_id])
         
         if test:
             try:
@@ -67,9 +70,9 @@ class on_context_delete(Cog):
             raise
 
     @Cog.listener('on_raw_message_delete')
-    @is_message_context()
+    @is_context()
     async def remove_context_message(self, payload: RawMessageDeleteEvent):
-        test = any(x in list(self.bot.tests.keys()) for x in (payload.channel_id, payload.guild_id))
+        test = any(x in set(self.bot.cache['testing'].keys()) for x in [payload.channel_id, payload.guild_id])
         
         if test:
             try:
@@ -90,9 +93,9 @@ class on_context_delete(Cog):
             raise
 
     @Cog.listener('on_raw_message_delete')
-    @is_command_message()
+    @is_command()
     async def on_command_delete(self, payload: RawMessageDeleteEvent):
-        test = any(x in list(self.bot.tests.keys()) for x in (payload.channel_id, payload.guild_id))
+        test = any(x in set(self.bot.cache['testing'].keys()) for x in [payload.channel_id, payload.guild_id])
         
         if test:
             try:

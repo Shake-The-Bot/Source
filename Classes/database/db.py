@@ -145,7 +145,7 @@ class Interval(SQLType):
     def __init__(self, field=None):
         if field:
             field = field.upper()
-            if field not in (
+            if field not in [
                 'YEAR',
                 'MONTH',
                 'DAY',
@@ -159,7 +159,7 @@ class Interval(SQLType):
                 'HOUR TO MINUTE',
                 'HOUR TO SECOND',
                 'MINUTE TO SECOND',
-            ):
+            ]:
                 raise SchemaError('invalid interval specified')
             self.field = field
         else:
@@ -350,7 +350,7 @@ class Column:
         return d
 
     def _qualifiers_dict(self):
-        return {attr: getattr(self, attr) for attr in ('nullable', 'default')}
+        return {attr: getattr(self, attr) for attr in ['nullable', 'default']}
 
     def _is_rename(self, other):
         if self.name == other.name:

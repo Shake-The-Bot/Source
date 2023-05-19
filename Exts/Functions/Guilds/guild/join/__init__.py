@@ -19,7 +19,7 @@ class on_guild_join(Cog):
 
     @Cog.listener()
     async def on_guild_join(self, guild: Guild, channel: Optional[TextChannel] = None):
-        test = guild.id in list(self.bot.tests.keys())
+        test = guild.id in set(self.bot.cache['testing'].keys())
         
         if test:
             try:

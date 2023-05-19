@@ -19,7 +19,7 @@ class on_message(Cog):
     async def on_message(self, message: Message):
         if message.author.bot: 
             return
-        test = any(x.id in list(self.bot.tests.keys()) for x in (message.channel, message.guild, message.author))
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [message.channel, message.guild, message.author])
         
         if test:
             try:

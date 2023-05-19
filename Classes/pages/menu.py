@@ -1,6 +1,7 @@
 
 from discord.ext import menus
 from Classes.pages import source as _source, page, select as _select
+from Classes.pages.source import Sources, ItemPageSource, ListPageSource, FrontPageSource
 from typing import Any, Optional, TYPE_CHECKING, Dict, Union, List
 from discord import ui, ButtonStyle, Interaction
 Group = Item = Any
@@ -10,10 +11,18 @@ if TYPE_CHECKING:
 else:
     from discord.ext.commands import Context as ShakeContext
 
-class ElseKwarg:
+class JokerItems:
+    pass
+
+class LinkingSource:
     value: str
-    def __init__(self) -> None:
+    source: menus.PageSource
+
+    def __init__(self, source: menus.PageSource, **kwargs) -> None:
+        self.source: menus.PageSource = source
         self.items: Dict[Any, Union[Any, List[Any]]] = dict()
+        for k, v in kwargs:
+            setattr(self, k, v)
         self.__await__()
         pass
 
@@ -50,9 +59,9 @@ class ListMenu(page.Pages):
 class CategoricalMenu(page.Pages):
     def __init__(
             self, ctx: ShakeContext, source: menus.PageSource, select: _select.CategoricalSelect, 
-            front: Optional[_source.FrontPageSource] = None, **kwargs: Any
+            front: Optional[_source.FrontPageSource] = None, timeout: Optional[float] = 180.0, **kwargs: Any
         ):
-        super().__init__(source=source, ctx=ctx, **kwargs)
+        super().__init__(source=source, ctx=ctx, timeout=timeout, **kwargs)
         self.select: _select.CategoricalSelect = select
         self.__front: _source.FrontPageSource = front or source
 
@@ -66,7 +75,7 @@ class CategoricalMenu(page.Pages):
 
     async def rebind(self, source: menus.PageSource, page: Optional[int] = 0, interaction: Optional[Interaction] = None, update: Optional[bool] = True) -> None:
         self.source = source
-        self.page = 0 if isinstance(source, _source.ItemsPageSource) else page
+        self.page = 0 if isinstance(source, _source.ItemPageSource) else page
         if update:
             self.update(self.page)
         await source._prepare_once()
@@ -81,18 +90,14 @@ class CategoricalMenu(page.Pages):
                 await interaction.response.edit_message(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
 
 
-    def add_categories(self, categories: Optional[dict[Group, list[Item]]] = None, **kwargs: Dict[Any, ElseKwarg]) -> None:
-        if not kwargs:
-            if not bool(categories):
-                return
-            for group, items in categories.items():
-                if bool(items):
-                    continue
-                categories.pop(group, None)
-        else:
-            categories = dict()
-            for value in kwargs.values():
-                categories[value] = value.items
+    def add_categories(self, categories: Dict[Union[Group, Any], Union[List[Item], Sources]]) -> None:
+        for key, value in dict(categories).items():
+            source = isinstance(key, (ItemPageSource, ListPageSource, FrontPageSource,))
+            if source and value is None:
+                continue
+            if not bool(value) and not value == JokerItems:
+                categories.pop(key)
+
         self.clear_items()
         self.select.categories = categories
         self.add_item(self.select())

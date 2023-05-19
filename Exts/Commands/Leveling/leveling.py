@@ -25,6 +25,10 @@ class leveling(commands.Cog):
         return _("Leveling")
 
     @property
+    def describe(self) -> bool:
+        return False
+
+    @property
     def help_command_title(self) -> str: 
         return "Level Commands"
 

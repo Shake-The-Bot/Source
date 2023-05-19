@@ -25,6 +25,10 @@ class other(commands.Cog):
     @property
     def label(self) -> str: 
         return _("Other")
+
+    @property
+    def describe(self) -> bool:
+        return False
     
     @property
     def help_command_title(self) -> str: 

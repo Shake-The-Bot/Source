@@ -26,6 +26,10 @@ class moderation(commands.Cog):
         return ("Moderation")
 
     @property
+    def describe(self) -> bool:
+        return False
+
+    @property
     def help_command_title(self) -> str: 
         return "Moderations Befehle"
 

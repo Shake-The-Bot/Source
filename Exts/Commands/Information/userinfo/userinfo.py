@@ -1,3 +1,4 @@
+
 ############
 #
 from Classes import _, MISSING
@@ -68,7 +69,7 @@ class command():
         status = {'idle': _("Idle"), 'dnd': _("Please do not disturb"), 'offline': _("Offline"), 'online': _("Online")}
         emojis = {
             'online': self.bot.emojis.status.online, 'idle': self.bot.emojis.status.idle, 
-            'dnd': self.bot.emojis.status.donotdisturb, 'offline': self.bot.emojis.status.offline
+            'dnd': self.bot.emojis.status.dnd, 'offline': self.bot.emojis.status.offline
         }
         
         xinformation = {
@@ -84,8 +85,8 @@ class command():
         emoji3 = PartialEmoji(name='3_', id=1039247902217867374)
 
         list_ = []
-        for x, y in xinformation.items():
-            emoji = (emoji1 if x == list(xinformation.keys())[-1] else emoji3) if not self.banner else ''
+        for i, (x, y) in enumerate(xinformation.items(), 1):
+            emoji = (emoji1 if i == len(xinformation.keys()) else emoji3) if not self.banner else ''
             list_.append(f'{emoji} **{x}**  {y}')
         embed.insert_field_at(index=0, inline=True, name=_("Information"), value="\n".join(list_))
         list_.clear()
@@ -102,8 +103,8 @@ class command():
                 _("Status")+':': f'`{status.get(str(self.user.status), str(self.user.status))}` {emojis.get(str(self.user.status))}',
                 _("Device")+':': f'`{_("📱 Smartphone") if self.user.is_on_mobile() else _("🖥️ Computer")}`'
             }
-            for x, y in (yinformation).items():
-                emoji = (emoji1 if x == list(yinformation.keys())[-1] else emoji3) if not self.banner else ''
+            for i, (x, y) in enumerate(yinformation.items(), 1):
+                emoji = (emoji1 if i == len(yinformation.keys()) else emoji3) if not self.banner else ''
                 list_.append(f'{emoji} **{x}**  {y}')
             embed.insert_field_at(index=0, name=_("Server Related"),  inline=True,value="\n".join(list_))
 

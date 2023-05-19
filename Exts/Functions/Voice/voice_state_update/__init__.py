@@ -20,7 +20,7 @@ class on_voice_state_update(Cog):
         if member.bot: 
             return
         
-        test = any(x.id in list(self.bot.tests.keys()) for x in (getattr(before, 'channel', None), getattr(after, 'channel', None), member.guild) if x is not None)
+        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [getattr(before, 'channel', None), getattr(after, 'channel', None), member.guild] if x is not None)
 
         if test:
             try:

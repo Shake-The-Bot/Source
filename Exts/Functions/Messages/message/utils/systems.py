@@ -4,7 +4,7 @@ from discord import Message, TextChannel, Member, PartialEmoji
 from Classes import i18n
 from Classes.i18n import _
 from Classes import ShakeBot, ShakeEmbed
-from typing import Dict
+from typing import Dict, List
 from asyncpg import Pool, Record
 ########
 #
@@ -83,7 +83,7 @@ class aboveme():
             self.do['delete_message'] = True
             return True
         
-        if (self.message.content in (record.get('phrases', None) or [])):
+        if self.message.content in record.get('phrases', []):
             embed = ShakeEmbed(description = _("{emoji} Your message should be something new").format(
                 emoji='<a:nananaa:1038185829631266981>',
             ))
@@ -93,7 +93,7 @@ class aboveme():
             return True
 
         async with db.acquire():
-            phrases: list = record.get('phrases', None) or []
+            phrases: List = record.get('phrases', None) or []
             if len(phrases) >= 10:
                 phrases.pop(-1); phrases.insert(0, self.message.content)
             await db.execute(
@@ -182,7 +182,7 @@ class oneword():
             self.do['delete_message'] = True
             return True
 
-        # if (self.message.content in ('.', '!', '?')) and bool(record.get('words', None) or {}):
+        # if (self.message.content in ['.', '!', '?']) and bool(record.get('words', None) or {}):
         #     embed = ShakeEmbed(description = _("**You've finally finished the sentence {emoji} Congratulations**").format(
         #         emoji='<a:tadaa:1038228851173625876>'
         #     ))
