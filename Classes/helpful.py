@@ -531,13 +531,15 @@ class BotBase(AutoShardedBot):
         await error(bot=self, event=event).__await__()
 
     async def close(self) -> None:
-        for pool in self.cache['pools'].values():
+        pools: Dict[int, Pool] = self.cache['pools']
+        for pool in pools.values():
             try:
                 await pool.release()
             except:
                 pass
             finally:
-                await pool.close()
+                if not pool._closed:
+                    await pool.close()
         await super().close()
 
     @staticmethod

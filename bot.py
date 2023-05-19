@@ -71,10 +71,13 @@ class ShakeBot(BotBase):
 
 
     async def close(self) -> None:
-        await super().close()
-        if self.session:
-            await self.session.close()
+        print()
         self.log.info('Bot is shutting down')
+        await self.reddit.reddit.close()
+        self.scheduler.shutdown()
+        if self.session and not self.session.closed:
+            await self.session.close()
+        await super().close()
 
 
     async def dump(self, content: str, lang: Optional[str] = 'txt'):
@@ -125,7 +128,8 @@ class ShakeBot(BotBase):
                     await table.create(item=str(_id), verbose=False, run_migrations=False)
             except exceptions.UniqueViolationError:
                 pass
-            await connection.close()
+            if not connection.is_closed():
+                await connection.close()
             return self.cache['pools'][_id]
 #
 ############
