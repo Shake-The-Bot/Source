@@ -17,7 +17,7 @@ from random import random, choice, randrange
 from Classes.tomls.configuration import Config
 from dateutil.relativedelta import relativedelta
 
-from typing import (Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check)
+from typing import (Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check, Callable)
 from discord.ext.commands.errors import (ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionNotFound)
 
 if TYPE_CHECKING:
@@ -191,78 +191,34 @@ def safechoice(seq):
 
 
 """     Text     """
+def string(text: str, *format: str, front: Optional[Union[str, bool]] = None, end: Optional[Union[str, bool]] = None, iterate: bool = True):
+    front = '' if front is False else ''.join(front) if not iterate and front else ''.join(format)
+    end = '' if end is False else ''.join(end) if not iterate and end else ''.join(reversed(format))
+    return f"{front}{str(text)}{end}"
 
-
-class Formats(Enum):
-    italics = ('_')
-    bold = ('**')
-    bolditalics = ('***')
-    underline = ('__')
-    underlinebold = ('__', '**')
-    underlinebolditalics = ('__', '***')
-    strikethrough = ('~~')
-    codeblock = ('`')
-    mlcb = ('```')
-    blockquotes = ('>')
-    mlbq = ('>>>')
-    spoiler = ('||')
-
+class FormatTypes(Enum):
+    italics: Callable[[str], str] = lambda t: string(t, '_')
+    bold: Callable[[str], str] = lambda t: string(t, '**') 
+    bolditalics: Callable[[str], str] = lambda t: string(t, '***')
+    underline: Callable[[str], str] = lambda t: string(t, '__')
+    underlinebold: Callable[[str], str] = lambda t: string(t, '__', '**')
+    underlinebolditalics: Callable[[str], str] = lambda t: string(t, '__', '***')
+    strikethrough: Callable[[str], str] = lambda t: string(t, '~~')
+    codeblock: Callable[[str], str] = lambda t: string(t, '`')
+    multicodeblock: Callable[[str], str] = lambda t, f=None: string(t, front='```'+f if f else '', end='````', iterate=False)
+    blockquotes: Callable[[str], str] = lambda t: string(t, '> ', end=False)
+    hyperlink: Callable[[str, str], str] = lambda t, l: '['+str(t)+']' + '('+str(l)+')'
+    multiblockquotes: Callable[[str], str] = lambda t: string(t, '>>> ', end=False)
+    big: Callable[[str], str] = lambda t: string(t, '# ', end=False)
+    small: Callable[[str], str] = lambda t: string(t, '## ', end=False)
+    tiny: Callable[[str], str] = lambda t: string(t, '### ', end=False)
+    spoiler: Callable[[str], str] = lambda t: string(t, '||')
+    list: Callable[[str, int], str] = lambda t, indent=1: string(t, (' '*indent*2)+'-', end=False)  
 
 class TextFormat:
     @staticmethod
-    def final(text: str, *format: str, front: bool = True, end: bool = True):
-        front = ''.join(format) if front else ''
-        end = ''.join(reversed(format)) if end else ''
-        return f"{front}{str(text)}{end}"
-
-    @staticmethod
-    def italics(t: str):
-        return TextFormat.final(t, '_')
-
-    @staticmethod
-    def bold(t: str):
-        return TextFormat.final(t, '**', )
-
-    @staticmethod
-    def bolditalics(t: str):
-        return TextFormat.final(t, '***')
-    
-    @staticmethod
-    def underline(t: str):
-        return TextFormat.final(t, '__')
-
-    @staticmethod
-    def underlinebold(t: str):
-        return TextFormat.final(t, '__', '**')
-
-    @staticmethod
-    def underlinebolditalics(t: str):
-        return TextFormat.final(t, '__', '***')
-
-    @staticmethod
-    def strikethrough(t: str):
-        return TextFormat.final(t, '~~')
-
-    @staticmethod
-    def codeblock(t: str):
-        return TextFormat.final(t, '`')
-
-    @staticmethod
-    def mlcb(t: str):
-        return TextFormat.final(t, '```')
-
-    @staticmethod
-    def blockquotes(t: str):
-        return TextFormat.final(t, '> ', end=False)
-
-    @staticmethod
-    def mlbq(t: str):
-        return TextFormat.final(t, '>>> ', end=False)
-
-    @staticmethod
-    def spoiler(t: str):
-        return TextFormat.final(t, '||')
-
+    def format(text: str, type: FormatTypes, *args, **kwargs):
+        return type(t=text, *args, **kwargs)
 
 def human_join(seq: Sequence[str], delimiter: str = ', ', final: Literal['or', 'and'] = 'and', joke: bool = False) -> str:
     if joke:
@@ -460,10 +416,10 @@ async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Met
         try:
             await function(ctx.bot, extension)
 
-        except (ExtensionNotLoaded,) as error:
+        except ExtensionNotLoaded as error:
             if method is method.reload:
-                handle = await handle(method.load, extension)
-                return handle
+                func = await handle(method.load, extension)
+                return func
             if method is method.unload:
                 return None
             return error
@@ -498,4 +454,4 @@ async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Met
 
     embed.description=f"**{len(extensions) - failures} / {len(extensions)} extensions successfully {method.name.lower()}ed.**"
 
-    return embed
+    return 

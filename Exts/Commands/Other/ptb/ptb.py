@@ -1,6 +1,7 @@
 #############
 #
 from Classes import ShakeBot, ShakeContext, MISSING, ShakeEmbed, _
+from discord import Guild
 from discord.ext.commands.errors import GuildNotFound, UserNotFound, ChannelNotFound
 from discord.ext.commands.converter import TextChannelConverter, GuildConverter, UserConverter
 ########
@@ -41,7 +42,7 @@ class command():
         
         else:
             current = (guild or channel or user)
-            name = getattr(current, 'mention', current.name)
+            name = getattr(current, 'mention', _("Server") if isinstance(current, Guild) else current.name)
             if current.id in set(self.bot.cache['testing'].keys()):
                 del self.bot.cache['testing'][current.id]
                 description=_("{name} is __removed__ from the public test build").format(name=name)

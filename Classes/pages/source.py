@@ -112,7 +112,7 @@ class ListPageSource(menus.ListPageSource):
         title = self.title + (details if self.description else '')
         description = self.description if self.description else '**'+details+'**'
         embed = ShakeEmbed(colour=self.bot.config.embed.colour, title=title, description=description)
-        for item in [items.items() if isinstance(items, dict) else items]:
+        for item in items:
             self.add_field(embed, item)
         return embed, file
 

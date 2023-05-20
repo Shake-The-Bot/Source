@@ -5,7 +5,7 @@ from importlib import reload
 from . import timeout, testing
 from typing import Optional
 from discord.ext.commands import Greedy, hybrid_command, has_permissions, Cog, guild_only, bot_has_permissions
-from Classes import ShakeContext, ShakeBot, Testing, _, locale_doc, setlocale, DurationDelta
+from Classes import ShakeContext, ShakeBot, Testing, _, locale_doc, setlocale, DurationDelta, extras
 ########
 #
 class timeout_extension(Cog):
@@ -25,6 +25,7 @@ class timeout_extension(Cog):
 
     @hybrid_command(name="timeout", aliases=["mute"])
     @guild_only()
+    @extras(permissions=True)
     @has_permissions(moderate_members=True)
     @bot_has_permissions(moderate_members=True)
     @setlocale(guild=True)

@@ -1,38 +1,37 @@
 ############
 #
 from discord import (
-    Guild, ContentFilter, File, Interaction, Member, User,
-    PartialEmoji, Role, Asset, Emoji, Colour, PublicUserFlags,
-    CategoryChannel, VoiceChannel, StageChannel, ForumChannel, TextChannel, Thread
+    Guild, File, Interaction, Member, User,
+    PartialEmoji, Role, Asset, Colour, PublicUserFlags,
+    VoiceChannel, StageChannel, ForumChannel, TextChannel, Thread
 )
 from Classes.i18n import _
-from discord.enums import Status
-from discord.activity import ActivityTypes, ActivityType
+from discord.activity import ActivityTypes
 from inspect import cleandoc
-from typing import Literal, Any, Optional, Tuple, Union, List, Dict
+from typing import Literal, Any, Optional, Tuple, Union, List, Dict, get_args
 from discord.ext import menus
 from Classes.pages import (
     CategoricalMenu, CategoricalSelect, AnyPageSource, 
     FrontPageSource, ListPageSource, ItemPageSource
 )
-from collections import Counter
-from discord.utils import format_dt, maybe_coroutine
+from discord.utils import format_dt
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
-from Classes.useful import MISSING, human_join, TextFormat
-code = TextFormat.codeblock
-mlcode = TextFormat.mlcb
-bold = TextFormat.bold
-quotes = TextFormat.blockquotes
+from Classes.useful import MISSING, TextFormat, FormatTypes
+
+c = lambda t: TextFormat.format(t, type=FormatTypes.codeblock)
+multic = lambda t, f: TextFormat.format(t, f, type=FormatTypes.multicodeblock)
+b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
+hl = lambda t: TextFormat.format(t, type=FormatTypes.hyperlink)
+q = lambda t: TextFormat.format(t, type=FormatTypes.blockquotes)
+mq = lambda t: TextFormat.format(t, type=FormatTypes.multiblockquotes)
 ########
 #
-ValidStaticFormatTypes = Literal['webp', 'jpeg', 'jpg', 'png']
-ValidAssetFormatTypes = Literal['webp', 'jpeg', 'jpg', 'png', 'gif']
+ValidStaticFormatTypes = Literal['png', 'jpg', 'jpeg', 'webp']
+ValidAssetFormatTypes = Literal['gif', 'png', 'jpg', 'jpeg', 'webp']
 VocalGuildChannel = Union[VoiceChannel, StageChannel]
 GuildChannel = Union[VocalGuildChannel, ForumChannel, TextChannel, Thread]
 ctx_tick = lambda bot: (str(bot.emojis.cross), str(bot.emojis.hook))
-#tick = ('<:off:1037036665241337858>', '<:on:1037036660455649290>')
-tick = ('<:tickno1:1107414761148268626><:tickno2:1107414763010523166>', '<:tickyes1:1107414757662793739><:tickyes2:1107414753535594566>')
-#tick = ('<:no1:1107408310082220093><:no2:1107408307599200266>', '<:yes1:1107408701511450645><:yes2:1107408703759581224>')
+tick = ('<:tickno1:1107414761148268626><:tickno2:1107414763010523166>', '<:tickyes1:1109463235909914694><:tickyes2:1109463231291990086>')
 ########
 #
 
@@ -44,17 +43,6 @@ class command():
         self.member: Optional[Member] = member
         self.fallback: Optional[Member] = fallback
 
-    def channelinfo(self,) -> Dict[str, str]:
-        xinformation = {
-            _("Name")+':': f"`{self.user}`",
-            _("#tag")+':': f"`{self.user.discriminator}`",
-            _("ID")+':': f"`{self.user.id}`",
-            _("Bot")+'?': f"`{_('Yes') if self.user.bot else _('No')}` {'<:on:1037036660455649290>' if self.user.bot else '<:off:1037036665241337858>'} ",
-            _("Created")+':': f"<t:{int(self.user.created_at.timestamp())}:R>",
-            _("Guilds")+':': f"`{(len(self.user.mutual_guilds)) if not self.user == self.bot.user else _('All')} Shared`",
-            _("Discord-System")+'?': f"`{_('Yes') if self.user.system else _('No')}` {'<:on:1037036660455649290>' if self.user.system else '<:off:1037036665241337858>'}"
-        }
-        return xinformation
     
     async def __await__(self):
         select = CategoricalSelect(self.ctx, source=UserItems)
@@ -116,10 +104,10 @@ class RolesSource(ListPageSource):
             name = '@'+(role.name[0:15]+'[...]' if to_long else role.name)
             is_member: bool = menu.ctx.author in self.guild.members
             infos = {
-                'ID:': f'{code(role.id)}', 
+                'ID:': f'{c(role.id)}', 
                 _("Created")+':': str(format_dt(role.created_at, 'f')), 
                 _("Mention")+':': role.mention if is_member else '@'+role.name,
-                _("Colour")+':': code(str(role.colour)) if not role.colour == Colour.default() else _("Default")
+                _("Colour")+':': c(str(role.colour)) if not role.colour == Colour.default() else _("Default")
             }
             text = '\n'.join(f'**{key}** {value}' for key, value in infos.items())
             embed.add_field(name=f'` {i}. ` ' + name, value=text, inline=True)
@@ -141,25 +129,17 @@ class AssetsSource(ListPageSource):
         super().__init__(ctx, items=list(x for x in self.from_dict.keys() if x), title=MISSING, label=_("Avatar/Banner"), paginating=True, per_page=1, *args, **kwargs)
 
     def format_page(self, menu: Menu, items: Asset, **kwargs: Any) -> ShakeEmbed:
-        embed = ShakeEmbed(title=self.from_dict[items])
+        listed = []
+        formattypes = list(get_args(ValidAssetFormatTypes if items.is_animated() else ValidStaticFormatTypes))
+        for formattype in formattypes:
+            listed.append(hl(str(formattype).upper(), items.replace(size=1024, format=f'{formattype}').url))
+        avatars = _("Open link: {links}").format(links=', '.join(listed))
+
+        embed = ShakeEmbed(title=self.from_dict[items], description=avatars if bool(avatars) else None)
         embed.set_image(url=items.url)
         embed.set_footer(text=_('Page {page} of {pages}').format(page=menu.page + 1, pages=self.maximum))
         return embed
 
-
-class PremiumSource(ListPageSource):
-    guild: Guild
-    def __init__(self, ctx: Union[ShakeContext, Interaction], guild: Guild, *args, **kwargs):
-        self.guild: Guild = guild
-        subscriber: List[Member] = set(guild.premium_subscribers)
-        super().__init__(ctx, items=subscriber, title=MISSING, label=_("Nitro Booster"), paginating=True, per_page=25, *args, **kwargs)
-
-    def format_page(self, menu: Menu, items: List[Member], **kwargs: Any) -> ShakeEmbed:
-        description = ', '.join([m.mention if self.ctx.author in self.guild.members else str(m) for m in items]) or ''
-        embed = ShakeEmbed(title=_("Server Nitro Booster"), description=description)
-
-        embed.set_footer(text=_('Page {page} of {pages} (Total of {items} Booster)').format(page=menu.page + 1, pages=self.maximum, items=len(self.entries)))
-        return embed
 
 
 class PositionSource(ItemPageSource):
@@ -177,10 +157,10 @@ class PositionSource(ItemPageSource):
         
         embed.add_field(
             name=_("Member's position").format(member=self.member.name), 
-            value=quotes(bold('#'+str(sum(m.joined_at < self.member.joined_at for m in self.guild.members)+1) +' / '+ str(len(self.guild.members))))
+            value=q(b('#'+str(sum(m.joined_at < self.member.joined_at for m in self.guild.members)+1) +' / '+ str(len(self.guild.members))))
         )
         embed.add_field(
-            name=_("Joined on"), value=quotes(bold(format_dt(self.member.joined_at, style="F"))),
+            name=_("Joined on"), value=q(b(format_dt(self.member.joined_at, style="F"))),
         )
 
         index = self.item.index(self.member)
@@ -189,11 +169,11 @@ class PositionSource(ItemPageSource):
         upper = min(len(self.item) - 1, index + 6)+1
         selected: List[Member] = self.item[lower:upper]
 
-        embed.add_field(name='\u200b', value='```py\n' + '\n'.join([
+        embed.add_field(name='\u200b', value=multic('\n'.join([
             ('\n@ {pos}. {member}    ({date})\n' if member == self.member else '> {pos}. {member}    ({date})').format(
                 member=str(member), pos=sum(m.joined_at < member.joined_at for m in self.guild.members)+1, date=member.joined_at.strftime('%d-%m-%Y')
             ) for member in selected
-        ]) + '\n```', inline=False)
+        ]), 'py'), inline=False)
 
 
         embed.set_footer(text=_('Total of {items} Members').format(items=len(self.guild.members)))
@@ -223,41 +203,8 @@ class BadgesSource(ItemPageSource):
 
         return embed
 
-translator = {
-    'online': _("online"),
-    'offline': _("offline"),
-    'streaming': _("streaming"),
-    'idle': _("idle"),
-    'dnd': _("dnd")
-}
 
-class ActivitieSource(ItemPageSource):
-    user: Member
-    def __init__(self, ctx: Union[ShakeContext, Interaction], user: Member, *args, **kwargs):
-        self.user: Member = user
-        super().__init__(ctx, item=user.activities, title=MISSING, label=_("Activities"), paginating=True, per_page=10, *args, **kwargs)
 
-    def format_page(self, menu: Menu, item: Tuple[ActivityTypes, ...], **kwargs: Any) -> ShakeEmbed:
-        embed = ShakeEmbed(title=_("User Activities"))
-        prefix = str(PartialEmoji(name='dot', id=1093146860182568961)) + ''
-        for activity in item:
-            index = self.item[activity]
-            i = self.item.index(activity) + 1
-            _type = translator.get(str(type.name), str(type.name))
-            
-            to_long = len(str(activity.name)) > 31
-
-            _name = activity.name[0:28]+'[...]' if to_long else activity.name
-            _name = f'„{_name}“'.lower() if type.value == 4 else _name
-
-            embed.add_field(
-                name=prefix + _("Top {index} Activity ({type})").format(_='`',index='`'+str(i)+'`', type=_type),
-                value='**({}):** '.format(index) + _name
-            )
-            if (item.index((type, activity.name)) + 1)%2==0:
-                embed.add_field(name=f'\u200b', value='\u200b', inline=True)
-        embed.set_footer(text=_('Page {page} of {pages}').format(page=menu.page + 1, pages=self.maximum))
-        return embed
 
 features = Union[RolesSource, BadgesSource, AssetsSource, PositionSource]
 
@@ -292,35 +239,82 @@ class Front(FrontPageSource):
         recovery = 'https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png'
         embed.set_thumbnail(url=getattr(user.avatar, 'url', recovery))
 
-        #embed.add_field(name=_("Joined Discord"), value=quotes(format_dt(user.created_at, style="F")))
-        embed.add_field(name=_("Bot"), value=quotes(tick[user.bot]))
-        embed.add_field(name=_("Discord System"), value=quotes(tick[user.system]))
-        embed.add_field(name=_("Member"), value=quotes(tick[bool(member)]))
+        #embed.add_field(name=_("Joined Discord"), value=q(format_dt(user.created_at, style="F")))
+        embed.add_field(name=_("Bot"), value=q(tick[user.bot]))
+        embed.add_field(name=_("Discord System"), value=q(tick[user.system]))
+        embed.add_field(name=_("Member"), value=q(tick[bool(member)]))
 
         if m := member or fallback:
             embed.description = ('„'+m.activities[0].name+'“' if bool(m.activities) and m.activities[0].type == m.status.value == 4 else None)
 
             emojis = menu.bot.emojis.status
-            statuses = {'online': str(emojis.online), 'invisible': str(emojis.offline), 'offline': str(emojis.offline), 'idle': str(emojis.idle), 'dnd': str(emojis.dnd)}
-            embed.add_field(name=_("Status"), value=quotes(bold(translator.get(m.status.value).capitalize())) +' '+statuses.get(m.status.value))
+            emoji = {'online': str(emojis.online), 'invisible': str(emojis.offline), 'offline': str(emojis.offline), 'idle': str(emojis.idle), 'dnd': str(emojis.dnd)}.get(m.status.value)
+            status = {'online': _("online"), 'offline': _("offline"), 'streaming': _("streaming"), 'idle': _("idle"), 'dnd': _("dnd")}.get(m.status.value).capitalize()
+            embed.add_field(name=_("Status"), value=q(b(status)) +' '+ emoji)
             if member:
-                embed.add_field(name=_("Top Role"), value=quotes(member.top_role.mention))
-                embed.add_field(name=_("Server Owner"), value=quotes(tick[member == member.guild.owner]))
+                embed.add_field(name=_("Top Role"), value=q(member.top_role.mention))
+                embed.add_field(name=_("Server Owner"), value=q(tick[member == member.guild.owner]))
 
         flags: set[PublicUserFlags] = set([flag for flag, has in user.public_flags if has])
         
         if user.display_avatar.is_animated() or user.banner:
             flags.add('subscriber')
-        badges = [str(menu.bot.get_emoji_local('badges', badge)) for badge in flags]
+        badges = [str(menu.bot.get_emoji_local('badges', badge)) for badge in flags] or [tick[False]]
 
         more: Dict[str, str] = {
-            (_("#Tag"), ':'): code(user.discriminator),
-            (_("ID"), ':'): code(user.id),
-            (_("Shared Servers"), ':'): code(len(user.mutual_guilds) if hasattr(user, 'mutual_guilds') else _('None')),
+            (_("#Tag"), ':'): c(user.discriminator),
+            (_("ID"), ':'): c(user.id),
+            (_("Created"), ':'): str(format_dt(user.created_at, 'R')),
+            (_("Shared Servers"), ':'): c(len(user.mutual_guilds) if hasattr(user, 'mutual_guilds') else _('None')),
             (_("Badges"), ':'): ' '.join(badges),
         }
 
-        embed.add_field(name=_("More Information"), value='\n'.join(f'{bold(k+s)} {bold(v)}' for (k, s), v in more.items()), inline=False)
-        embed.set_image(url=getattr(user.banner, 'url', None))
-
+        embed.add_field(name=_("More Information"), value=mq('\n'.join(b(str(k)+str(s) +' '+ str(v)) for (k, s), v in more.items())), inline=False)
+        
+        if banner := getattr(user, 'banner', None): 
+            embed.set_image(url=banner.url)
+        else: 
+            embed.add_field(name='\u200b', value=q(menu.bot.config.embed.footer), inline=False)
         return embed, None
+
+class ActivitieSource(ItemPageSource):
+    user: Member
+    def __init__(self, ctx: Union[ShakeContext, Interaction], user: Member, *args, **kwargs):
+        self.user: Member = user
+        super().__init__(ctx, item=user.activities, title=MISSING, label=_("Activities"), paginating=True, per_page=10, *args, **kwargs)
+
+    def format_page(self, menu: Menu, item: Tuple[ActivityTypes, ...], **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("User Activities"))
+        prefix = str(PartialEmoji(name='dot', id=1093146860182568961)) + ''
+        for activity in item:
+            index = self.item[activity]
+            i = self.item.index(activity) + 1
+            _type = {'online': _("online"), 'offline': _("offline"), 'streaming': _("streaming"), 'idle': _("idle"), 'dnd': _("dnd")}.get(str(type.name), str(type.name))
+            
+            to_long = len(str(activity.name)) > 31
+
+            _name = activity.name[0:28]+'[...]' if to_long else activity.name
+            _name = f'„{_name}“'.lower() if type.value == 4 else _name
+
+            embed.add_field(
+                name=prefix + _("Top {index} Activity ({type})").format(_='`',index='`'+str(i)+'`', type=_type),
+                value='**({}):** '.format(index) + _name
+            )
+            if (item.index((type, activity.name)) + 1)%2==0:
+                embed.add_field(name=f'\u200b', value='\u200b', inline=True)
+        embed.set_footer(text=_('Page {page} of {pages}').format(page=menu.page + 1, pages=self.maximum))
+        return embed
+
+class PremiumSource(ListPageSource):
+    guild: Guild
+    def __init__(self, ctx: Union[ShakeContext, Interaction], guild: Guild, *args, **kwargs):
+        self.guild: Guild = guild
+        subscriber: List[Member] = set(guild.premium_subscribers)
+        super().__init__(ctx, items=subscriber, title=MISSING, label=_("Nitro Booster"), paginating=True, per_page=25, *args, **kwargs)
+
+    def format_page(self, menu: Menu, items: List[Member], **kwargs: Any) -> ShakeEmbed:
+        description = ', '.join([m.mention if self.ctx.author in self.guild.members else str(m) for m in items]) or ''
+        embed = ShakeEmbed(title=_("Server Nitro Booster"), description=description)
+
+        embed.set_footer(text=_('Page {page} of {pages} (Total of {items} Booster)').format(page=menu.page + 1, pages=self.maximum, items=len(self.entries)))
+        return embed

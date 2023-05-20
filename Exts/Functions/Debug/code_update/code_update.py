@@ -45,8 +45,18 @@ class Handler(FileSystemEventHandler):
         pass
 
     def on_modified(self, event: Union[DirModifiedEvent, FileModifiedEvent]):
-        if self.interval(event, seconds=5):
+        if self.interval(event, seconds=10):
             self.bot.loop.create_task(self.modified(event))
+
+    def utils(self, path: str):
+        cases = set([
+            not 'Classes' in path, 
+            path.endswith('.tmp'),
+            not path.endswith('.py'),
+        ])
+        if any(x for x in cases):
+            return False
+        return True
 
     def testing(self, path: str):
         cases = set([
@@ -62,7 +72,7 @@ class Handler(FileSystemEventHandler):
             return False
         return True
     
-    def active(self, source: str):
+    def is_active_test(self, source: str):
         parts = str(source).split('/')[1:]
         name, category = (parts[-2], parts[1:3])
 
@@ -86,40 +96,39 @@ class Handler(FileSystemEventHandler):
         if not isinstance(event, FileModifiedEvent):
             return
 
-        if not self.testing(event.src_path):
-            return
+        if self.testing(event.src_path):
+            ctx, reloadable = self.is_active_test(event.src_path)
+            if any(_ is None for _ in [ctx, reloadable]):
+                return
 
-        ctx, reloadable = self.active(event.src_path)
-        if any(x is None for x in [ctx, reloadable]):
-            return
+            message = f'`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`'
+    
+            sent = await ctx.channel.send(content=message)
 
-
-        message = f'`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`'
-        if reloadable in self.history:
-            sent: Message = self.history[reloadable]
-            await sent.edit(content=message)
-        else:
-            sent = self.history[reloadable] = await ctx.channel.send(content=message)
-
-        content = None
-        try:
+            content = None
             try:
-                await self.bot.reload_extension(reloadable)
-            except ExtensionNotLoaded:
-                await self.bot.load_extension(reloadable)
-            except:
-                content = f'`[Watchdog]` Unknown extension {reloadable}'
+                try:
+                    await self.bot.reload_extension(reloadable)
+                except ExtensionNotLoaded:
+                    await self.bot.load_extension(reloadable)
+                except:
+                    content = f'`[Watchdog]` Unknown extension {reloadable}'
+                
+            except Exception as ex:
+                content=f'`[Watchdog]` Reloading `{reloadable}` failed: {ex}'
+            else:
+                content=f'`[Watchdog]` `{reloadable}` reloaded.'
             
-        except Exception as ex:
-            content=f'`[Watchdog]` Reloading `{reloadable}` failed: {ex}'
-        else:
-            content=f'`[Watchdog]` `{reloadable}` reloaded.'
-        
-        if not content is None:
-            await sent.edit(content=content)
+            if not content is None:
+                await sent.edit(content=content)
 
-        # elif 'Classes' in reloadable:
-        #     if reloadable in modules:
-        #         reload(modules[reloadable])
-        #     else:
-        #         __import__(reloadable)
+        elif self.utils(event.src_path):
+            parts = str(event.src_path).split('/')[1:]
+            reloadable = '.'.join(parts[parts.index('Classes'):]).removesuffix('.py')  
+
+            if reloadable in modules.keys():
+                reload(modules[reloadable])
+            else:
+                __import__(reloadable)
+        else:
+            return

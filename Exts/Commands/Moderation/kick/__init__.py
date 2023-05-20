@@ -3,7 +3,7 @@
 from discord import PartialEmoji, Member
 from importlib import reload
 from . import kick, testing
-from Classes import ShakeBot, _, locale_doc, setlocale, Testing, ShakeContext
+from Classes import ShakeBot, _, locale_doc, setlocale, Testing, ShakeContext, extras
 from typing import Optional
 from discord.ext.commands import Greedy, Cog, hybrid_command, has_permissions, bot_has_permissions, guild_only
 ########
@@ -25,6 +25,7 @@ class kick_extension(Cog):
 
     @hybrid_command(name="kick")
     @guild_only()
+    @extras(permissions=True)
     @has_permissions(kick_members=True)
     @bot_has_permissions(kick_members=True)
     @setlocale(guild=True)

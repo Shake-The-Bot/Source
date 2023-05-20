@@ -18,10 +18,12 @@ from Classes.pages import (
 from collections import Counter
 from discord.utils import format_dt, maybe_coroutine
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
-from Classes.useful import MISSING, human_join, TextFormat
-code = TextFormat.codeblock
-mlcode = TextFormat.mlcb
-bold = TextFormat.bold
+from Classes.useful import MISSING, human_join, TextFormat, FormatTypes
+c = lambda t: TextFormat.format(t, type=FormatTypes.codeblock)
+multic = lambda t: TextFormat.format(t, type=FormatTypes.multicodeblock)
+b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
+q = lambda t: TextFormat.format(t, type=FormatTypes.blockquotes)
+mq = lambda t: TextFormat.format(t, type=FormatTypes.multiblockquotes)
 ########
 #
 ValidStaticFormatTypes = Literal['webp', 'jpeg', 'jpg', 'png']
@@ -100,10 +102,10 @@ class RolesSource(ListPageSource):
             name = '@'+(role.name[0:15]+'[...]' if to_long else role.name)
             member = menu.ctx.author in self.guild.members
             infos = {
-                'ID:': f'{code(role.id)}', 
+                'ID:': f'{c(role.id)}', 
                 _("Created")+':': str(format_dt(role.created_at, 'f')), 
                 _("Mention")+':': role.mention if member else '@'+role.name,
-                _("Colour")+':': code(str(role.colour)) if not role.colour == Colour.default() else _("Default")
+                _("Colour")+':': c(str(role.colour)) if not role.colour == Colour.default() else _("Default")
             }
             text = '\n'.join(f'**{key}** {value}' for key, value in infos.items())
             embed.add_field(name=f'` {i}. ` ' + name, value=text, inline=True)
@@ -117,11 +119,8 @@ class AssetsSource(ListPageSource):
     guild: Guild
     def __init__(self, ctx: Union[ShakeContext, Interaction], guild: Guild, *args, **kwargs):
         self.guild: Guild = guild
-        self.from_dict: dict[Asset, str] = {
-            guild.icon: _("Server's Icon"), guild.banner: _("Server's Banner"), 
-            guild.splash: _("Server's Invite Splash"), guild.discovery_splash: _("Server's Discovery Splash")
-        }
-        super().__init__(ctx, items=list(x for x in self.from_dict.keys() if x), title=MISSING, label=_("Avatar/Banner"), paginating=True, per_page=1, *args, **kwargs)
+        assets = list(x for x in [guild.icon, guild.banner, guild.splash, guild.discovery_splash] if x)
+        super().__init__(ctx, items=assets, title=MISSING, label=_("Avatar/Banner"), paginating=True, per_page=1, *args, **kwargs)
 
     def format_page(self, menu: Menu, items: Asset,  **kwargs: Any) -> ShakeEmbed:
         embed = ShakeEmbed(title=_("Server Asset"))
@@ -143,7 +142,7 @@ class EmojisSource(ListPageSource):
             i = self.items.index(emoji)+1
             ii = items.index(emoji)+1
             infos = {
-                'ID:': f'{code(emoji.id)}', 
+                'ID:': f'{c(emoji.id)}', 
                 _("Created")+':': str(format_dt(emoji.created_at, 'f')), 
                 _("Twitch")+'?': _("Yes") if emoji.managed else _("No"),
                 _("Added")+':': emoji.user.mention if emoji.user in self.guild.members else emoji.user
@@ -189,7 +188,7 @@ class ChannelsSource(ListPageSource):
         )
 
         description = _("{categories} Categorie-, {voices} Voice-, {stages} Stage-, {forums} Forum- and {texts} Textchannel with {threads} Threads").format(
-            categories=bold(categories), voices=bold(voices), stages=bold(stages), forums=bold(forums), texts=bold(texts), threads=bold(threads)
+            categories=b(categories), voices=b(voices), stages=b(stages), forums=b(forums), texts=b(texts), threads=b(threads)
         )
         embed = ShakeEmbed(title=_("Server Channels"), description=description)
 
@@ -224,25 +223,25 @@ class MembersSource(ItemPageSource):
         human = PartialEmoji(name='\N{BUST IN SILHOUETTE}')
         bot = PartialEmoji(name='\N{ROBOT FACE}')
         infos = {
-                str(member) +' '+ _("Total Members"): mlcode(len(members)), 
-                str(human) +' '+ _("Total Humans"): mlcode(len([m for m in members if not m.bot])), 
-                str(bot) +' '+ _("Total Bots"): mlcode(len([m for m in members if m.bot])), 
+                str(member) +' '+ _("Total Members"): multic(len(members)), 
+                str(human) +' '+ _("Total Humans"): multic(len([m for m in members if not m.bot])), 
+                str(bot) +' '+ _("Total Bots"): multic(len([m for m in members if m.bot])), 
                 
-                str(emojis.online) +' '+ _("Total Online"): mlcode(len([m for m in members if m.status == Status.online])), 
-                str(emojis.online) +' '+ _("Humans Online"): mlcode(len([m for m in members if not m.bot and m.status == Status.online])), 
-                str(emojis.online) +' '+ _("Bots Online"): mlcode(len([m for m in members if m.bot and m.status == Status.online])), 
+                str(emojis.online) +' '+ _("Total Online"): multic(len([m for m in members if m.status == Status.online])), 
+                str(emojis.online) +' '+ _("Humans Online"): multic(len([m for m in members if not m.bot and m.status == Status.online])), 
+                str(emojis.online) +' '+ _("Bots Online"): multic(len([m for m in members if m.bot and m.status == Status.online])), 
                 
-                str(emojis.idle) +' '+ _("Total Idle"): mlcode(len([m for m in members if m.status == Status.idle])), 
-                str(emojis.idle) +' '+ _("Humans Idle"): mlcode(len([m for m in members if not m.bot and m.status == Status.idle])), 
-                str(emojis.idle) +' '+ _("Bots Idle"): mlcode(len([m for m in members if m.bot and m.status == Status.idle])), 
+                str(emojis.idle) +' '+ _("Total Idle"): multic(len([m for m in members if m.status == Status.idle])), 
+                str(emojis.idle) +' '+ _("Humans Idle"): multic(len([m for m in members if not m.bot and m.status == Status.idle])), 
+                str(emojis.idle) +' '+ _("Bots Idle"): multic(len([m for m in members if m.bot and m.status == Status.idle])), 
                 
-                str(emojis.dnd) +' '+ _("Total DND"): mlcode(len([m for m in members if m.status == Status.dnd])), 
-                str(emojis.dnd) +' '+ _("Humans DND"): mlcode(len([m for m in members if not m.bot and m.status == Status.dnd])), 
-                str(emojis.dnd) +' '+ _("Bots DND"): mlcode(len([m for m in members if m.bot and m.status == Status.dnd])), 
+                str(emojis.dnd) +' '+ _("Total DND"): multic(len([m for m in members if m.status == Status.dnd])), 
+                str(emojis.dnd) +' '+ _("Humans DND"): multic(len([m for m in members if not m.bot and m.status == Status.dnd])), 
+                str(emojis.dnd) +' '+ _("Bots DND"): multic(len([m for m in members if m.bot and m.status == Status.dnd])), 
                 
-                str(emojis.offline) +' '+ _("Total Offline"): mlcode(len([m for m in members if m.status == Status.offline])), 
-                str(emojis.offline) +' '+ _("Humans Offline"): mlcode(len([m for m in members if not m.bot and m.status == Status.offline])), 
-                str(emojis.offline) +' '+ _("Bots Offline"): mlcode(len([m for m in members if m.bot and m.status == Status.offline])), 
+                str(emojis.offline) +' '+ _("Total Offline"): multic(len([m for m in members if m.status == Status.offline])), 
+                str(emojis.offline) +' '+ _("Humans Offline"): multic(len([m for m in members if not m.bot and m.status == Status.offline])), 
+                str(emojis.offline) +' '+ _("Bots Offline"): multic(len([m for m in members if m.bot and m.status == Status.offline])), 
             }
         for name, value in infos.items():
             embed.add_field(name=name, value=value)
@@ -325,10 +324,10 @@ class Front(FrontPageSource):
         embed.set_thumbnail(url=getattr(menu.guild.icon, 'url', recovery))
 
 
-        embed.add_field(name=_("Created"), value=str(format_dt(guild.created_at, style="F")))
+        embed.add_field(name=_("Created"), value=q(format_dt(guild.created_at, style="F")))
         region = Counter((channel.rtc_region if not channel.rtc_region is None else 'en-US'  for channel in guild.voice_channels+guild.stage_channels)).most_common(1)
         result = region[0][0] if bool(region) else 'en-US'
-        embed.add_field(name=_("Region"), value=str(result))
+        embed.add_field(name=_("Region"), value=q(result))
 
         embed.add_field(name='\u200b', value='\u200b')
 
@@ -336,12 +335,12 @@ class Front(FrontPageSource):
         status = Counter(str(member.status) for member in guild.members)
         emojis = menu.bot.emojis.status
         statuses = '︱'.join([
-            str(emojis.online) + code(status['online']), str(emojis.idle) + code(status['idle']),
-            str(emojis.dnd) + code(status['dnd']), str(emojis.offline) + code(status['offline'])
+            str(emojis.online) + c(status['online']), str(emojis.idle) + c(status['idle']),
+            str(emojis.dnd) + c(status['dnd']), str(emojis.offline) + c(status['offline'])
         ])
         embed.add_field(
             name=_("Members"), 
-            value=f'__**{len(set(m for m in guild.members if not m.bot))}**__ (+{bots} {_("Bots")})\n{statuses}', inline=False
+            value=mq(f'__**{len(set(m for m in guild.members if not m.bot))}**__ (+{bots} {_("Bots")})\n{statuses}'), inline=False
             )
 
         more: Dict[str, str] = {
@@ -354,7 +353,7 @@ class Front(FrontPageSource):
         }
 
 
-        embed.add_field(name=_("More Information"), value='\n'.join(f'**{k}:** **{v}**' for k, v in more.items()), inline=False)
+        embed.add_field(name=_("More Information"), value=mq('\n'.join(f'**{k}:** **{v}**' for k, v in more.items())), inline=False)
         embed.set_image(url=getattr(guild.banner, 'url', None))
 
 

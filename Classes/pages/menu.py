@@ -83,11 +83,14 @@ class CategoricalMenu(page.Pages):
         self.kwargs, self.file = await self._get_from_page(page_source)
         
         if interaction or self.message:
-            if not interaction or not isinstance(interaction, Interaction) or interaction.response.is_done():
-                if self.message:
-                    await self.message.edit(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
-            else:
-                await interaction.response.edit_message(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
+            try:
+                if not interaction or not isinstance(interaction, Interaction) or interaction.response.is_done():
+                    if self.message:
+                        await self.message.edit(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
+                else:
+                    await interaction.response.edit_message(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
+            except:
+                pass
 
 
     def add_categories(self, categories: Dict[Union[Group, Any], Union[List[Item], Sources]]) -> None:

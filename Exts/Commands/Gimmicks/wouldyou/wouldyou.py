@@ -1,12 +1,12 @@
 ############
 #
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
-from Classes.useful import TextFormat
+from Classes.useful import TextFormat, FormatTypes
 from random import sample, choice
 from typing import Optional, Literal
 from discord import Colour, ui, PartialEmoji, ButtonStyle, Interaction
 from .utils.wouldyous import useful, useless
-bold = TextFormat.bold
+b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
 ########
 #
 class command():
@@ -82,7 +82,7 @@ class VoteView(ui.View):
             emoji = (self.bot.emojis.hook if self.stats == True else self.bot.emojis.cross) if not self.tie else self.bot.emojis.slash
             self.embed.insert_field_at(
                 name="Results", inline=False, index=1, value=value.format(
-                    procent=bold(procent), total=bold(self.total), yes=bold(len(self.yes)), no=bold(len(self.no)), key=self.key, emoji=emoji
+                    procent=b(procent), total=b(self.total), yes=b(len(self.yes)), no=b(len(self.no)), key=self.key, emoji=emoji
             )   )
             self.embed.colour = (Colour.red() if self.stats == False else Colour.green()) if not self.tie else Colour.light_gray()
             await self.message.edit(embed=self.embed, view=None)
@@ -156,7 +156,7 @@ class RatherView(ui.View):
                 value=(
                 ("{emoji} {users} of {total} user(s) ({procent}) would take {key} nr. {power}") 
                 if self.total != 0 else ("{emoji} No one would take any {key}?")).format(
-                    procent=bold(self.procent+'%'), users=bold(self.users), emoji=emoji, power=self.power, total=bold(self.total), key=self.key
+                    procent=b(self.procent+'%'), users=b(self.users), emoji=emoji, power=self.power, total=b(self.total), key=self.key
                 )
             )
             self.embed.colour = Colour.og_blurple() if self.total != 0 else Colour.light_gray()

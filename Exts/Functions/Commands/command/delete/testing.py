@@ -1,7 +1,7 @@
 ############
 #
 from __future__ import annotations
-from typing import Optional, Callable, TYPE_CHECKING, Literal, List
+from typing import Optional, Callable, TYPE_CHECKING, Literal, Union
 from discord import Message, RawBulkMessageDeleteEvent, RawBulkMessageDeleteEvent, utils
 from Classes import ShakeContext
 
@@ -11,14 +11,14 @@ if TYPE_CHECKING:
 #
 
 def message_getter(message_id: int) -> Callable[[ShakeContext], Optional[Message]]:
-    def inner(context: ShakeContext) -> Optional[Message]: return context.get(message_id)
+    def inner(context: ShakeContext) -> Optional[Message]: 
+        if isinstance(context, ShakeContext):
+            return context.get(message_id)
     return inner
 
 
 def is_message_older_context(bot: ShakeBot, message_id: int) -> bool:
-    context: List[ShakeContext] = bot.cache['context']
-    if not context: 
-        return False
+    if not (context := bot.cache['context']): return False
     return message_id < context[0].message.id
 
 class Event():

@@ -13,7 +13,7 @@ class command():
 
 
     async def __await__(self): 
-        guilds = sorted(self.bot.guilds, key=lambda g: len(g.members))
+        guilds = sorted(self.bot.guilds, key=lambda g: len(g.members), reverse=True)
         menu = ListMenu(
             ctx=self.ctx, source=PageSource(
                 ctx=self.ctx, items=guilds, current=self.ctx.guild, title=_("Current Guilds"),
@@ -24,8 +24,6 @@ class command():
         )
         await menu.setup()
         await menu.send(ephemeral=True)
-
-
 
 
 class PageSource(ListPageSource):

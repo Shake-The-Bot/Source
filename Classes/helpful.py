@@ -256,8 +256,9 @@ class ShakeContext(Context):
         return self.bot.session
 
 
-    async def __await__(self, callback: Callable[..., Awaitable[Message]], /, **kwargs: Any) -> Message:
-        if self.reinvoked and self.messages:
+    async def __await__(self, callback: Callable[..., Awaitable[Message]], /, forced: Optional[bool] = False, **kwargs: Any) -> Message:
+
+        if self.reinvoked and self.messages and not forced:
             message: Optional[Message] = utils.find(
                 lambda m: not getattr(m, "to_delete", False),
                 reversed(self.messages.values()),
@@ -305,10 +306,11 @@ class ShakeContext(Context):
         suppress_embeds: bool = False,
         ephemeral: bool = False,
         silent: bool = False,
+        forced: Optional[bool] = False, 
     ) -> Message:
         try:
             message = await self.__await__(super().send, 
-                content=content, tts=tts, embed=embed, embeds=embeds, file=file,
+                content=content, tts=tts, embed=embed, embeds=embeds, file=file, forced=forced,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
                 nonce=nonce, allowed_mentions=allowed_mentions, reference=reference or self.reference(),
                 mention_author=mention_author, suppress_embeds=suppress_embeds, view=view, silent=silent
@@ -326,11 +328,12 @@ class ShakeContext(Context):
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = None,
-        suppress_embeds: bool = False, view: Optional[View] = None, ephemeral: bool = False
+        suppress_embeds: bool = False, view: Optional[View] = None, ephemeral: bool = False,
+        forced: Optional[bool] = False, 
     ) -> Message:
         try:
             message = await self.__await__(super().reply,
-                content=content, tts=tts, embed=embed, embeds=embeds, file=file,
+                content=content, tts=tts, embed=embed, embeds=embeds, file=file, forced=forced,
                 files=files, stickers=stickers, delete_after=delete_after, ephemeral=ephemeral,
                 nonce=nonce, allowed_mentions=allowed_mentions, view=view, 
                 mention_author=mention_author, suppress_embeds=suppress_embeds
@@ -348,12 +351,13 @@ class ShakeContext(Context):
         stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
         delete_after: Optional[float] = None, nonce: Optional[Union[str, int]] = None,
         allowed_mentions: Optional[AllowedMentions] = None, mention_author: Optional[bool] = False,
-        suppress_embeds: bool = False, view: Optional[View] = None, ephemeral: bool = False
+        suppress_embeds: bool = False, view: Optional[View] = None, ephemeral: bool = False,
+        forced: Optional[bool] = False, 
     ) -> Message:
         kwargs = {
             'content': content, 'embed': embed, 'embeds': embeds, 'file': file, 'suppress_embeds': suppress_embeds, 
             'stickers': stickers, 'delete_after': delete_after, 'ephemeral': ephemeral, 'nonce': nonce, 'files': files, 
-            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts
+            'allowed_mentions': allowed_mentions, 'view': view, 'mention_author': mention_author, 'tts': tts, 'forced': forced,
         }
         if ref := self.message.reference:
             kwargs['reference'] = ref

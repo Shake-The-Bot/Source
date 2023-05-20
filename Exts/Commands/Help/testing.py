@@ -266,7 +266,7 @@ def configurations(bot: ShakeBot):
             'suffix': bot.emojis.help.shakeplus, 
             'text': _('Start a Shake+ subscription to run this command')
         }, 
-        'permission': {
+        'permissions': {
             'suffix': bot.emojis.help.permissions, 
             'text': _('This command requires certain rights from the user to be executed')
         },
