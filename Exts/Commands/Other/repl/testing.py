@@ -5,7 +5,12 @@ from textwrap import indent
 from time import time
 from typing import Any
 from discord import HTTPException, Forbidden
+from discord.utils import maybe_coroutine
 from hmac import new
+from inspect import isawaitable
+from re import escape, sub, I
+from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT
+from types import FunctionType
 from base64 import b64encode
 from contextlib import redirect_stdout, suppress
 from Classes import ShakeBot, ShakeContext, MISSING
@@ -38,6 +43,15 @@ def stdoutable(code: str, output: bool = False):
         s += line + '\n'
     return s
 
+
+def safe_output(ctx: ShakeContext, input_: str) -> str:
+    """Hides the bot's token from a string."""
+    token = ctx.bot.http.token
+    return sub(escape(token), random_token(ctx.author.id), input_, I)
+
+def async_compile(source, filename, mode):
+    return compile(source, filename, mode, flags=PyCF_ALLOW_TOP_LEVEL_AWAIT, optimize=0)
+
 def cleanup(content: str) -> str:
     """Automatically removes code blocks from the code."""
     starts = ('py', 'js')
@@ -50,13 +64,37 @@ def cleanup(content: str) -> str:
     content = content.strip('`').strip()
     return content
 
+async def maybe_await(coro):
+    for i in range(2):
+        if isawaitable(coro):
+            coro = await coro
+        else:
+            return coro
+    return coro
+
+def get_syntax_error(e):
+    """Format a syntax error to send to the user.
+
+    Returns a string representation of the error formatted as a codeblock.
+    """
+    if e.text is None:
+        return "{0.__class__.__name__}: {0}".format(e)
+    return "{0.text}\n{1:>{0.offset}}\n{2}: {0}".format(e, "^", type(e).__name__)
+    
+
 class command():
     def __init__(self, ctx, code: str, env, last):
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
         self.code = code
         self.last: Any = last
-        self.env = env
+        self.env: dict[str, Any] = env
+        self.env.update({
+            'self': self, 'bot': self.bot, 'ctx': self.ctx,
+            'guild': self.ctx.guild, 'message': self.ctx.message, 'channel': self.ctx.channel,
+            'author': self.ctx.message.author, "__last__": self.env,
+            '_': self.last
+        })
 
 
     async def __await__(self):
@@ -71,73 +109,73 @@ class command():
             buf = BytesIO()
             await atch.save(buf, seek_begin=True, use_cached=False)
             self.code = buf.read().decode()
+
+        cleaned = cleanup(self.code)
             
-        if self.code == 'exit()':
+        if cleaned in ['exit()', 'quit', 'exit']:
             self.env.clear()
             return await self.ctx.smart_reply('eval geleert')
-
         
-        self.env.update({
-            'self': self, 'bot': self.bot, 'ctx': self.ctx,
-            'guild': self.ctx.guild, 'message': self.ctx.message, 'channel': self.ctx.message.channel,
-            'guild': self.ctx.message.guild, 'author': self.ctx.message.author, "__last__": self.env,
-            '_': self.last
-        })
-
         
-        content = cleanup(self.code)
-        code = """
+        executor = None
+        await self.ctx.send('`'+cleaned+'`')
+        if cleaned.count("\n") == 0:
+            try:
+                code = async_compile(cleaned, "<repl session>", "eval")
+            except SyntaxError:
+                raise
+            else:
+                executor = eval
+        
+        formed = """
 async def func():
     try:
 {}
     finally:
         self.env.update(locals())
-""".format(indent(content, ' ' * 8)).strip()
-        stdouted = stdoutable(content)
-        stdout = StringIO()
-        try:
-            with redirect_stdout(stdout):
-                exec(code, self.env)
-        except Exception as e:
-            await self.ctx.smart_reply(f"```py\n{e.__class__.__name__}: {e}\n```")
-            return
+""".format(indent(cleaned, ' '*8)).strip()
 
-        token = random_token(self.bot.user.id)
+        if executor is None:
+            try:
+                code = async_compile(formed, "<repl session>", "exec")
+            except SyntaxError as e:
+                await self.ctx.send(await get_syntax_error(e))
+                return
+        
+        # self.env["_"] = 
+        
+        #stdouted = stdoutable(cleaned)
+        stdout = StringIO()
+        msg = ""
         
         start = time() * 1000
         try:
-            
             with redirect_stdout(stdout):
-                func = self.env['func']
-                ret = await func()
-        except Exception as err:
-            with suppress(Forbidden, HTTPException):
-                await self.ctx.message.add_reaction(self.bot.emojis.cross)
-            await self.ctx.smart_reply(f"```py\n{stdouted}\n{err.__class__.__name__}: {err}\n```") #format_exc()
-            return
+                with redirect_stdout(stdout):
+                    if executor is None:
+                        result = FunctionType(code, self.env)()
+                    else:
+                        result = executor(code, self.env)
+                    result = await maybe_await(result)
+        except:
+            value = stdout.getvalue()
+            msg = "{}{}".format(value, format_exc())
+        else:
+            value = stdout.getvalue()
+            if result is not None:
+                msg = "{}{}".format(value, result)
+                self.env['_'] = result
+            elif value:
+                msg = "{}".format (value)
         finally:
             end = time() * 1000
             completed = end - start
 
-            value = stdout.getvalue()
-            value = value.replace(self.bot.http.token, token)
-
-        if ret is not None:
-            if not isinstance(ret, str): 
-                ret = str(repr(ret))
-            ret = stdoutable(ret, True)
-            ret = '\n'+ret+'\n'.replace(self.bot.http.token, token)
-
-        with suppress(Forbidden, HTTPException):
-            await self.ctx.message.add_reaction(self.bot.emojis.hook)
-        
-        final = f"{stdouted}\n{value}{ret if ret else ''}\n# {completed:.3f}ms".replace('`', '′').replace(self.bot.http.token, token).replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
+        final = safe_output(self.ctx, str(msg))
+        final += f'\n\n# {completed:.3f}ms'
 
         try:
             await self.ctx.smart_reply(f'```py\n{final}```')
         except HTTPException:
             paste = await self.bot.dump(final)
             await self.ctx.smart_reply(f'Repl Ergebnisse: <{paste}>')
-
-        if ret:
-            return ret

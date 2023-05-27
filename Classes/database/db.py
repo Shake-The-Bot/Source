@@ -6,8 +6,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 from collections import OrderedDict
 from pathlib import Path
-import json
-from Classes.tomls.configuration import Config
+from json import dumps, loads, dump, load
 import pydoc
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Type, Union
 import uuid
@@ -15,10 +14,10 @@ import datetime
 import inspect
 import decimal
 import asyncpg
-import logging
 import asyncio
 
-log = logging.getLogger(__name__)
+__all__ = ('Table', '_kwargs', 'create_tables')
+
 _kwargs = {'command_timeout': 60, 'max_size': 1, 'min_size':1}
 
 if TYPE_CHECKING:
@@ -534,10 +533,10 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
         """
 
         def _encode_jsonb(value):
-            return json.dumps(value)
+            return dumps(value)
 
         def _decode_jsonb(value):
-            return json.loads(value)
+            return loads(value)
 
         old_init = kwargs.pop('init', None)
 
@@ -587,7 +586,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             raise RuntimeError('Could not find current data file.')
 
         with current.open() as fp:
-            current_table = cls.from_dict(json.load(fp))
+            current_table = cls.from_dict(load(fp))
 
         diff = cls().diff(current_table)
 
@@ -597,7 +596,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
         # load the migration data
         with p.open('r', encoding='utf-8') as fp:
-            data = json.load(fp)
+            data = load(fp)
             migrations = data['migrations']
 
         # check if we should add it
@@ -607,7 +606,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             migrations.append(our_migrations)
             temp_file = p.with_name('%s-%s.tmp' % (uuid.uuid4(), p.name))
             with temp_file.open('w', encoding='utf-8') as tmp:
-                json.dump(data, tmp, ensure_ascii=True, indent=4)
+                dump(data, tmp, ensure_ascii=True, indent=4)
 
             temp_file.replace(p)
             return True
@@ -638,7 +637,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             raise RuntimeError('Could not find migration file.')
 
         with p.open('r', encoding='utf-8') as fp:
-            data = json.load(fp)
+            data = load(fp)
             migrations = data['migrations']
 
         try:
@@ -658,7 +657,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
         current = directory.with_name('current-' + p.name)
         with current.open('w', encoding='utf-8') as fp:
-            json.dump(cls.to_dict(), fp, indent=4, ensure_ascii=True)
+            dump(cls.to_dict(), fp, indent=4, ensure_ascii=True)
 
     @classmethod
     async def create(cls, item, *, directory='Migrations', verbose=False, connection=None, run_migrations=True):
@@ -704,10 +703,10 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             # since that step passed, let's go ahead and make the migration
             with p.open('w', encoding='utf-8') as fp:
                 data = {'table': table_data, 'migrations': []}
-                json.dump(data, fp, indent=4, ensure_ascii=True)
+                dump(data, fp, indent=4, ensure_ascii=True)
 
             with current.open('w', encoding='utf-8') as fp:
-                json.dump(table_data, fp, indent=4, ensure_ascii=True)
+                dump(table_data, fp, indent=4, ensure_ascii=True)
 
             return True
 
@@ -715,7 +714,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             return None
 
         with current.open() as fp:
-            current_table = cls.from_dict(json.load(fp))
+            current_table = cls.from_dict(load(fp))
 
         diff = cls().diff(current_table)
 
@@ -732,7 +731,7 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
 
         # load the migration data
         with p.open('r', encoding='utf-8') as fp:
-            data = json.load(fp)
+            data = load(fp)
             migrations = data['Migrations']
 
         # check if we should add it
@@ -742,13 +741,13 @@ class Table(metaclass=TableMeta):  # type: ignore  # Pyright Bug I think
             migrations.append(our_migrations)
             temp_file = p.with_name('%s-%s.tmp' % (uuid.uuid4(), p.name))
             with temp_file.open('w', encoding='utf-8') as tmp:
-                json.dump(data, tmp, ensure_ascii=True, indent=4)
+                dump(data, tmp, ensure_ascii=True, indent=4)
 
             temp_file.replace(p)
 
         # update our "current" data in the filesystem
         with current.open('w', encoding='utf-8') as fp:
-            json.dump(table_data, fp, indent=4, ensure_ascii=True)
+            dump(table_data, fp, indent=4, ensure_ascii=True)
 
         return False
 
@@ -1033,7 +1032,7 @@ async def _table_creator(tables, *, verbose=True):
         try:
             await table.create(verbose=verbose)
         except:
-            log.error('Failed to create table %s.', table.__tablename__)
+            print('Failed to create table %s.', table.__tablename__)
 
 
 def create_tables(*tables, verbose=True, loop=None):
@@ -1042,12 +1041,12 @@ def create_tables(*tables, verbose=True, loop=None):
 
     loop.create_task(_table_creator(tables, verbose=verbose))
 
-async def _create_pool(config: Config) -> asyncpg.Pool:
+async def _create_pool(config) -> asyncpg.Pool:
     def _encode_jsonb(value):
-        return json.dumps(value)
+        return dumps(value)
 
     def _decode_jsonb(value):
-        return json.loads(value)
+        return loads(value)
 
     async def init(con):
         await con.set_type_codec('jsonb', schema='pg_catalog', encoder=_encode_jsonb, decoder=_decode_jsonb, format='text',)

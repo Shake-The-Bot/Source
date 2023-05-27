@@ -2,46 +2,36 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
-from . import dispatch, testing
-from typing import Optional
-from discord.ext.commands import Cog, command, guild_only, is_owner
+from . import restart, testing
+from Classes import ShakeContext, ShakeBot, extras, _, locale_doc, setlocale, Testing
+from discord.ext.commands import guild_only, is_owner, Cog, command
 ########
 #
-class dispatch_extension(Cog):
+class restart_extension(Cog):
     def __init__(self, bot: ShakeBot) -> None: 
         self.bot: ShakeBot = bot
         try:
-            reload(dispatch)
+            reload(restart)
         except:
             pass
 
     @property
     def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{PISTOL}')
+        return PartialEmoji(name='\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}')
     
     def category(self) -> str: 
         return "other"
     
-    @command(name="dispatch")
+    @command(name="restart")
     @extras(owner=True)
     @guild_only()
     @is_owner()
     @setlocale()
     @locale_doc
-    async def dispatch(self, ctx: ShakeContext, event: Optional[str], kwargs):
+    async def restart(self, ctx: ShakeContext):
         _(
-            """Send an event
-
-            Parameters
-            -----------
-            event: Optional[str]
-                the name of the event
-
-            kwargs: Any
-                event keyword arguments"""
+            """Stops and starts the bot like in a regular Restart"""
         )
-
         if ctx.testing:
             try:
                 reload(testing)
@@ -50,18 +40,19 @@ class dispatch_extension(Cog):
                     name=testing.__file__, type=e.__class__.__name__
                 ))
                 ctx.testing = False
-        do = testing if ctx.testing else dispatch
 
-        try:    
-            await do.command(ctx, event, kwargs).__await__()
+        do = testing if ctx.testing else restart
+
+        try:
+            await do.command(ctx=ctx).__await__()
     
         except:
             if ctx.testing:
                 raise Testing
             raise
-
+            
 
 async def setup(bot: ShakeBot): 
-    await bot.add_cog(dispatch_extension(bot))
+    await bot.add_cog(restart_extension(bot))
 #
 ############

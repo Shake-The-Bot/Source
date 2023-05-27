@@ -1,50 +1,51 @@
 from __future__ import annotations
-from importlib import import_module
-from Classes.database.db import Table
-from discord.player import AudioPlayer
-from Classes.tomls.configuration import Config
+
 from Classes.exceptions import ChannelNotFound
+from Classes.useful import source_lines, MISSING, TimedDict
+from Classes.i18n import _, Locale
+from Classes.tomls import Emojis, Config
+from Classes.database import Table
+
+from importlib import import_module
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from logging import getLogger, Logger
 from asyncpg import Pool, connect, UndefinedTableError
 from Exts.Functions.Debug.error import error
-from discord.abc import T
-from Classes.useful import MISSING, TimedDict
 from aiohttp import ClientSession
-from Classes.tomls.emojis import Emojis
 from asyncio import TimeoutError
 from traceback import print_exc as pexc
 from contextlib import suppress
 from inspect import signature
 from datetime import datetime
 from collections import deque
-from logging import getLogger
-from discord.ui import View
-from Classes.i18n import _
-from random import random
-config = Config('config.toml')
-emojis = Emojis('Assets/utils/emojis.toml')
-
-from discord.ext.commands import (
-    Context, AutoShardedBot, VoiceChannelConverter, Command, CommandNotFound, 
-    CheckFailure, Context, CommandError, ChannelNotFound as _ChannelNotFound
-)
 
 from typing import (
     TYPE_CHECKING, Any, Awaitable, Callable, Tuple,
     Dict, Optional, Union, Sequence, Iterable
 )
+
+from discord.ui import View
+from discord.abc import T
+from discord.player import AudioPlayer
+from discord.ext.commands import (
+    Context, AutoShardedBot, VoiceChannelConverter, Command, CommandNotFound, 
+    CheckFailure, Context, CommandError, ChannelNotFound as _ChannelNotFound)
 from discord import ( 
     HTTPException, AllowedMentions, Message, VoiceChannel, Message, AppInfo,
     User, Interaction, ClientException, FFmpegPCMAudio, ClientUser, utils, 
     Forbidden, File, GuildSticker, StickerItem, PartialMessage, TextChannel, 
-    Thread, DMChannel, MessageReference, Embed, Colour, utils
+    Thread, DMChannel, MessageReference, Embed, Colour, utils)
+############
+#
+
+__all__ = (
+    'BotBase', 'ShakeContext', 'ShakeEmbed', 'Migration'
 )
-embed_colour = config.embed.colour
-embed_error_colour = config.embed.error_colour
+
 
 if TYPE_CHECKING:
     from bot import ShakeBot
 _kwargs = {'command_timeout': 60, 'max_size': 2, 'min_size': 1}
-logger = getLogger(__name__)
 ########
 #
 
@@ -64,6 +65,8 @@ class Migration():
             self.name = '[' + i + ']' if is_config or is_bot else '[guild] ' + i
 
     def __init__(self, item: dbitem) -> None:
+        from Classes import config
+        self.config = config
         self.item: Migration.dbitem = item
         self.__database_uri = config.database.postgresql + item.id
         self.is_config = item.name == 'config'
@@ -84,7 +87,7 @@ class Migration():
 
 
     async def ensure_uri_can_run(self) -> bool:
-        connection = await connect(config.database.postgresql)
+        connection = await connect(self.config.database.postgresql)
         await connection.close()
         return True
 
@@ -96,10 +99,10 @@ class Migration():
     async def get_table(self):
         await self.ensure_uri_can_run()
         try:
-            pool = await Table.create_pool(config.database.postgresql + self.item.id, **_kwargs)
+            pool = await Table.create_pool(self.config.database.postgresql + self.item.id, **_kwargs)
         except:
             await self.init()
-            pool = await Table.create_pool(config.database.postgresql + self.item.id, **_kwargs)
+            pool = await Table.create_pool(self.config.database.postgresql + self.item.id, **_kwargs)
         return pool
 
 
@@ -107,17 +110,17 @@ class Migration():
         await self.ensure_uri_can_run()
         import_module(self.import_module())
         try:
-            connection = await connect(config.database.postgresql)
+            connection = await connect(self.config.database.postgresql)
             await connection.execute(f'CREATE DATABASE "{self.item.id}" OWNER "postgres"')
 
             try: 
-                pool = await Table.create_pool(config.database.postgresql + str(self.item.id), **_kwargs)
+                pool = await Table.create_pool(self.config.database.postgresql + str(self.item.id), **_kwargs)
 
             except Exception:
                 return pexc()
 
         except:
-            pool = await Table.create_pool(config.database.postgresql + self.item.id, **_kwargs)
+            pool = await Table.create_pool(self.config.database.postgresql + self.item.id, **_kwargs)
 
         for table in Table.all_tables():
             try: 
@@ -205,8 +208,7 @@ class Migration():
 """     Custom Context (Inherits from discord.ext.commands.Context)
 
 For this function, I learned from two other programmers who inspired me on this.
-https://github.com/Rapptz/RoboDanny & https://github.com/InterStella0/stella_bot
-"""
+https://github.com/Rapptz/RoboDanny & https://github.com/InterStella0/stella_bot"""
 
 class ShakeContext(Context):
     channel: Union[VoiceChannel, TextChannel, Thread, DMChannel]
@@ -404,26 +406,34 @@ class ShakeContext(Context):
         return self.messages.pop(message_id, None)
 
 
+"""     Custom Bot (Inherits from discord.ext.commands.AutoSharedBot)
+"""
+
 class BotBase(AutoShardedBot):
 
     user: ClientUser
+    boot: datetime
+    pool: Pool
+    log: Logger
+    config_pool: Pool
     gateway_handler: Any
     cache = dict()
     session: ClientSession
     bot_app_info: AppInfo
     _config: Config
     _emojis: Emojis
-
     
     def __init__(self, **options):
+        from Classes import config, emojis
         owner_ids = options.pop("owner_ids")
         self.shake_id, *_ = owner_ids
-        owner_ids=set(owner_ids)
-        self.cache.setdefault('pools', {})
+        self.cache.setdefault('pools', dict())
+        self.cache.setdefault('locales', dict())
+        self.cache.setdefault('testing', {1092397505800568834: None})
         self.cache.setdefault('context', deque(maxlen=100))
         self.cache.setdefault('tests', TimedDict(60*5))
+        self.cache.setdefault('cached_posts', dict())
         super().__init__(**options)
-        self.cached_posts: Dict[int, deque(maxlen=1000)] = dict()
         self._session = None
         self._config = config
         self._emojis = emojis
@@ -517,9 +527,21 @@ class BotBase(AutoShardedBot):
     async def get_context(self, message: Message, *, cls: Optional[Context] = ShakeContext) -> Union[ShakeContext, Context]:
         context = await super().get_context(message, cls=cls)
         return context
+
+    async def load_extensions(self):
+        for extension in self.config.client.extensions:
+            try: 
+                await self.load_extension(extension)
+            except ModuleNotFoundError as e:
+                self.log.critical("Extension \"{}\" couldn\'t be loaded: {}".format(extension, e))
+            except ImportError as e:
+                self.log.critical("Extension \"{}\" couldn\'t be loaded {}".format(extension, e))
+            except:
+                await self.on_error('load_extensions')
     
 
     async def process_commands(self, message: Message) -> None:
+        await self.wait_until_ready()
         if message.author.bot:
             return
         if not message.guild:
@@ -530,6 +552,11 @@ class BotBase(AutoShardedBot):
     
     async def setup_hook(self):
         self._session = ClientSession()
+        self.locale: Locale = Locale(self)
+        self.lines: int = source_lines()
+        self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
+        self.loop.create_task(self.load_extensions())
+        self.scheduler.start()
     
     async def on_error(self, event, *args, **kwargs):
         await error(bot=self, event=event).__await__()
@@ -546,15 +573,24 @@ class BotBase(AutoShardedBot):
                     await pool.close()
         await super().close()
 
+    async def on_shard_ready(self, shard_id):
+        self.log.info("Shard ID {id} is ready".format(id=shard_id))
+
+    async def on_shard_connect(self, shard_id):
+        # logger.info("Shard ID {id} has successfully CONNECTED to Discord.".format(id=shard_id))
+        pass
+
     @staticmethod
-    async def on_shard_connect(shard_id):
-        getLogger(__name__).info("Shard ID {id} has successfully CONNECTED to Discord.".format(id=shard_id))
+    async def on_shard_resumed(shard_id):
+        #logger.info("Shard ID {id} has successfully RESUMED Connection to Discord.".format(id=shard_id))
+        pass
 
     @staticmethod
     async def on_shard_disconnect(shard_id):
-        getLogger(__name__).info("Shard ID {id} has LOST Connection to Discord.".format(id=shard_id))
+        #logger.info("Shard ID {id} has LOST Connection to Discord.".format(id=shard_id))
+        pass
     
-    async def open(self, token: str,) -> None:
+    async def open(self, token: str) -> None:
         try: 
             await super().start(token, reconnect=True)
         except Exception as error:
@@ -563,9 +599,11 @@ class BotBase(AutoShardedBot):
 
 class ShakeEmbed(Embed):
     """"""
-    def __init__(self, colour: Union[Colour, int] = embed_colour, timestamp: Optional[datetime] = MISSING,
+
+    def __init__(self, colour: Union[Colour, int] = MISSING, timestamp: Optional[datetime] = MISSING,
                  fields: Iterable[Tuple[str, str]] = (), field_inline: bool = False, **kwargs: Any):
-        super().__init__(colour=colour, timestamp=timestamp if not timestamp is MISSING else utils.utcnow(), **kwargs)
+        from Classes import config
+        super().__init__(colour=colour or config.embed.colour, timestamp=timestamp if not timestamp is MISSING else utils.utcnow(), **kwargs)
         for n, v in fields:
             self.add_field(name=n, value=v, inline=field_inline)
 
@@ -580,16 +618,19 @@ class ShakeEmbed(Embed):
         return instance
     
     @classmethod
-    def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = 0x08af77, **kwargs: Any) -> ShakeEmbed:
+    def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Optional[Union[Colour, int]] = None, **kwargs: Any) -> ShakeEmbed:
+        from Classes import config
         bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
-        instance = cls(colour=colour, **kwargs)
+        instance = cls(colour=colour or config.embed.colour, **kwargs)
         instance.timestamp = None
         return instance
 
     @classmethod
-    def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Union[Colour, int] = 0xe80505, **kwargs: Any) -> ShakeEmbed:
+    def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Optional[Union[Colour, int]] = MISSING, **kwargs: Any) -> ShakeEmbed:
+        from Classes import config
+        colour = colour or config.embed.error_colour
         bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.cross} {bot.emojis.prefix} **{description}**"

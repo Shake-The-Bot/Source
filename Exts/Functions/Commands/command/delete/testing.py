@@ -31,15 +31,18 @@ class Event():
         if self.event == 'remove_context_messages':
             for message_id in self.payload.message_ids:
                 if is_message_older_context(self.bot, message_id): continue
-                if ctx := utils.find(message_getter(message_id), self.bot.cache['context']): ctx.remove_message(message_id)
+                context: Optional[ShakeContext] = utils.find(message_getter(message_id), self.bot.cache['context'])
+                if context: 
+                    context.pop(message_id)
 
         elif self.event == 'remove_context_message':
             target = self.payload.message_id
-            if ctx := utils.find(message_getter(target), self.bot.cache['context']):
-                ctx.remove_message(target)
+            context: Optional[ShakeContext] = utils.find(message_getter(target), self.bot.cache['context'])
+            if context:
+                context.pop(target)
         
         elif self.event == 'on_command_delete':
-            context = utils.get(self.bot.cache['context'], message__id=self.payload.message_id)
+            context: ShakeContext = utils.get(self.bot.cache['context'], message__id=self.payload.message_id)
             await context.delete_all()
 
 #

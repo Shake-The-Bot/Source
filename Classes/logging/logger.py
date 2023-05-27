@@ -1,7 +1,9 @@
 import logging
-from Classes.logging.filters import NoCommands
+from typing import Optional
 
-
+__all__ = (
+    'Formatter', 'handler'
+)
 
 class Formatter(logging.Formatter):
     """
@@ -34,36 +36,35 @@ class Formatter(logging.Formatter):
         self.filehandler: bool = filehandler
 
     def format(self, record: logging.LogRecord):
-        if "bot" in record.name:
-            record.name = "discord.shake"
+        if record.name == 'root':
+            record.name == '\x1b[35msource.shake'
         elif record.name.startswith("Exts."):
             packages = record.name.split('.')
             record.name = packages[2] + '.' + packages[-2]
         formatter = (
             (
-                logging.Formatter(
-                    "[{asctime}] [{levelname:<8}] {name:<21}: {message}",
-                    "%Y-%m-%d - %H:%M:%S",
-                    style="{"
+                # logging.Formatter(
+                #     "[{asctime}] [{levelname:<8}] {name:<21}: {message}",
+                #     "%Y-%m-%d - %H:%M:%S",
+                #     style="{"
                 
-                ) if self.commandhandler else (
+                # ) if self.commandhandler else (
                 
                 logging.Formatter(
                     "[{asctime}] [{levelname:<8}] {name:<21}: {message} [{filename}:{lineno}]",
                     "%Y-%m-%d - %H:%M:%S",
-                    style="{"))
+                    style="{")
             )
-            if self.filehandler
-            else self.FORMATS.get(record.levelno) or self.FORMATS[logging.DEBUG]
+            
+            if self.filehandler else 
+                self.FORMATS.get(record.levelno) or self.FORMATS[logging.DEBUG]
         )
         if record.exc_info:
             text = formatter.formatException(record.exc_info)
             record.exc_text = f"\x1b[31m{text}\x1b[0m "
         output = formatter.format(record)
         output = output.replace(
-            "\x1b[35mdiscord.shake", "\x1b[33mdiscord.shake"
-        ).replace(
-            "\x1b[35mGateway.ready", "\x1b[33mdiscord.shake"
+            "\x1b[35msource.shake", "\x1b[33msource.shake"
         )
         if self.filehandler:
             for x in [
@@ -75,20 +76,16 @@ class Formatter(logging.Formatter):
         record.exc_text = None
         return output
 
-        
-formatter = Formatter()
-stream = logging.StreamHandler()
-stream.setLevel(logging.INFO)
-stream.setFormatter(formatter)
-stream.addFilter(NoCommands())
-
-def command_handler():
-    file_handler_ = logging.FileHandler(filename=f"./Classes/logging/latest/commands.log", encoding="utf-8", mode="w")
-    file_handler_.setFormatter(Formatter(filehandler=True, commandhandler=True))
-    return file_handler_
-
-def file_handler():
-    file_handler_ = logging.FileHandler(filename=f"./Classes/logging/latest/shake.log", encoding="utf-8", mode="w")
-    file_handler_.addFilter(NoCommands())
-    file_handler_.setFormatter(Formatter(filehandler=True))
-    return file_handler_
+def handler(file: Optional[bool] = False, stream: Optional[bool] = False, filepath: Optional[str] = ''):
+    stream_handler = file_handler = None
+    if file:
+        if not filepath:
+            raise AttributeError('For a FileHandler the `filepath` argument needs to be passed')
+        file_handler = logging.FileHandler(filename=filepath, encoding="utf-8", mode="w")
+        file_handler.setFormatter(Formatter(filehandler=True))
+    
+    if stream:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(Formatter())
+    return file_handler, stream_handler

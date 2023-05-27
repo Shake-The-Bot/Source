@@ -5,7 +5,7 @@ from importlib import reload
 from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
 from typing import Optional
 from . import leave, testing
-from discord.ext.commands import hybrid_command, guild_only, is_owner, Cog
+from discord.ext.commands import command, guild_only, is_owner, Cog
 ########
 #
 class leave_extension(Cog):
@@ -23,7 +23,7 @@ class leave_extension(Cog):
     def category(self) -> str: 
         return "other"
     
-    @hybrid_command(name='leave')
+    @command(name='leave')
     @extras(owner=True)
     @guild_only()
     @is_owner()

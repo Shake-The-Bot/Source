@@ -266,7 +266,7 @@ def configurations(bot: ShakeBot):
             'suffix': bot.emojis.help.shakeplus, 
             'text': _('Start a Shake+ subscription to run this command')
         }, 
-        'permission': {
+        'permissions': {
             'suffix': bot.emojis.help.permissions, 
             'text': _('This command requires certain rights from the user to be executed')
         },
@@ -519,7 +519,7 @@ class Cog(ListPageSource):
     def getsig(self, command: commands.Command):
         signature = []
         count = 28 + command.signature.count('…') + command.signature.count(' ') + command.signature.count('...')
-        for argument in [command.signature if command.signature else ''].replace('...', '…').split(' '):
+        for argument in getattr(command, 'signature', '').replace('...', '…').split(' '):
             if not bool(argument):
                 continue
             if len(''.join(signature)+argument)+1 > count:
@@ -586,7 +586,7 @@ class Front(FrontPageSource):
 
     def format_page(self, menu: ui.View, items: Any):
         embed = ShakeEmbed.default(menu.ctx, title = (
-            _("{emoji} Bot Help (Timeouted)") if self.timeouted else _("{emoji} Bot Help")).format(
+            _("{emoji} Bot Help (Timeouted type ?help again!)") if self.timeouted else _("{emoji} Bot Help")).format(
                 emoji=PartialEmoji(animated=True, name='thanks', id=984980175525666887
             )
         ))

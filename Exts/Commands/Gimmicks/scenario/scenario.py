@@ -3,7 +3,7 @@
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 from random import choice
 from .utils.wwyds import whatyoudo
-from Classes.i18n import _, current_locale
+from Classes.i18n import _, current
 ########
 #
 class command():

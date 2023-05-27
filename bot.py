@@ -1,66 +1,45 @@
 ############
 #
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from typing import TYPE_CHECKING, Optional, Sequence
 from asyncpg import Pool, Connection, connect, exceptions
-from Classes.useful import source_lines
-from logging import getLogger, Logger
 from importlib import import_module
 from discord.abc import Snowflake
-from datetime import datetime
 from discord import Message
 from urllib.parse import quote
-from Classes.reddit import Reddit
 from discord.ext.commands import Cog
 from Classes.helpful import BotBase, MISSING
 from Classes.database.db import _kwargs, Table
-from Classes.i18n import _, Locale, current_locale
+from Classes.reddit import Reddit
+from Classes.exceptions import NoDumpingSpots
+from Classes.i18n import _, current
 
 if TYPE_CHECKING:
     from Classes import __version__
 else:
     __version__ = MISSING
+
+__all__ = ('ShakeBot')
+
 ########
 #
 
 
 class ShakeBot(BotBase):
+
     def __init__(self, **options):
         super().__init__(**options)
-        self.log: Logger = getLogger(__name__)
-        self.cache.setdefault('locales', {})
-        self.cache.setdefault('testing', {1092397505800568834: None})
-        self.boot = datetime.now()
-        self.lines = source_lines()
-        self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
-        self.locale: Locale = Locale(self)
-        self.reddit: Reddit = Reddit()
         self.__version__ = __version__
-        
-
-    async def setup_hook(self):
-        self.emojis
-        await super().setup_hook()
-        await self.load_extensions()
-        self.scheduler.start()
+    
 
     async def process_commands(self, message: Message) -> None:
         await super().process_commands(message)
         self.config.reload()
         self.emojis.reload()
         return
-
-    async def load_extensions(self):
-        for extension in self.config.client.extensions:
-            try: 
-                await self.load_extension(extension)
-            except ModuleNotFoundError as e:
-                self.log.critical("Extension \"{}\" couldn\'t be loaded: {}".format(extension, e))
-            except ImportError as e:
-                self.log.critical("Extension \"{}\" couldn\'t be loaded {}".format(extension, e))
-            except:
-                await self.on_error('load_extensions')
         
+    async def setup_hook(self):
+        self.reddit: Reddit = Reddit()
+        return await super().setup_hook()
 
     async def add_cog(self, cog: Cog, /, *, override: bool = False, guild: Optional[Snowflake] = MISSING, guilds: Sequence[Snowflake] = MISSING,) -> None:
         try:
@@ -81,24 +60,25 @@ class ShakeBot(BotBase):
 
 
     async def dump(self, content: str, lang: Optional[str] = 'txt'):
-        async with self.session.post('https://hastepaste.com/api/create', data=f'raw=false&text={quote(content)}', headers={'User-Agent': 'Shake', 'Content-Type': 'application/x-www-form-urlencoded'}) as post:
-            if 200 <= post.status < 400: 
-                return await post.text()
+        try:
+            async with self.session.post('https://hastepaste.com/api/create', data=f'raw=false&text={quote(content)}', headers={'User-Agent': 'Shake', 'Content-Type': 'application/x-www-form-urlencoded'}) as post:
+                if 200 <= post.status < 400: 
+                    return await post.text()
 
-
-        async with self.session.post('https://hastebin.com/documents', data=content, headers={'Authorization': 'Bearer 27e4168ab6efb5fc22135cdea73f9f04b6581de99785b84daf1c2c3803e61e28c0f4881710e29cc0e9706b35a11cff8e46ef2b00999db3010ee1dc818f9be255'}) as post:
-            if 200 <= post.status < 400: 
-                return f'https://hastebin.com/share/{(await post.text())[8:-2]}'
+            async with self.session.post('https://hastebin.com/documents', data=content, headers={'Authorization': 'Bearer 27e4168ab6efb5fc22135cdea73f9f04b6581de99785b84daf1c2c3803e61e28c0f4881710e29cc0e9706b35a11cff8e46ef2b00999db3010ee1dc818f9be255'}) as post:
+                if 200 <= post.status < 400: 
+                    return f'https://hastebin.com/share/{(await post.text())[8:-2]}'
+                
+            async with self.session.post('https://api.mystb.in/paste', data=content) as post:
+                if 200 <= post.status < 400: 
+                    return 'https://mystb.in/' + (await post.json())['pastes'][0]['id']
             
-        async with self.session.post('https://api.mystb.in/paste', data=content) as post:
-            if 200 <= post.status < 400: 
-                return 'https://mystb.in/' + (await post.json())['pastes'][0]['id']
-        
-        async with self.session.post("https://bin.readthedocs.fr/new", data={'code':content, 'lang': lang}) as post:
-            if 200 <= post.status < 400: 
-                return post.url
-        
-        raise
+            async with self.session.post("https://bin.readthedocs.fr/new", data={'code':content, 'lang': lang}) as post:
+                if 200 <= post.status < 400: 
+                    return post.url
+        except:
+            raise
+        raise NoDumpingSpots("All tried hosts did not work")
 
 
 
@@ -109,7 +89,7 @@ class ShakeBot(BotBase):
             locale = await self.locale.get_guild_locale(guild.id)
         except:
             locale = 'en-US'
-        current_locale.set(locale)
+        current.set(locale)
 
         if (pool := self.cache['pools'].get(_id, None)):
             return pool

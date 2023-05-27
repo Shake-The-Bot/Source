@@ -3,20 +3,17 @@ from Classes.exceptions import NotVoted
 from discord import File, Interaction
 from os import getcwd, listdir, path
 from functools import partial
-from asyncio import gather
 from numpy import zeros
 from io import BytesIO
 from math import floor
-from time import time
 from enum import Enum
 from Classes.i18n import _
 from threading import Timer
 from Classes.converter import ValidCog
 from PIL import ImageFont, ImageDraw, Image
-from random import random, choice, randrange
-from Classes.tomls.configuration import Config
+from random import random, choice as rchoice, randrange
+from Classes.tomls import Config
 from dateutil.relativedelta import relativedelta
-
 from typing import (Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check, Callable)
 from discord.ext.commands.errors import (ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionNotFound)
 
@@ -27,6 +24,13 @@ if TYPE_CHECKING:
 else:
     from discord.ext.commands import Bot as ShakeBot, Context as ShakeContext
     from discord import Embed as ShakeEmbed
+
+__all__ = (
+    'captcha', 'perform_operation', 'human_join', 'source_lines', 
+    'levenshtein', 'high_level_function', 'calc', 'votecheck', 
+    'cogshandler', 'MISSING', 'RTFM_PAGE_TYPES', 'choice', 'TimedDict'
+)
+
 config = Config('config.toml')
     
 
@@ -69,11 +73,11 @@ async def captcha(bot):
     # creation & text
     image = Image.new("RGBA", (325, 100), color=bot.config.embed.hex_colour)#(0, 0, 255))
     draw = ImageDraw.Draw(image)
-    text = ' '.join(choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(5))
+    text = ' '.join(rchoice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(5))
     W, H = (325, 100)
     w, h = draw.textsize(text, font=ImageFont.truetype(font="arial.ttf", size=60))
     draw.text(((W - w) / 2, (H - h) / 2), text, font=ImageFont.truetype(font="arial.ttf", size=60), fill='#000000')#(90, 90, 90))    
-    filename = 'captcha'+str(choice(range(10)))
+    filename = 'captcha'+str(rchoice(range(10)))
 
     image = perform_operation(images=[image], grid_width=4, grid_height=4, magnitude=14)[0]
 
@@ -180,14 +184,14 @@ COMMAND = r'<\/([-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32})/:(\d+)>'
 
 
 
-def safechoice(seq):
+def choice(seq):
     """Choose a random element from a non-empty sequence.
     if an empty sequence is given, None is returned"""
     # raises IndexError if seq is empty
     if len(seq) == 0:
         return None
     else:
-        return choice(seq)
+        return rchoice(seq)
 
 
 """     Text     """
@@ -453,5 +457,4 @@ async def cogshandler(ctx: ShakeContext, extensions: list[ValidCog], method: Met
         embed.add_field(name=name, value=value)
 
     embed.description=f"**{len(extensions) - failures} / {len(extensions)} extensions successfully {method.name.lower()}ed.**"
-
-    return 
+    return embed

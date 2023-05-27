@@ -26,7 +26,7 @@ class Reddit:
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
         self.guild: Guild = ctx.guild
-        self.guild_posts = ctx.bot.cached_posts.setdefault(ctx.guild.id, deque(maxlen=1000))
+        self.guild_posts = ctx.bot.cache['cached_posts'].setdefault(ctx.guild.id, deque(maxlen=1000))
         await self.prepare()
     
     async def prepare(self):

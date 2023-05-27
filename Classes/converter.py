@@ -18,6 +18,10 @@ if TYPE_CHECKING:
     from .helpful import ShakeContext, ShakeBot
     from .useful import Duration, RTFM_PAGE_TYPES
 
+__all__ = (
+    'DurationDelta', 'ValidArg', 'ValidKwarg', 'ValidCog', 
+    'CleanChannels', 'Age', 'Regex', 'Slash'
+)
 
 class ValidArg():
     """Tries to convert into a valid cog"""

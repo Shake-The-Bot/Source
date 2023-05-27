@@ -5,7 +5,7 @@ from importlib import reload
 from . import extensions, testing
 from Classes.useful import Methods
 from Classes import ShakeContext, ShakeBot, ValidCog, extras, _, locale_doc, setlocale, Testing
-from discord.ext.commands import guild_only, is_owner, Greedy, Cog, hybrid_command
+from discord.ext.commands import guild_only, is_owner, Greedy, Cog, command
 ########
 #
 class extensions_extension(Cog):
@@ -23,7 +23,7 @@ class extensions_extension(Cog):
     def category(self) -> str: 
         return "other"
     
-    @hybrid_command(name="extensions")
+    @command(name="extensions")
     @extras(owner=True)
     @guild_only()
     @is_owner()

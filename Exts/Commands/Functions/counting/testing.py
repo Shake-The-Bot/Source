@@ -3,7 +3,7 @@
 from Classes import ShakeBot, ShakeContext
 from contextlib import suppress
 from asyncpg import Pool
-from Classes.i18n import _, current_locale
+from Classes.i18n import _, current
 from discord import PermissionOverwrite, Forbidden, HTTPException
 ########
 #
@@ -18,7 +18,7 @@ class command():
 
     async def set_locale(self):
         locale = await self.bot.locale.get_guild_locale(self.ctx.guild.id) or 'en-US'
-        current_locale.set(locale)
+        current.set(locale)
         return locale
 
     async def setup(self):

@@ -1,6 +1,6 @@
 ############
 #
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _, current_locale
+from Classes import ShakeBot, ShakeContext, ShakeEmbed, _, current
 from contextlib import suppress
 from typing import Any
 from Exts.Functions.Scheduled.freegames.stores.models import ProductDataType
@@ -19,7 +19,7 @@ class command():
 
     async def set_locale(self):
         locale = await self.bot.locale.get_guild_locale(self.ctx.guild.id) or 'en-US'
-        current_locale.set(locale)
+        current.set(locale)
         return locale
 
     async def setup(self):

@@ -5,7 +5,7 @@
 .vscode
 Assets/*
 Classes/tomls
-Migrations/*
+Migrations/
 Testing/
 
 # Byte-compiled / optimized / DLL files

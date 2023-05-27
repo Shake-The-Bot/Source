@@ -52,7 +52,7 @@ class aboveme():
         )
 
         locale = await self.bot.locale.get_guild_locale(self.message.guild.id) or 'en-US'
-        i18n.current_locale.set(locale)
+        i18n.current.set(locale)
         # selber benutzer
         if (record['user_id'] == self.member.id ) and not (await self.bot.is_owner(self.member)): # TODO: Owner-buff
             embed = ShakeEmbed(description = _(
@@ -148,7 +148,7 @@ class oneword():
         )
 
         locale = await self.bot.locale.get_guild_locale(self.message.guild.id) or 'en-US'
-        i18n.current_locale.set(locale)
+        i18n.current.set(locale)
         # selber benutzer
         if (record['user_id'] == self.member.id ) and not (await self.bot.is_owner(self.member)): # TODO: Owner-buff
             embed = ShakeEmbed(description = _(
@@ -253,7 +253,7 @@ class counting():
         )
         
         locale = await self.bot.locale.get_guild_locale(self.message.guild.id) or 'en-US'
-        i18n.current_locale.set(locale)
+        i18n.current.set(locale)
         self.streak = record['streak']
         self.best_streak = record['best_streak']
 

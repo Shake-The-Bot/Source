@@ -4,7 +4,7 @@ from discord import PartialEmoji
 from importlib import reload
 from . import bash, testing
 from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext, extras, Testing
-from discord.ext.commands import Cog, hybrid_command, guild_only, is_owner
+from discord.ext.commands import Cog, command, guild_only, is_owner
 ########
 #
 class bash_extension(Cog):
@@ -22,7 +22,7 @@ class bash_extension(Cog):
     def category(self) -> str: 
         return "other"
 
-    @hybrid_command(name="bash")
+    @command(name="bash")
     @extras(owner=True)
     @guild_only()
     @is_owner()

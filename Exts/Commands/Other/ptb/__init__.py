@@ -5,7 +5,7 @@ from importlib import reload
 from typing import Optional
 from . import ptb
 from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale, Testing
-from discord.ext.commands import hybrid_command, guild_only, is_owner, Cog
+from discord.ext.commands import command, guild_only, is_owner, Cog
 ########
 #
 class ptb_extension(Cog):
@@ -23,7 +23,7 @@ class ptb_extension(Cog):
     def display_emoji(self) -> PartialEmoji: 
         return PartialEmoji(name='\N{HEAVY PLUS SIGN}')
     
-    @hybrid_command(name="ptb")
+    @command(name="ptb")
     @extras(owner=True)
     @guild_only()
     @is_owner()

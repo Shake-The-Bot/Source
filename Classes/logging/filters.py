@@ -1,82 +1,32 @@
 ############
 #
 from logging import Filter
-########
-#
-class NoMoreApscheduler(Filter):
-    def filter(self, record):
-        if record.levelname == 'INFO':
-            return False
-        return True
-########
-#
-class NoMoreRatelimit(Filter):
-    def __init__(self):
-        super().__init__(name='discord.http')
+from typing import Optional, Tuple
 
-    def filter(self, record):
-        if record.levelname == 'WARNING' and 'rate limit' in record.msg:
-            return False
-        return True
-########
-#
-class NoMoreStatcord(Filter):
-    def __init__(self):
-        super().__init__(name='statcord')
+__all__ = (
+    'NoShards', 'NoAttemps', 'NoJobs', 'NoCommands'
+)
 
-    def filter(self, record):
-        if record.levelname == 'ERROR' and 'posting' in record.msg:
-            return False
-        return True
-########
-#
-class NoMoreUnclosedSessions(Filter):
-    def __init__(self):
-        super().__init__(name='asyncio')
 
-    def filter(self, record):
-        if record.levelname == 'ERROR' and 'Unclosed' in record.msg:
-            return False
-        return True
+def nomore(n, /, names: Optional[Tuple[str]] = None, levelnames: Optional[Tuple[str]] = None, messages: Optional[Tuple[str]] = None):
+    class final(Filter):
+        def __init__(self):
+            super().__init__(name=n)
 
-class NoMoreAnything(Filter):
-    def __init__(self, _name):
-        super().__init__(name=_name)
+        def filter(self, record):
+            if names and record.name.lower() in [name.lower() for name in names]:
+                return False
+            if levelnames and record.levelname.lower() in [levelname.lower() for levelname in levelnames]:
+                return False
+            if messages and any(msg.lower() in record.msg.lower() for msg in messages):
+                return False
+            return True
+    return final
 
-    def filter(self, record):
-        return False
-########
-#
-class NoMoreAttemps(Filter):
-    def __init__(self):
-        super().__init__(name='lavalink.websocket')
 
-    def filter(self, record):
-        if record.levelname in ['WARNING', 'INFO'] and any(snipped in record.msg for snipped in [
-            'Invalid response received', 'this may indicate that Lavalink is not running', 'or is running on a port different to the one you provided to', 
-            'Attempting to establish WebSocket connection', 'A WebSocket connection could not be established within'
-        ]):
-            return False
-        return True
-########
-#
-class NoJobs(Filter):
-    def __init__(self) -> None:
-        super().__init__(name='apscheduler.scheduler')
-
-    def filter(self, record):
-        if record.levelname == 'INFO' and any(snippets in record.msg for snippets in ['Added job', 'Adding job tentatively']):
-            return False
-        return True
-########
-#
-class NoCommands(Filter):
-    def __init__(self):
-        super().__init__(name='command')
-
-    def filter(self, record):
-        if record.name == ('command'):
-            return False
-        return True
+NoShards = nomore('discord.gateway', levelnames=('INFO'), messages=('shard id'))
+NoAttemps = nomore('lavalink.websocket', levelnames=('WARNING', 'INFO'), messages=('Invalid response', 'Lavalink is not running', 'running on a port', 'Attempting to establish', 'connection could not'))
+NoJobs = nomore('apscheduler.scheduler', levelnames=('INFO'), messages=('Added job', 'Adding job tentatively'))
+NoCommands = nomore('command', names=('command'))
 #
 ############

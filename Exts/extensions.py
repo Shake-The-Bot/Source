@@ -26,9 +26,9 @@ extensions = [
     'Exts.Commands.Moderation.timeout.__init__', 'Exts.Commands.Moderation.kick.__init__',
     
     'Exts.Commands.Other.other',
-    'Exts.Commands.Other.language.__init__', 
-    'Exts.Commands.Other.extensions.__init__', 'Exts.Commands.Other.bash.__init__',
-    'Exts.Commands.Other.repl.__init__', 'Exts.Commands.Other.dispatch.__init__',
+    'Exts.Commands.Other.language.__init__', 'Exts.Commands.Other.extensions.__init__', 
+    'Exts.Commands.Other.bash.__init__', 'Exts.Commands.Other.repl.__init__',
+    'Exts.Commands.Other.restart.__init__', 'Exts.Commands.Other.dispatch.__init__',
     'Exts.Commands.Other.ptb.__init__', 'Exts.Commands.Other.sync.__init__', 
     'Exts.Commands.Other.leave.__init__', 
 

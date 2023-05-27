@@ -5,7 +5,7 @@ from contextlib import suppress
 from typing import Any
 from Exts.Functions.Scheduled.freegames.stores.models import ProductDataType
 from Exts.Functions.Scheduled.freegames.freegames import Event
-from Classes.i18n import _, current_locale
+from Classes.i18n import _, current
 from discord import PermissionOverwrite, Forbidden, HTTPException
 ########
 #
@@ -20,7 +20,7 @@ class command():
 
     async def set_locale(self):
         locale = await self.bot.locale.get_guild_locale(self.ctx.guild.id) or 'en-US'
-        current_locale.set(locale)
+        current.set(locale)
         return locale
 
     async def setup(self):

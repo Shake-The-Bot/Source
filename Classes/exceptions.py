@@ -5,6 +5,11 @@ from discord.ext.commands.errors import (
     CheckFailure, ChannelNotFound as _ChannelNotFound
 )
 
+__all__ = (
+    'ShakeError', 'ShakeMissingPermissions', 'CodeError', 'NothingHereYet', 'CheckFailure', 
+    'NotVoted', 'GuildNotFound', 'NotSFW', 'Testing'
+)
+
 class ShakeError(CommandError):
     """Displays error in embed without generating signature hint"""
     def __init__(self, message: Optional[str] = None, *args: Any) -> None:
@@ -62,3 +67,8 @@ class NotVoted(CheckFailure):
     """I think it speaks for itself"""
     def __init__(self, message: Optional[str] = None, *args: Any) -> None:
         super().__init__(message, *args)
+
+class NoDumpingSpots(Exception):
+    """Raised when all Dump Hosts returned nothing"""
+    def __init__(self, message: Optional[str] = None, *args: Any) -> None:
+        super().__init__(m=message)

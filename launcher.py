@@ -1,76 +1,80 @@
 ############
 #
-import sys
-from re import compile
 from discord import Intents
 from contextlib import contextmanager
 from click import option, group, argument, pass_context, Context
-from Classes.database.db import _create_pool
 from Classes import Migration, config
+from asyncpg import Pool
 from bot import ShakeBot
-from logging import getLogger, INFO
+from Classes.database.db import _create_pool
+from logging import getLogger, INFO, NullHandler
 from discord import ActivityType, Activity
 from asyncio import set_event_loop_policy, run
-from Classes.logging.logger import stream, file_handler, command_handler
-
+from Classes import handler, NoCommands, NoShards
 try:
     from uvloop import EventLoopPolicy # type: ignore
 except ImportError:
     pass
 else:
     set_event_loop_policy(EventLoopPolicy())
-
-args = sys.argv[1:]
 ########
 #
 
-logger = getLogger()
-REVISION_FILE = compile(r'(?P<kind>current-|)(?P<name>.+).json')
 banner = ("\n"
     "   ▄████████▄   ▄██    ██▄     ▄████████   ▄██   ▄██   ▄████████▄ \n"
     "  ███▀    ███   ███    ███    ███    ███   ███ ▄███▀   ███▀   ▄██ \n"
     "  ███      █▀   ███    ███▄▄  ███    ███   ███▐██▀     ███    █▀  \n"
-    "  ████▄▄▄▄▄     ███▄▄▄████▀   ███▄▄▄▄███  ▄████▀▀     ▄███▄▄▄     \n"
+    "  ████▄▄▄▄▄     ███▄▄▄████▀   ███▄▄▄▄███  ▄████▀      ▄███▄▄▄     \n"
     "   ▀▀▀▀▀▀███▄ ▄█████▀▀▀███  ▀████▀▀▀▀███ ▀▀█████▄    ▀▀███▀▀▀     \n"
     "          ███   ███    ███    ███    ███   ███▐██▄     ███    █▄  \n"
     "   ▄█   ▄███▀   ███    ███    ███    ███   ███ ▀███▄   ███    ██▄ \n"
     " ▄█████████▀    ▀██    █▀     ███    ██▀   ███   ▀██▄  ██████████ \n"
 "\u200b")
-########
-print(banner)
-#
 
 @contextmanager
 def setup():
-    logger.setLevel(INFO)
-    logger.addHandler(stream)
-    logger.addHandler(file_handler())
-    cmdlogger = getLogger('command')
-    cmdlogger.addHandler(command_handler())
+    def root():
+
+        logger.addFilter(NoCommands())
+        logger.addHandler(NullHandler())
+        logger.setLevel(INFO)
+        file, stream = handler(file=True, stream=True, filepath="./Classes/logging/latest/commands.log")
+        logger.addHandler(stream)
+        logger.addHandler(file)
+        
+    
+    def commands():
+        log = getLogger('command')
+        file_handler, *n = handler(file=True, stream=False, filepath="./Classes/logging/latest/commands.log")
+        log.addHandler(file_handler)
+
+    def discord():
+        log = getLogger("discord.gateway")
+        log.addFilter(NoShards())
+    
+    for func in (root, commands, discord):
+        func()
     yield
-    handlers = logger.handlers[:]
-    for hdlr in handlers:
-        hdlr.close()
-        logger.removeHandler(hdlr)
 
 
 async def run_bot():
     def prefix(bot, msg):
         return ['<@!{}> '.format(bot.user.id), '<@{}> '.format(bot.user.id)]
-    
+
+
     async with ShakeBot(
-            shard_count=1, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), 
+            shard_count=2, command_prefix=prefix, case_insensitive=True, intents=Intents.all(), 
             description=config.bot.description, help_command=None, fetch_offline_members=True, 
             owner_ids=config.bot.owner_ids, strip_after_prefix=True,
             activity=Activity(type=getattr(ActivityType, config.bot.presence[0], ActivityType.playing), name=config.bot.presence[1])
         ) as bot:
-        try:
-            pool = await _create_pool(config)
-        except:
-            raise
 
-        bot.pool = pool.get('bot', None)
-        bot.config_pool = pool.get('config', None)
+        
+        pool: dict[str, Pool] = await _create_pool(bot.config)
+        bot.log = logger
+        bot.pool: Pool = pool.get('bot', None)
+        bot.config_pool: Pool = pool.get('config', None)
+
         await bot.open(token=config.client.token)
 
 
@@ -78,7 +82,6 @@ async def run_bot():
 @pass_context
 def main(context: Context):
     if context.invoked_subcommand is None:
-        with setup():
             run(run_bot())
 
 
@@ -148,4 +151,7 @@ def downgrade(id, reason):
 
 
 if __name__ == '__main__':
-    main()
+    logger = getLogger()
+    with setup():
+        print(banner)
+        main()

@@ -125,10 +125,12 @@ class Handler(FileSystemEventHandler):
         elif self.utils(event.src_path):
             parts = str(event.src_path).split('/')[1:]
             reloadable = '.'.join(parts[parts.index('Classes'):]).removesuffix('.py')  
-
-            if reloadable in modules.keys():
-                reload(modules[reloadable])
-            else:
-                __import__(reloadable)
+            try:
+                if reloadable in modules.keys():
+                    reload(modules[reloadable])
+                else:
+                    __import__(reloadable)
+            except (ImportError, SyntaxError):
+                pass
         else:
             return

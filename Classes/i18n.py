@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 else:
     from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
 
+__all__ = (
+    'Locale', 'available', 'locale_doc', 
+    '_', 'current', 'setlocale', 'default_locale'
+)
+
 ########
 #
 
@@ -56,7 +61,7 @@ locales = locales | {"en-US"}
 def use_current_gettext(*args: Any, **kwargs: Any) -> str:
     if not gettext_translations:
         return gettext(*args, **kwargs)
-    locale = current_locale.get()
+    locale = current.get()
     return gettext_translations.get(
         locale, gettext_translations[default_locale]
     ).gettext(*args, **kwargs)
@@ -65,7 +70,7 @@ def use_current_gettext(*args: Any, **kwargs: Any) -> str:
 def setlocale(guild: Optional[bool] = False) -> Check[Any]:
     async def predicate(ctx: ShakeContext) -> bool:
         locale = await ctx.bot.locale.get_guild_locale(ctx.guild.id) or ('en-US' if guild else (await ctx.bot.locale.get_user_locale(ctx.author.id) or 'en-US'))
-        current_locale.set(locale)
+        current.set(locale)
         return True
     return check(predicate)
 
@@ -100,10 +105,10 @@ def i18n_docstring(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     func.__doc__ = gettext_call.args[0].s
     return func
 
-current_locale: ContextVar[str] = ContextVar("current_locale", default="en-US")
+current: ContextVar[str] = ContextVar("current", default="en-US")
 _ = use_current_gettext
 locale_doc = i18n_docstring
-current_locale.set(default_locale)
+current.set(default_locale)
 
 available = {
     'en-US': {'language': 'English', 'simplified': ['american english', 'english'], '_': 'English (american)' }, 
@@ -151,7 +156,7 @@ class Locale():
                 """WITH insert AS (INSERT INTO locale (id) VALUES ($1) ON CONFLICT (id) DO NOTHING)
                 UPDATE locale SET locale = $2 WHERE id = $1;""", user_id, locale
             )
-        current_locale.set(locale)
+        current.set(locale)
         self.bot.cache['locales'][user_id] = locale
         return True
     
@@ -170,7 +175,7 @@ class Locale():
                 """WITH insert AS (INSERT INTO locale (id) VALUES ($1) ON CONFLICT (id) DO NOTHING)
                 UPDATE locale SET locale = $2 WHERE id = $1;""", guild_id, locale
             )
-        current_locale.set(locale)
+        current.set(locale)
         self.bot.cache['locales'][guild_id] = locale
         return True
 

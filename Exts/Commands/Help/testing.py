@@ -586,7 +586,7 @@ class Front(FrontPageSource):
 
     def format_page(self, menu: ui.View, items: Any):
         embed = ShakeEmbed.default(menu.ctx, title = (
-            _("{emoji} Bot Help (Timeouted type ?help again! )") if self.timeouted else _("{emoji} Bot Help")).format(
+            _("{emoji} Bot Help (Timeouted type ?help again!)") if self.timeouted else _("{emoji} Bot Help")).format(
                 emoji=PartialEmoji(animated=True, name='thanks', id=984980175525666887
             )
         ))

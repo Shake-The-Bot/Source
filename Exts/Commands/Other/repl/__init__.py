@@ -7,7 +7,7 @@ from typing import Any
 from Classes import _, locale_doc, setlocale, ShakeContext, ShakeBot, Testing
 from discord.app_commands import guild_only
 from Classes.checks import extras
-from discord.ext.commands import is_owner,  Cog, hybrid_command
+from discord.ext.commands import is_owner, Cog, command
 ########
 #
 class repl_extension(Cog):
@@ -27,7 +27,7 @@ class repl_extension(Cog):
     def category(self) -> str: 
         return "other"
 
-    @hybrid_command(name="repl")
+    @command(name="repl")
     @extras(owner=True)
     @guild_only()
     @is_owner()
@@ -39,6 +39,14 @@ class repl_extension(Cog):
             
             You can simply specify this code as an argument and also in quotes (`).
             Optionally you can use common attributes like ctx, bot etc. in the code.
+            
+            Environment Variables:
+                ctx     - command invocation context
+                bot     - bot object
+                channel - the current channel object
+                author  - command author's member object
+                message - the command's message object
+                _       - The result of the last dev command.
             
             Parameters
             -----------
@@ -55,7 +63,6 @@ class repl_extension(Cog):
                 ))
                 ctx.testing = False
         do = testing if ctx.testing else repl
-
         try:    
             last = await do.command(ctx=ctx, code=code, env=self.env, last=self.last).__await__()
             

@@ -17,6 +17,8 @@ class on_message(Cog):
 
     @Cog.listener()
     async def on_message(self, message: Message):
+        await self.bot.wait_until_ready()
+
         if message.author.bot: 
             return
         test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [message.channel, message.guild, message.author])

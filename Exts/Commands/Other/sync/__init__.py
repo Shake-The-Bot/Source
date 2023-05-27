@@ -5,7 +5,7 @@ from importlib import reload
 from typing import Optional, Literal
 from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
 from . import sync, testing
-from discord.ext.commands import Greedy, guild_only, is_owner, Cog, hybrid_command
+from discord.ext.commands import Greedy, guild_only, is_owner, Cog, command
 ########
 #
 class sync_extension(Cog):
@@ -23,7 +23,7 @@ class sync_extension(Cog):
     def category(self) -> str: 
         return "moderation"
 
-    @hybrid_command(name="sync")
+    @command(name="sync")
     @extras(owner=True)
     @guild_only()
     @is_owner()
