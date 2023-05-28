@@ -1,6 +1,6 @@
 ############
 #
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
 from Classes.reddit import Submission
 from discord import PartialEmoji

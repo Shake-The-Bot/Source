@@ -6,7 +6,7 @@ from discord.utils import maybe_coroutine
 from discord import (
     Message, ui, Interaction, PartialEmoji, ButtonStyle, File,
 )
-from Classes.i18n import _
+from Classes import _
 from Classes.exceptions import ShakeMissingPermissions
 from typing import (
     Any, Dict, Optional, Union, Tuple, TYPE_CHECKING

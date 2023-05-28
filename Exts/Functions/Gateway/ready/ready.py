@@ -10,8 +10,8 @@ class Event():
     
     async def __await__(self):
         self.bot.log.info(
-            '{name} is successfully divided into {shards} shard(s). ({guilds} server & {users} users) [{version}]'.format(
-                name=self.bot.user.name, shards=len(self.bot.shards), guilds=len(self.bot.guilds), users=len(self.bot.users), version=str(__version__)
+            '{name} is successfully divided into {ready} of {all} shard(s). ({guilds} server & {users} users) [{version}]'.format(
+                name=self.bot.user.name, ready=len(self.bot.ready_shards.readies()), all=len(self.bot.shards), guilds=len(self.bot.guilds), users=len(self.bot.users), version=str(__version__)
             )
         )
         if not hasattr(self.bot, 'uptime'):

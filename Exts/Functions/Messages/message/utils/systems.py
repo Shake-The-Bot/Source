@@ -2,7 +2,7 @@
 #
 from discord import Message, TextChannel, Member, PartialEmoji
 from Classes import i18n
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeBot, ShakeEmbed
 from typing import Dict, List
 from asyncpg import Pool, Record

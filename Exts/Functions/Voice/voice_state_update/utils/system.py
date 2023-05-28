@@ -1,6 +1,6 @@
 from discord import TextChannel, Guild, VoiceChannel, Member, PermissionOverwrite
 from Classes import ShakeBot
-from Classes.i18n import _
+from Classes import _
 from contextlib import suppress
 from discord import Interaction, ui, PermissionOverwrite, SelectOption, utils
 from typing  import Dict, Set, List

@@ -9,7 +9,7 @@ from polib import pofile
 from contextlib import suppress
 from gettext import GNUTranslations
 from Classes.pages import ListMenu, ListPageSource
-from Classes.i18n import _, localedir, gettext_translations, available, locales
+from Classes import _, localedir, gettext_translations, available, locales
 ########
 #
 

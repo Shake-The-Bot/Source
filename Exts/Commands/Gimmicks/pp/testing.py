@@ -3,7 +3,7 @@
 from random import randint
 from typing import List
 from discord import Member, Member
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
 ########
 #

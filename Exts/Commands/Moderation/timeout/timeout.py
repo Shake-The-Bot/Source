@@ -1,7 +1,7 @@
 ############
 #
 from datetime import timedelta
-from Classes.i18n import _
+from Classes import _
 from discord import Member
 from typing import Optional
 from discord.ext.commands import Greedy

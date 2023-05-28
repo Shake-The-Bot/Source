@@ -4,7 +4,7 @@ from discord import Forbidden, NotFound, HTTPException, Interaction
 from traceback import format_exception
 from Classes.exceptions import *
 from typing import Union
-from Classes.i18n import _
+from Classes import _
 from difflib import get_close_matches
 from discord.ext.commands import errors, Command
 from Classes import ShakeBot, ShakeContext, ShakeEmbed, Slash

@@ -3,7 +3,7 @@
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 from contextlib import suppress
 from asyncpg import Pool
-from Classes.i18n import _, current
+from Classes import _, current
 from discord import Forbidden, PermissionOverwrite, ButtonStyle, ui, PartialEmoji, Interaction, HTTPException
 ########
 #

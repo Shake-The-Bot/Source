@@ -2,7 +2,7 @@
 #
 from inspect import cleandoc
 from psutil import cpu_percent, virtual_memory
-from Classes.i18n import _
+from Classes import _
 from Classes.useful import human_join
 from discord import __version__ as dpyversion
 from platform import python_version

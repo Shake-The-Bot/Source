@@ -3,7 +3,7 @@
 from Classes import ShakeBot, ShakeContext, MISSING
 from statcord import Client
 from logging import getLogger
-log = getLogger('command')
+log = getLogger('shake.commands')
 ########
 #
 

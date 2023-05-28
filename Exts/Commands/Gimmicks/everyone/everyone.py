@@ -5,7 +5,7 @@ from random import choice
 from Classes import ShakeEmbed
 from discord import Member, File
 from discord.ext import commands
-from Classes.i18n import _
+from Classes import _
 from Classes.useful import human_join
 from Classes import ShakeContext, ShakeBot
 ########

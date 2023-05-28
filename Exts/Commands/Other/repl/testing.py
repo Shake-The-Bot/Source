@@ -118,7 +118,6 @@ class command():
         
         
         executor = None
-        await self.ctx.send('`'+cleaned+'`')
         if cleaned.count("\n") == 0:
             try:
                 code = async_compile(cleaned, "<repl session>", "eval")

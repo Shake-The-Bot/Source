@@ -2,7 +2,7 @@
 #
 from discord import PartialEmoji
 from discord.ext import commands
-from Classes.i18n import _
+from Classes import _
 ########
 #
 class gimmicks(commands.Cog):

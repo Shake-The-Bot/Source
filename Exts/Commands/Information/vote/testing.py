@@ -2,7 +2,7 @@
 #
 from discord import PartialEmoji, ui, File
 from Classes import ShakeContext
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeBot, ShakeEmbed
 ########
 #

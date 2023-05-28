@@ -4,7 +4,7 @@ from contextlib import suppress
 from datetime import datetime
 from typing import Optional, Union
 from asyncpg import Pool
-from Classes.i18n import _
+from Classes import _
 from discord import Member, VoiceState, TextChannel, CategoryChannel, VoiceChannel, PermissionOverwrite, Forbidden, HTTPException
 from Classes import ShakeBot, ShakeEmbed
 

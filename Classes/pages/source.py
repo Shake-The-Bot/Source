@@ -1,6 +1,6 @@
 ############
 #
-from Classes.i18n import _
+from Classes import _
 from Classes.useful import MISSING
 from Classes.exceptions import NothingHereYet
 from discord import File, Interaction, PartialEmoji

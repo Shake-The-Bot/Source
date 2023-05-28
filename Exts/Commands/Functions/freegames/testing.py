@@ -5,7 +5,7 @@ from contextlib import suppress
 from typing import Any
 from Exts.Functions.Scheduled.freegames.stores.models import ProductDataType
 from Exts.Functions.Scheduled.freegames.freegames import Event
-from Classes.i18n import _, current
+from Classes import _, current
 from discord import PermissionOverwrite, Forbidden, HTTPException
 ########
 #

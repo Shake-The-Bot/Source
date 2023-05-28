@@ -2,7 +2,7 @@
 #
 from random import randint
 from discord import PartialEmoji
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
 ########
 #

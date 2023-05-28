@@ -1,6 +1,6 @@
 ############
 #
-from Classes.i18n import _
+from Classes import _
 from discord import ui, PartialEmoji, ButtonStyle
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 ########

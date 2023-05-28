@@ -1,6 +1,6 @@
 ############
 #
-from Classes.i18n import _
+from Classes import _
 ########
 #
 whatyoudo = [

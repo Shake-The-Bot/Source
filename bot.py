@@ -7,11 +7,9 @@ from discord.abc import Snowflake
 from discord import Message
 from urllib.parse import quote
 from discord.ext.commands import Cog
-from Classes.helpful import BotBase, MISSING
-from Classes.database.db import _kwargs, Table
+from Classes import BotBase, MISSING, NoDumpingSpots, _, current, Table
+from Classes.database.db import _kwargs
 from Classes.reddit import Reddit
-from Classes.exceptions import NoDumpingSpots
-from Classes.i18n import _, current
 
 if TYPE_CHECKING:
     from Classes import __version__

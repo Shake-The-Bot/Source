@@ -5,7 +5,7 @@ from discord import (
     PartialEmoji, Role, Asset, Emoji, Colour,
     CategoryChannel, VoiceChannel, StageChannel, ForumChannel, TextChannel, Thread
 )
-from Classes.i18n import _
+from Classes import _
 from discord.enums import Status
 from discord.activity import ActivityTypes, ActivityType
 from inspect import cleandoc

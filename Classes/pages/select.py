@@ -3,7 +3,7 @@ from discord import ui, PartialEmoji, Interaction, utils
 from Classes.pages.source import FrontPageSource, ListPageSource
 from Classes.pages.page import Pages
 from typing import Any, TYPE_CHECKING, Optional
-from Classes.i18n import _
+from Classes import _
 Group = Item = Any
 
 if TYPE_CHECKING:

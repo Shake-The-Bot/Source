@@ -1,5 +1,9 @@
-from discord.ext.commands import Context
 from Classes.exceptions import NotVoted
+from Classes.i18n import _
+from Classes.tomls import Config
+from Classes.converter import ValidCog
+
+from discord.ext.commands import Context
 from discord import File, Interaction
 from os import getcwd, listdir, path
 from functools import partial
@@ -7,15 +11,17 @@ from numpy import zeros
 from io import BytesIO
 from math import floor
 from enum import Enum
-from Classes.i18n import _
 from threading import Timer
-from Classes.converter import ValidCog
 from PIL import ImageFont, ImageDraw, Image
 from random import random, choice as rchoice, randrange
-from Classes.tomls import Config
+from Exts.extensions import extensions
 from dateutil.relativedelta import relativedelta
-from typing import (Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check, Callable)
-from discord.ext.commands.errors import (ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionNotFound)
+from typing import (
+    Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check, Callable
+)
+from discord.ext.commands.errors import (
+    ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionNotFound
+)
 
 if TYPE_CHECKING:
     from bot import ShakeBot
@@ -27,7 +33,7 @@ else:
 
 __all__ = (
     'captcha', 'perform_operation', 'human_join', 'source_lines', 
-    'levenshtein', 'high_level_function', 'calc', 'votecheck', 
+    'levenshtein', 'high_level_function', 'calc', 'votecheck', 'Ready',
     'cogshandler', 'MISSING', 'RTFM_PAGE_TYPES', 'choice', 'TimedDict'
 )
 
@@ -182,6 +188,23 @@ COMMAND = r'<\/([-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32})/:(\d+)>'
 
 """     Sequence    """
 
+class Ready(object):
+    def __init__(self, sequence: Sequence) -> None:
+        for extension in sequence:
+            setattr(self, str(extension), False)
+    
+    def ready(self, item) -> None:
+        setattr(self, str(item), True)
+        return
+    
+    def all_ready(self) -> bool:
+        return all([getattr(self, item, False) for item in self.__dict__.keys()])
+        
+    def readies(self) -> dict:
+        return {
+            item: getattr(self, item, False)
+                for item in self.__dict__.keys() if getattr(self, item, False)
+        }
 
 
 def choice(seq):

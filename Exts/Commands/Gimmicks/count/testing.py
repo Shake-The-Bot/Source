@@ -1,7 +1,7 @@
 ############
 #
 from discord import ui, ButtonStyle, Interaction
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeContext, ShakeBot
 ########
 #

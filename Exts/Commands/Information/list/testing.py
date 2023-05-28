@@ -1,7 +1,7 @@
 ############
 #
 from Classes import ShakeContext, ShakeBot, MISSING
-from Classes.i18n import _
+from Classes import _
 from Classes.pages import ListMenu, ListPageSource
 from discord import PartialEmoji
 ########

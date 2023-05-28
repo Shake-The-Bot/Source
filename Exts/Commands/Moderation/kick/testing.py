@@ -2,7 +2,7 @@
 #
 from discord import Member
 from discord.ext.commands import Greedy
-from Classes.i18n import _
+from Classes import _
 from typing import Optional
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
 ########

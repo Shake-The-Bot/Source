@@ -12,15 +12,14 @@ from discord import User, Guild
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes.helpful import ShakeContext
+    from Classes import ShakeContext
 else:
     from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
 
 __all__ = (
-    'Locale', 'available', 'locale_doc', 
-    '_', 'current', 'setlocale', 'default_locale'
+    'Locale', 'available', 'locale_doc', 'mo', 'localedir', 'locales',
+    '_', 'current', 'setlocale', 'default_locale', 'gettext_translations'
 )
-
 ########
 #
 
@@ -44,7 +43,6 @@ def mo():
             mo_files.append(d + mo_file)
         data_files.append((d, mo_files))
     return data_files
-mo()
 
 def set_gettext():
     global gettext_translations

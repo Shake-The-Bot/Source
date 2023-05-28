@@ -8,12 +8,11 @@ __all__ = (
 )
 
 
-def nomore(n, /, names: Optional[Tuple[str]] = None, levelnames: Optional[Tuple[str]] = None, messages: Optional[Tuple[str]] = None):
+def nomore(names: Optional[str] = None, levelnames: Optional[Tuple[str]] = None, messages: Optional[Tuple[str]] = None, mute: Optional[bool] = False):
     class final(Filter):
-        def __init__(self):
-            super().__init__(name=n)
-
         def filter(self, record):
+            if mute:
+                return False
             if names and record.name.lower() in [name.lower() for name in names]:
                 return False
             if levelnames and record.levelname.lower() in [levelname.lower() for levelname in levelnames]:
@@ -24,9 +23,9 @@ def nomore(n, /, names: Optional[Tuple[str]] = None, levelnames: Optional[Tuple[
     return final
 
 
-NoShards = nomore('discord.gateway', levelnames=('INFO'), messages=('shard id'))
-NoAttemps = nomore('lavalink.websocket', levelnames=('WARNING', 'INFO'), messages=('Invalid response', 'Lavalink is not running', 'running on a port', 'Attempting to establish', 'connection could not'))
-NoJobs = nomore('apscheduler.scheduler', levelnames=('INFO'), messages=('Added job', 'Adding job tentatively'))
-NoCommands = nomore('command', names=('command'))
+NoShards = nomore(names=('discord.gateway',), levelnames=('INFO',), messages=('shard id',))()
+NoAttemps = nomore(names=('lavalink.websocket',), levelnames=('WARNING', 'INFO',), messages=('Invalid response', 'Lavalink is not running', 'running on a port', 'Attempting to establish', 'connection could not',))()
+NoJobs = nomore(names=('apscheduler.scheduler'), levelnames=('INFO',), messages=('Added job', 'Adding job tentatively',))()
+NoCommands = nomore(names=('shake.commands',))()
 #
 ############

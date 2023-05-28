@@ -4,7 +4,7 @@ from io import BytesIO
 from discord import Member, File
 from random import choice
 from io import BytesIO
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeBot, ShakeContext, ShakeEmbed
 from PIL import Image, ImageFilter
 ########

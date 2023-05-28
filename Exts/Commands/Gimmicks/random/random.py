@@ -2,7 +2,7 @@
 #
 from typing import Optional
 from discord import Status
-from Classes.i18n import _
+from Classes import _
 from Classes import ShakeContext, ShakeBot, choice
 ########
 #

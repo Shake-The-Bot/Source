@@ -1,7 +1,7 @@
 ############
 #
 from typing import List
-from Classes.i18n import _
+from Classes import _
 from contextlib import suppress
 from discord import Guild
 from discord.utils import format_dt

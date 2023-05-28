@@ -5,7 +5,7 @@ from re import escape, IGNORECASE, compile, sub
 from zlib import decompressobj
 from io import BytesIO
 from os import path
-from Classes.i18n import _
+from Classes import _
 from discord.ext import commands
 from discord import Member
 from typing import Callable, Iterable, Optional, TypeVar

@@ -5,7 +5,7 @@ from re import escape, compile
 from typing import Optional
 from contextlib import suppress
 from discord import Guild, TextChannel, Webhook, HTTPException, NotFound, PartialEmoji
-from Classes.i18n import _
+from Classes import _
 from Classes.database import db
 from Classes import ShakeBot
 ########

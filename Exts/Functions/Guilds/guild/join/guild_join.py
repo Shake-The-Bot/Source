@@ -3,7 +3,7 @@
 from contextlib import suppress
 from typing import Optional
 from discord import Guild, TextChannel, PartialEmoji, Forbidden, HTTPException, Webhook, NotFound
-from Classes.i18n import _
+from Classes import _
 from re import compile, escape
 from Classes.database import db
 from Classes import ShakeBot, ShakeEmbed

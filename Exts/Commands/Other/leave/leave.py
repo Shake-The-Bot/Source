@@ -1,7 +1,7 @@
 ############
 #
 from Classes import ShakeContext, ShakeBot, ShakeEmbed
-from Classes.i18n import _
+from Classes import _
 from discord import Object
 ########
 #

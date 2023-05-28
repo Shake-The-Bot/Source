@@ -2,7 +2,7 @@
 #
 from discord import PartialEmoji
 from importlib import reload
-from Classes.i18n import _, locale_doc, setlocale
+from Classes import _, locale_doc, setlocale
 from Classes import ShakeContext, ShakeBot, extras
 from discord.ext.commands import is_owner, is_nsfw, Cog, hybrid_group, guild_only
 ########

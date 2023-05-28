@@ -1,7 +1,6 @@
 ############
 #
-from Classes.database import db
-from Classes.i18n import _
+from Classes import db, _
 ########
 #
 class LEVEL(db.Table):

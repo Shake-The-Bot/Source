@@ -2,7 +2,7 @@
 #
 from discord.ext import commands
 from discord import PartialEmoji
-from Classes.i18n import _
+from Classes import _
 ########
 #
 class moderation(commands.Cog):

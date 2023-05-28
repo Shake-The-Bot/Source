@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from Classes.exceptions import ChannelNotFound
-from Classes.useful import source_lines, MISSING, TimedDict
-from Classes.i18n import _, Locale
 from Classes.tomls import Emojis, Config
+from Classes.useful import source_lines, Ready, TimedDict
 from Classes.database import Table
+from Classes.i18n import mo, Locale
+from Classes.exceptions import ChannelNotFound
 
+from Classes.useful import MISSING
 from importlib import import_module
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from logging import getLogger, Logger
+from logging import Logger
 from asyncpg import Pool, connect, UndefinedTableError
 from Exts.Functions.Debug.error import error
 from aiohttp import ClientSession
@@ -34,7 +35,11 @@ from discord import (
     HTTPException, AllowedMentions, Message, VoiceChannel, Message, AppInfo,
     User, Interaction, ClientException, FFmpegPCMAudio, ClientUser, utils, 
     Forbidden, File, GuildSticker, StickerItem, PartialMessage, TextChannel, 
-    Thread, DMChannel, MessageReference, Embed, Colour, utils)
+    Thread, DMChannel, MessageReference, Embed, Colour, utils
+)
+
+if TYPE_CHECKING:
+    from bot import ShakeBot
 ############
 #
 
@@ -43,8 +48,6 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:
-    from bot import ShakeBot
 _kwargs = {'command_timeout': 60, 'max_size': 2, 'min_size': 1}
 ########
 #
@@ -215,7 +218,7 @@ class ShakeContext(Context):
     command: Command[Any, ..., Any]
     message: Message
     testing: bool
-    bot: ShakeBot
+    bot: 'ShakeBot'
     pool: Pool
 
     def __init__(self, **kwargs: Any):
@@ -224,7 +227,7 @@ class ShakeContext(Context):
         self.pool: Pool = self.bot.cache['pools'].get(self.guild.id, None)
         self.__testing = True if any(_.id in set(self.bot.cache['testing'].keys()) for _ in [self.author, self.guild, self.channel]) else False
         if self.__testing and getattr(self.command, 'name', None):
-            tests: TimedDict = self.bot.cache['tests']
+            tests: dict = self.bot.cache['tests']
             tests[self.command] = self
         self.messages: Dict[int, Message] = dict()
         self.reinvoked: bool = False
@@ -414,7 +417,7 @@ class BotBase(AutoShardedBot):
     user: ClientUser
     boot: datetime
     pool: Pool
-    log: Logger
+    log: 'Logger'
     config_pool: Pool
     gateway_handler: Any
     cache = dict()
@@ -433,10 +436,11 @@ class BotBase(AutoShardedBot):
         self.cache.setdefault('context', deque(maxlen=100))
         self.cache.setdefault('tests', TimedDict(60*5))
         self.cache.setdefault('cached_posts', dict())
-        super().__init__(**options)
         self._session = None
         self._config = config
         self._emojis = emojis
+        super().__init__(**options)
+        self.ready_shards: 'Ready' = Ready(sequence=range(self.shard_count))
     
 
     @property
@@ -506,7 +510,7 @@ class BotBase(AutoShardedBot):
         dispatch = flags.get('dispatch', True)
         if ctx.command is not None:
             if ctx.testing:
-                tests: TimedDict = self.cache['tests']
+                tests: dict = self.cache['tests']
                 tests[ctx.command] = ctx
             run_in_task = flags.pop('in_task', True)
             if run_in_task:
@@ -553,6 +557,7 @@ class BotBase(AutoShardedBot):
     async def setup_hook(self):
         self._session = ClientSession()
         self.locale: Locale = Locale(self)
+        mo()
         self.lines: int = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
         self.loop.create_task(self.load_extensions())
@@ -574,7 +579,7 @@ class BotBase(AutoShardedBot):
         await super().close()
 
     async def on_shard_ready(self, shard_id):
-        self.log.info("Shard ID {id} is ready".format(id=shard_id))
+        self.ready_shards.ready(shard_id)
 
     async def on_shard_connect(self, shard_id):
         # logger.info("Shard ID {id} has successfully CONNECTED to Discord.".format(id=shard_id))
@@ -612,7 +617,7 @@ class ShakeEmbed(Embed):
         instance = cls(**kwargs)
         instance.timestamp = ctx.created_at
         author = getattr(ctx, 'author', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'user', str(MISSING))
-        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        bot: 'ShakeBot' = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         instance.set_footer(text=f"Requested by {author} • via Shake", icon_url=bot.user.avatar.url)
         #instance.add_field(name='\u200b', value=bot.config.embed.footer.format(author), inline=False)
         return instance
@@ -620,7 +625,7 @@ class ShakeEmbed(Embed):
     @classmethod
     def to_success(cls, ctx: Union[ShakeContext, Interaction], colour: Optional[Union[Colour, int]] = None, **kwargs: Any) -> ShakeEmbed:
         from Classes import config
-        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        bot: 'ShakeBot' = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
         instance = cls(colour=colour or config.embed.colour, **kwargs)
@@ -631,7 +636,7 @@ class ShakeEmbed(Embed):
     def to_error(cls, ctx: Union[ShakeContext, Interaction], colour: Optional[Union[Colour, int]] = MISSING, **kwargs: Any) -> ShakeEmbed:
         from Classes import config
         colour = colour or config.embed.error_colour
-        bot: ShakeBot = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
+        bot: 'ShakeBot' = getattr(ctx, 'bot', str(MISSING)) if isinstance(ctx, (ShakeContext, Context)) else getattr(ctx, 'client', str(MISSING))
         if description := kwargs.pop('description', None):
             kwargs['description'] = f"{bot.emojis.cross} {bot.emojis.prefix} **{description}**"
         instance = cls(colour=colour, **kwargs)
@@ -649,7 +654,7 @@ class Voice:
             channel: VoiceChannel
         ):
         self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot  = ctx.bot
+        self.bot: 'ShakeBot'  = ctx.bot
         self._channel: VoiceChannel = channel
         self._player: Optional[AudioPlayer] = None
 
@@ -657,7 +662,7 @@ class Voice:
         try:
             channel = await VoiceChannelConverter().convert(self.ctx, channel or self._channel)
         except _ChannelNotFound:
-            raise ChannelNotFound(_("I could not find the given VoiceChannel "))
+            raise ChannelNotFound("I could not find the given VoiceChannel")
         else:
             self._channel = channel
         finally:

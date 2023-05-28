@@ -16,7 +16,7 @@ import decimal
 import asyncpg
 import asyncio
 
-__all__ = ('Table', '_kwargs', 'create_tables')
+__all__ = ('Table', '_kwargs', 'create_tables', '_create_pool')
 
 _kwargs = {'command_timeout': 60, 'max_size': 1, 'min_size':1}
 

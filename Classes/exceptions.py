@@ -7,7 +7,7 @@ from discord.ext.commands.errors import (
 
 __all__ = (
     'ShakeError', 'ShakeMissingPermissions', 'CodeError', 'NothingHereYet', 'CheckFailure', 
-    'NotVoted', 'GuildNotFound', 'NotSFW', 'Testing'
+    'NotVoted', 'GuildNotFound', 'NotSFW', 'Testing', 'ChannelNotFound', 'NoDumpingSpots'
 )
 
 class ShakeError(CommandError):

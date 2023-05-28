@@ -5,7 +5,7 @@ from discord import Object, HTTPException
 from typing import Optional, Literal
 from Classes import ShakeBot, ShakeContext
 from discord.ext import commands
-from Classes.i18n import _
+from Classes import _
 ########
 #
 class command():

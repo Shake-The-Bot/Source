@@ -5,7 +5,7 @@ from Classes import ShakeBot, ShakeEmbed
 from asyncpg import Pool
 from logging import getLogger
 from inspect import cleandoc
-from Classes.i18n import _
+from Classes import _
 from contextlib import suppress
 from Classes.useful import captcha
 from asyncio import TimeoutError
