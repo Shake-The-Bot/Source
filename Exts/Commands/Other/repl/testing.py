@@ -12,7 +12,7 @@ from re import escape, sub, I
 from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT
 from types import FunctionType
 from base64 import b64encode
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout, suppress, redirect_stderr
 from Classes import ShakeBot, ShakeContext, MISSING
 from os import urandom as _urandom
 from traceback import format_exc
@@ -110,22 +110,25 @@ class command():
             await atch.save(buf, seek_begin=True, use_cached=False)
             self.code = buf.read().decode()
 
+        stdout = StringIO()
+        stderr = StringIO()
         cleaned = cleanup(self.code)
-            
+
         if cleaned in ['exit()', 'quit', 'exit']:
             self.env.clear()
             return await self.ctx.smart_reply('eval geleert')
         
-        
         executor = None
         if cleaned.count("\n") == 0:
-            try:
-                code = async_compile(cleaned, "<repl session>", "eval")
-            except SyntaxError:
-                raise
-            else:
-                executor = eval
-        
+            with redirect_stdout(stdout):
+                with redirect_stderr(stderr):
+                    try:
+                        code = async_compile(cleaned, "<repl session>", "eval")
+                    except SyntaxError:
+                        raise
+                    else:
+                        executor = eval
+
         formed = """
 async def func():
     try:
@@ -144,32 +147,35 @@ async def func():
         # self.env["_"] = 
         
         #stdouted = stdoutable(cleaned)
-        stdout = StringIO()
         msg = ""
         
         start = time() * 1000
+        
         try:
             with redirect_stdout(stdout):
-                with redirect_stdout(stdout):
+                with redirect_stderr(stderr):
                     if executor is None:
                         result = FunctionType(code, self.env)()
                     else:
                         result = executor(code, self.env)
                     result = await maybe_await(result)
         except:
-            value = stdout.getvalue()
-            msg = "{}{}".format(value, format_exc())
+            stdouted = stdout.getvalue()
+            stderred = stderr.getvalue()
+            
+            msg = "{}{}{}".format(stdouted, stderred, format_exc())
         else:
-            value = stdout.getvalue()
+            stdouted = stdout.getvalue()
+            stderred = stderr.getvalue()
             if result is not None:
-                msg = "{}{}".format(value, result)
+                msg = "{}\n{}\n{}".format(result, stdouted, stderred, )
                 self.env['_'] = result
-            elif value:
-                msg = "{}".format (value)
+            elif stdouted or stderred:
+                msg = "{}\n{}".format (stdouted, stderred)
         finally:
             end = time() * 1000
             completed = end - start
-
+        
         final = safe_output(self.ctx, str(msg))
         final += f'\n\n# {completed:.3f}ms'
 

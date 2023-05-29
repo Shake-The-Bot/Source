@@ -7,7 +7,7 @@ from typing import Any
 from discord import HTTPException, Forbidden
 from hmac import new
 from base64 import b64encode
-from contextlib import redirect_stdout, suppress
+from contextlib import redirect_stdout, suppress, redirect_stderr
 from Classes import ShakeBot, ShakeContext, MISSING
 from os import urandom as _urandom
 from traceback import format_exc
@@ -93,11 +93,13 @@ async def func():
     finally:
         self.env.update(locals())
 """.format(indent(content, ' ' * 8)).strip()
-        stdouted = stdoutable(content)
+        formatted = stdoutable(content)
         stdout = StringIO()
+        stderr = StringIO()
         try:
             with redirect_stdout(stdout):
-                exec(code, self.env)
+                with redirect_stderr(stderr):
+                    exec(code, self.env)
         except Exception as e:
             await self.ctx.smart_reply(f"```py\n{e.__class__.__name__}: {e}\n```")
             return
@@ -106,21 +108,23 @@ async def func():
         
         start = time() * 1000
         try:
-            
             with redirect_stdout(stdout):
-                func = self.env['func']
-                ret = await func()
+                with redirect_stderr(stderr):
+                    func = self.env['func']
+                    ret = await func()
         except Exception as err:
             with suppress(Forbidden, HTTPException):
                 await self.ctx.message.add_reaction(self.bot.emojis.cross)
-            await self.ctx.smart_reply(f"```py\n{stdouted}\n{err.__class__.__name__}: {err}\n```") #format_exc()
+            await self.ctx.smart_reply(f"```py\n{formatted}\n{err.__class__.__name__}: {err}\n```") #format_exc()
             return
         finally:
             end = time() * 1000
             completed = end - start
 
-            value = stdout.getvalue()
-            value = value.replace(self.bot.http.token, token)
+            stdouted = stdout.getvalue().replace(self.bot.http.token, token)
+            stderred = stderr.getvalue().replace(self.bot.http.token, token)
+
+            
 
         if ret is not None:
             if not isinstance(ret, str): 
@@ -131,7 +135,7 @@ async def func():
         with suppress(Forbidden, HTTPException):
             await self.ctx.message.add_reaction(self.bot.emojis.hook)
         
-        final = f"{stdouted}\n{value}{ret if ret else ''}\n# {completed:.3f}ms".replace('`', '′').replace(self.bot.http.token, token).replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
+        final = f"{formatted}\n{stdouted}\n{stderred}{ret if ret else ''}\n# {completed:.3f}ms".replace('`', '′').replace(self.bot.http.token, token).replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
 
         try:
             await self.ctx.smart_reply(f'```py\n{final}```')

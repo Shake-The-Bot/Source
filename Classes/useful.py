@@ -1,35 +1,50 @@
+from enum import Enum
+from functools import partial
+from io import BytesIO
+from math import floor
+from os import getcwd, listdir, path
+from random import choice as rchoice
+from random import random, randrange
+from threading import Timer
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    Union,
+    _SpecialForm,
+    _type_check,
+)
+
+from dateutil.relativedelta import relativedelta
+from discord import File, Interaction
+from discord.ext.commands import Context
+from discord.ext.commands.errors import (
+    ExtensionAlreadyLoaded,
+    ExtensionNotFound,
+    ExtensionNotLoaded,
+    NoEntryPointError,
+)
+from numpy import zeros
+from PIL import Image, ImageDraw, ImageFont
+
+from Classes.converter import ValidCog
 from Classes.exceptions import NotVoted
 from Classes.i18n import _
 from Classes.tomls import Config
-from Classes.converter import ValidCog
-
-from discord.ext.commands import Context
-from discord import File, Interaction
-from os import getcwd, listdir, path
-from functools import partial
-from numpy import zeros
-from io import BytesIO
-from math import floor
-from enum import Enum
-from threading import Timer
-from PIL import ImageFont, ImageDraw, Image
-from random import random, choice as rchoice, randrange
 from Exts.extensions import extensions
-from dateutil.relativedelta import relativedelta
-from typing import (
-    Any, Union, Literal, Optional, Iterator, Sequence, Any, TYPE_CHECKING, _SpecialForm, _type_check, Callable
-)
-from discord.ext.commands.errors import (
-    ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionNotFound
-)
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes.helpful import ShakeEmbed, ShakeContext
+    from Classes.helpful import ShakeContext, ShakeEmbed
 
 else:
-    from discord.ext.commands import Bot as ShakeBot, Context as ShakeContext
     from discord import Embed as ShakeEmbed
+    from discord.ext.commands import Bot as ShakeBot
+    from discord.ext.commands import Context as ShakeContext
 
 __all__ = (
     'captcha', 'perform_operation', 'human_join', 'source_lines', 
