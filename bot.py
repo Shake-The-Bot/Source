@@ -7,13 +7,16 @@ from discord import Message
 from discord.abc import Snowflake
 from discord.ext.commands import Cog
 
-from Classes import MISSING, BotBase, NoDumpingSpots, Table, _, current
-from Classes.database.db import _kwargs
+from Classes.database import Table, _kwargs
+from Classes.exceptions import NoDumpingSpots
+from Classes.helpful import BotBase
+from Classes.i18n import _, current
 from Classes.reddit import Reddit
 
 if TYPE_CHECKING:
-    from Classes import __version__
+    from Classes import MISSING, __version__
 else:
+    MISSING = None
     __version__ = MISSING
 
 __all__ = "ShakeBot"
