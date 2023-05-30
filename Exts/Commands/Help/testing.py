@@ -1,62 +1,94 @@
 from __future__ import annotations
-from logging import getLogger
+
 from contextlib import suppress
-from itertools import combinations as cmb, groupby
 from copy import copy
+from itertools import combinations as cmb
+from itertools import groupby
+from logging import getLogger
 from random import choice, sample
 from re import Match
-
-from discord.utils import format_dt, maybe_coroutine
-from discord.ext.commands import CommandError, Command as _Command, Group, Cog as _Cog, Greedy, errors
-from discord.ext import commands, menus
-from Classes.useful import Categorys
-from Classes.pages import (
-    ListPageSource, ItemPageSource, FrontPageSource, CategoricalMenu, 
-    CategoricalSelect, Pages
-)
 from typing import (
-    Literal, Union, Optional, get_args, get_origin, Any, Dict, 
-    Optional, List, Iterable, Callable
-)
-from discord import (
-    ButtonStyle, PartialEmoji, ui, NotFound, Forbidden, HTTPException, Attachment,
-    Interaction, Guild, Member, User, TextChannel, Object, Message, VoiceChannel
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Union,
+    get_args,
+    get_origin,
 )
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _, MISSING
+from discord import (
+    Attachment,
+    ButtonStyle,
+    Forbidden,
+    Guild,
+    HTTPException,
+    Interaction,
+    Member,
+    Message,
+    NotFound,
+    Object,
+    PartialEmoji,
+    TextChannel,
+    User,
+    VoiceChannel,
+    ui,
+)
+from discord.ext import commands, menus
+from discord.ext.commands import Cog as _Cog
+from discord.ext.commands import Command as _Command
+from discord.ext.commands import CommandError, Greedy, Group, errors
+from discord.utils import format_dt, maybe_coroutine
+
+from Classes import MISSING, ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes.pages import (
+    CategoricalMenu,
+    CategoricalSelect,
+    FrontPageSource,
+    ItemPageSource,
+    ListPageSource,
+    Pages,
+)
+from Classes.useful import Categorys
+
 ########
 #
 hear_to_tasks = dict()
 
-class command():
-    def __init__(self, ctx: ShakeContext, command: Optional[str], category: Optional[Categorys]):
+
+class command:
+    def __init__(
+        self, ctx: ShakeContext, command: Optional[str], category: Optional[Categorys]
+    ):
         self.bot = ctx.bot
         self.ctx = ctx
         self.command: str = command
         self.category: Optional[Categorys] = category
-    
 
     async def __await__(self: command):
         cat_or_cmd = self.command or self.category
 
         if cat_or_cmd is None:
             await HelpPaginatedCommand(self.ctx).send_bot_help()
-            return 
-        
+            return
+
         if isinstance(cat_or_cmd, Categorys):
             cog = await self.bot.get_cog(self.category.value)
             await HelpPaginatedCommand(self.ctx).send_cog_help(cog)
-            return 
-        
+            return
+
         maybe_coro = maybe_coroutine
-        keys = cat_or_cmd.split(' ')
+        keys = cat_or_cmd.split(" ")
         cmd = self.bot.all_commands.get(keys[0])
         help = HelpPaginatedCommand(ctx=self.ctx)
         if cmd is None:
             return help.command_not_found(keys[0])
 
         for key in keys[1:]:
-            try: 
+            try:
                 found = cmd.all_commands.get(key)
 
             except AttributeError:
@@ -72,43 +104,57 @@ class command():
 
                 cmd = found
 
-        if isinstance(cmd, Group): 
+        if isinstance(cmd, Group):
             await help.send_group_help(cmd)
             return
 
-        else: 
+        else:
             await help.send_command_help(cmd)
             return
 
-class HelpPaginatedCommand():
+
+class HelpPaginatedCommand:
     ctx: ShakeContext
 
     def __init__(self: HelpPaginatedCommand, ctx: Optional[ShakeContext] = None):
         self.ctx = ctx
 
-    async def on_help_command_error(self: HelpPaginatedCommand, ctx: ShakeContext, error: CommandError):
-        self.ctx.bot.dispatch('command_error', ctx, error)
+    async def on_help_command_error(
+        self: HelpPaginatedCommand, ctx: ShakeContext, error: CommandError
+    ):
+        self.ctx.bot.dispatch("command_error", ctx, error)
         return
 
     def command_not_found(self: HelpPaginatedCommand, string: str, /) -> ShakeEmbed:
-        error = errors.BadArgument(("Unknown command `{argument}`. Use \"/help\" for help.").format(argument=string))
-        self.ctx.bot.dispatch('command_error', self.ctx, error)
-
+        error = errors.BadArgument(
+            ('Unknown command `{argument}`. Use "/help" for help.').format(
+                argument=string
+            )
+        )
+        self.ctx.bot.dispatch("command_error", self.ctx, error)
 
     async def send_error_message(self: HelpPaginatedCommand, **kwargs) -> None:
         destination = self.get_destination()
         return await destination.send(**kwargs)
 
-
-    async def filter_commands(self: HelpPaginatedCommand, commands: Iterable[_Command[Any, ..., Any]], /, *, sort: bool = False, key: Optional[Callable[[_Command[Any, ..., Any]], Any]] = None,) -> List[Command[Any, ..., Any]]:
+    async def filter_commands(
+        self: HelpPaginatedCommand,
+        commands: Iterable[_Command[Any, ..., Any]],
+        /,
+        *,
+        sort: bool = False,
+        key: Optional[Callable[[_Command[Any, ..., Any]], Any]] = None,
+    ) -> List[Command[Any, ..., Any]]:
         if sort and key is None:
             key = lambda c: c.name
         iterator = filter(lambda c: not c.hidden, commands)
+
         async def predicate(cmd: _Command[Any, ..., Any]) -> bool:
             try:
                 return await cmd.can_run(self.ctx)
             except CommandError:
                 return False
+
         ret = []
         for cmd in iterator:
             valid = await predicate(cmd)
@@ -118,11 +164,12 @@ class HelpPaginatedCommand():
             ret.sort(key=key)
         return ret
 
-
     def subcommand_not_found(
         self: HelpPaginatedCommand, command: _Command[Any, ..., Any], string: str, /
     ) -> ShakeEmbed:
-        embed = ShakeEmbed.default(self.ctx, )
+        embed = ShakeEmbed.default(
+            self.ctx,
+        )
         embed.set_author(
             name=f'Command "{command.qualified_name}" hat keine subcommands.',
             icon_url=self.ctx.bot.emojis.cross.url,
@@ -132,8 +179,7 @@ class HelpPaginatedCommand():
                 name=f'Command "{command.qualified_name}" hat keinen subcommand mit dem namen {string}',
                 icon_url=self.ctx.bot.emojis.cross.url,
             )
-        return {'embed': embed}
-
+        return {"embed": embed}
 
     def remove_mentions(self: HelpPaginatedCommand, string: str, /) -> str:
         def replace(
@@ -142,7 +188,6 @@ class HelpPaginatedCommand():
             return transforms.get(obj.group(0), "@invalid")
 
         return self.MENTION_PATTERN.sub(replace, string)
-
 
     def get_command_signature(self: HelpPaginatedCommand, command: _Command) -> str:
         parent = command.full_parent_name
@@ -156,43 +201,52 @@ class HelpPaginatedCommand():
             alias = command.name if not parent else f"{parent} {command.name}"
         return f"{alias} {command.signature}"
 
-
     async def all_commands(self: HelpPaginatedCommand, bot: ShakeBot, user):
         def key(command: _Command) -> str:
             cog = command.cog
-            return '' if command.cog_name == 'help_extension' else cog.qualified_name
+            return "" if command.cog_name == "help_extension" else cog.qualified_name
 
         filtered = []
         for command in bot.commands:
-            if not hasattr(command.callback, 'extras'):
+            if not hasattr(command.callback, "extras"):
                 filtered.append(command)
                 continue
-            if (await bot.is_owner(user) or not command.callback.extras.get('owner', False)) and (not command.callback.extras.get('hidden', False)):
+            if (
+                await bot.is_owner(user)
+                or not command.callback.extras.get("owner", False)
+            ) and (not command.callback.extras.get("hidden", False)):
                 filtered.append(command)
-
 
         entries: list[_Command] = await self.filter_commands(
             filtered,
-            sort=True, key=key,
+            sort=True,
+            key=key,
         )
         all_commands: dict[_Cog, list[_Command]] = dict()
         for name, children in groupby(entries, key=key):
-            if name == '':  # "\U0010ffff"
-                continue 
-            cog = bot.get_cog(bot.get_cog(name).category())
-            assert cog is not None
-            all_commands.setdefault(cog, []).append(sorted(children, key=lambda c: c.qualified_name)[0])
-        return all_commands
+            if name == "":  # "\U0010ffff"
+                continue
 
+            # -> transitional
+            cog: Cog = bot.get_cog(name)
+            if hasattr(cog, "category"):
+                category = bot.get_cog(cog.category())
+            else:
+                category = cog.__class__.__bases__[0]
+
+            assert category is not None
+            all_commands.setdefault(category, []).append(
+                sorted(children, key=lambda c: c.qualified_name)[0]
+            )
+        return all_commands
 
     async def send_bot_help(self: HelpPaginatedCommand):
         menu = HelpMenu(ctx=self.ctx, source=Front())
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
         menu.add_categories(categories=commands)
-        
+
         if await menu.setup():
             await menu.send()
-
 
     async def commands_from_cog(self: HelpPaginatedCommand, cog):
         def key(command) -> str:
@@ -212,23 +266,27 @@ class HelpPaginatedCommand():
             commands.append(sorted(children, key=lambda c: c.qualified_name)[0])
         return commands
 
-
     async def send_cog_help(self: HelpPaginatedCommand, cog):
-        locale = await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US'
+        locale = (
+            await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
+        )
         await self.ctx.bot.locale.set_user_locale(self.ctx.author.id, locale)
-        if not getattr(cog, 'help_command_title', False):
+        if not getattr(cog, "help_command_title", False):
             cog = self.ctx.bot.get_cog(cog.category())
         commands = await self.commands_from_cog(cog)
-        source = Cog(self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True)
+        source = Cog(
+            self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True
+        )
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
         menu.add_categories(categories=commands)
         if setup := await menu.setup():
             await menu.send()
 
-
     async def send_command_help(self: HelpPaginatedCommand, command):
-        locale = await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or 'en-US'
+        locale = (
+            await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
+        )
         await self.ctx.bot.locale.set_user_locale(self.ctx.author.id, locale)
         if command.name == "help":
             return await self.send_bot_help(self.ctx)
@@ -254,44 +312,62 @@ class HelpPaginatedCommand():
 
 def configurations(bot: ShakeBot):
     conf = {
-        'beta': {
-            'suffix': bot.emojis.help.beta, 
-            'text': _('This command is new and is in its beta version')
-        }, 
-        'owner': {
-            'suffix': bot.emojis.help.owner, 
-            'text': _('Only the owner of the shake bot can run this command')
+        "beta": {
+            "suffix": bot.emojis.help.beta,
+            "text": _("This command is new and is in its beta version"),
         },
-        'premium': {
-            'suffix': bot.emojis.help.shakeplus, 
-            'text': _('Start a Shake+ subscription to run this command')
-        }, 
-        'permissions': {
-            'suffix': bot.emojis.help.permissions, 
-            'text': _('This command requires certain rights from the user to be executed')
+        "owner": {
+            "suffix": bot.emojis.help.owner,
+            "text": _("Only the owner of the shake bot can run this command"),
+        },
+        "premium": {
+            "suffix": bot.emojis.help.shakeplus,
+            "text": _("Start a Shake+ subscription to run this command"),
+        },
+        "permissions": {
+            "suffix": bot.emojis.help.permissions,
+            "text": _(
+                "This command requires certain rights from the user to be executed"
+            ),
         },
     }
-    return conf 
+    return conf
 
 
 class HelpMenu(CategoricalMenu):
-    def __init__(self, ctx: ShakeContext, source: menus.PageSource, front: Optional[FrontPageSource] = MISSING, **kwargs: Any):
-        super().__init__(ctx, source=source, front=front, select=CategoricalSelect(ctx, source=Cog), **kwargs)
-        self.cache['source'] = self.cache['page'] = None
+    def __init__(
+        self,
+        ctx: ShakeContext,
+        source: menus.PageSource,
+        front: Optional[FrontPageSource] = MISSING,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            ctx,
+            source=source,
+            front=front,
+            select=CategoricalSelect(ctx, source=Cog),
+            **kwargs,
+        )
+        self.cache["source"] = self.cache["page"] = None
 
     async def hear(self):
-        if not isinstance(self.source, ListPageSource): 
+        if not isinstance(self.source, ListPageSource):
             return False
         commands = {i: command for i, command in enumerate(self.items)}
         hears_to = [command.qualified_name for command in commands.values()]
-        def check(m): 
+
+        def check(m):
             return (m.author == self.ctx.author) and (m.clean_content in hears_to)
-        try:  
-            if self.ctx.author in hear_to_tasks: 
+
+        try:
+            if self.ctx.author in hear_to_tasks:
                 hear_to_tasks[self.ctx.author].close()
-            hear_to_tasks[self.ctx.author] = self.ctx.bot.wait_for('message', timeout=self.timeout, check=check)
+            hear_to_tasks[self.ctx.author] = self.ctx.bot.wait_for(
+                "message", timeout=self.timeout, check=check
+            )
             msg = await hear_to_tasks[self.ctx.author]
-        except: 
+        except:
             return
         else:
             index = None
@@ -302,30 +378,34 @@ class HelpMenu(CategoricalMenu):
             if index is None:
                 return await self.hear()
             await self.rebind(Command(), index)
-            with suppress(NotFound, Forbidden, HTTPException): 
+            with suppress(NotFound, Forbidden, HTTPException):
                 await msg.delete()
 
-
-    @ui.button(style=ButtonStyle.blurple, emoji='ℹ', row=2)
-    async def go_to_info_page(self, interaction: Interaction, button: ui.Button): 
+    @ui.button(style=ButtonStyle.blurple, emoji="ℹ", row=2)
+    async def go_to_info_page(self, interaction: Interaction, button: ui.Button):
         is_frontpage = isinstance(self.source, FrontPageSource)
-        
+
         if is_frontpage:
-            assert self.cache.get('source', MISSING) != MISSING and self.cache.get('page', MISSING) != MISSING
-            tmpsource, tmppage = (self.cache['source'], self.cache['page'])
-            self.cache['source'] = self.cache['page'] = None
+            assert (
+                self.cache.get("source", MISSING) != MISSING
+                and self.cache.get("page", MISSING) != MISSING
+            )
+            tmpsource, tmppage = (self.cache["source"], self.cache["page"])
+            self.cache["source"] = self.cache["page"] = None
             await self.rebind(tmpsource, tmppage, interaction=interaction)
             return
 
         elif not is_frontpage:
-            assert self.cache.get('source', MISSING) == None and self.cache.get('page', MISSING) == None
-            self.cache['source'], self.cache['page'] = (self.source, self.page)
+            assert (
+                self.cache.get("source", MISSING) == None
+                and self.cache.get("page", MISSING) == None
+            )
+            self.cache["source"], self.cache["page"] = (self.source, self.page)
             await self.rebind(Front(), 2, interaction=interaction)
             return
 
-
     async def run_command(self, interaction: Interaction, command: commands.Command):
-        if not interaction.response.is_done(): 
+        if not interaction.response.is_done():
             await interaction.response.defer()
         msg = copy(self.ctx.message)
         msg.channel = self.ctx.channel
@@ -334,21 +414,33 @@ class HelpMenu(CategoricalMenu):
         new_ctx = await self.ctx.bot.get_context(msg, cls=type(self.ctx))
         await self.ctx.bot.invoke(new_ctx)
 
-
     def update(self, page: Optional[int] = None) -> None:
         super().update(page=page)
         is_frontpage = isinstance(self.source, FrontPageSource)
-        self.go_to_info_page.style = (ButtonStyle.green if (self.cache['source'] != None) else ButtonStyle.grey) if is_frontpage else ButtonStyle.blurple
-        self.go_to_info_page.disabled = (False if (self.cache['source'] != None) else True) if is_frontpage else False
+        self.go_to_info_page.style = (
+            (ButtonStyle.green if (self.cache["source"] != None) else ButtonStyle.grey)
+            if is_frontpage
+            else ButtonStyle.blurple
+        )
+        self.go_to_info_page.disabled = (
+            (False if (self.cache["source"] != None) else True)
+            if is_frontpage
+            else False
+        )
         return
-
 
     async def show_page(self, interaction: Interaction, item: int) -> None:
         await super().show_page(interaction=interaction, item=item)
         await self.hear()
         return
 
-    async def rebind(self, source: menus.PageSource, page: Optional[int] = 0, interaction: Optional[Interaction] = None, update: Optional[bool] = True) -> None:
+    async def rebind(
+        self,
+        source: menus.PageSource,
+        page: Optional[int] = 0,
+        interaction: Optional[Interaction] = None,
+        update: Optional[bool] = True,
+    ) -> None:
         await super().rebind(source, page, interaction, update)
         await self.hear()
         return
@@ -358,7 +450,10 @@ class HelpMenu(CategoricalMenu):
         self.add_item(self.go_to_info_page)
 
 
-def get_signature( self: commands.Command, menu: ui.View,):
+def get_signature(
+    self: commands.Command,
+    menu: ui.View,
+):
     bot: ShakeBot = menu.ctx.bot
     ctx: ShakeContext = menu.ctx
     guild: Guild = menu.ctx.guild
@@ -373,14 +468,34 @@ def get_signature( self: commands.Command, menu: ui.View,):
     optionals = dict()
     required = dict()
 
-    all_text_channel = {str(channel.name): channel.mention for channel in guild.text_channels}
-    text_channel = (all_text_channel.get(sorted(set(all_text_channel.keys()), key=len, reverse=False)[0]) if bool(guild.text_channels) else None)
+    all_text_channel = {
+        str(channel.name): channel.mention for channel in guild.text_channels
+    }
+    text_channel = (
+        all_text_channel.get(
+            sorted(set(all_text_channel.keys()), key=len, reverse=False)[0]
+        )
+        if bool(guild.text_channels)
+        else None
+    )
 
     all_members = {str(member.name): member.mention for member in guild.members}
-    member = (all_members.get(sorted(set(all_members.keys()), key=len, reverse=False)[0]) if bool(guild.members) else None)
+    member = (
+        all_members.get(sorted(set(all_members.keys()), key=len, reverse=False)[0])
+        if bool(guild.members)
+        else None
+    )
 
-    all_voice_channel = {str(channel.name): channel.mention for channel in guild.voice_channels}
-    voice_channel = (all_voice_channel.get(sorted(set(all_voice_channel.keys()), key=len, reverse=False)[0]) if bool(guild.voice_channels) else None)
+    all_voice_channel = {
+        str(channel.name): channel.mention for channel in guild.voice_channels
+    }
+    voice_channel = (
+        all_voice_channel.get(
+            sorted(set(all_voice_channel.keys()), key=len, reverse=False)[0]
+        )
+        if bool(guild.voice_channels)
+        else None
+    )
 
     examples = {
         int: [choice(range(0, 100))],
@@ -390,12 +505,14 @@ def get_signature( self: commands.Command, menu: ui.View,):
         VoiceChannel: [voice_channel],
         Object: [guild.id],
         Message: [menu.ctx.message.id, menu.message.id if menu.message else None],
-        str: ['abc', 'hello', 'xyz'],
-        bool: ['True', 'False']
+        str: ["abc", "hello", "xyz"],
+        bool: ["True", "False"],
     }
     for name, param in params.items():
         greedy = isinstance(param.converter, Greedy)
-        typin = get_origin(param.converter) == Union and get_args(param.converter)[-1] == type(None)
+        typin = get_origin(param.converter) == Union and get_args(param.converter)[
+            -1
+        ] == type(None)
         optional = False  # postpone evaluation of if it's an optional argument
 
         if greedy:
@@ -406,10 +523,9 @@ def get_signature( self: commands.Command, menu: ui.View,):
             annotation = choice(args)
         else:
             annotation = param.converter
-        
 
-        origin = getattr(annotation, '__origin__', None)
-        example = choice(examples.get(annotation, [f'{{{name}}}'])) or f'{{{name}}}'
+        origin = getattr(annotation, "__origin__", None)
+        example = choice(examples.get(annotation, [f"{{{name}}}"])) or f"{{{name}}}"
 
         if not greedy and origin is Union:
             none_cls = type(None)
@@ -417,149 +533,257 @@ def get_signature( self: commands.Command, menu: ui.View,):
             optional = union_args[-1] is none_cls
             if len(union_args) == 2 and optional:
                 annotation = union_args[0]
-                origin = getattr(annotation, '__origin__', None)
+                origin = getattr(annotation, "__origin__", None)
 
         if annotation is Attachment:
             if optional:
-                optionals[_("[{name} (upload a file)]".format(name=name))] = str(example)
+                optionals[_("[{name} (upload a file)]".format(name=name))] = str(
+                    example
+                )
             else:
-                required[(_("<{name} (upload a file)>") if not greedy else _("[{name} (upload files)]…")).format(name=name)] = str(example)
+                required[
+                    (
+                        _("<{name} (upload a file)>")
+                        if not greedy
+                        else _("[{name} (upload files)]…")
+                    ).format(name=name)
+                ] = str(example)
             continue
 
         if origin is Literal:
-            name = '|'.join(f'"{v}"' if isinstance(v, str) else str(v) for v in annotation.__args__)
-            
+            name = "|".join(
+                f'"{v}"' if isinstance(v, str) else str(v) for v in annotation.__args__
+            )
+
         if not param.required:
             if param.displayed_default:
-                optionals[f'[{name}: {annotation.__name__}]…' if greedy else f'[{name}: {annotation.__name__}]'] = str(example)
+                optionals[
+                    f"[{name}: {annotation.__name__}]…"
+                    if greedy
+                    else f"[{name}: {annotation.__name__}]"
+                ] = str(example)
                 continue
             else:
-                optionals[f'[{name}: {annotation.__name__}]'] = str(example)
+                optionals[f"[{name}: {annotation.__name__}]"] = str(example)
             continue
 
         elif param.kind == param.VAR_POSITIONAL:
             if self.require_var_positional:
-                required[f'<{name}: {annotation.__name__}…>'] = str(example)
+                required[f"<{name}: {annotation.__name__}…>"] = str(example)
             else:
-                optionals[f'[{name}: {annotation.__name__}…]'] = str(example)
+                optionals[f"[{name}: {annotation.__name__}…]"] = str(example)
         elif optional:
-            optionals[f'[{name}: {annotation.__name__}]'] = str(example)
+            optionals[f"[{name}: {annotation.__name__}]"] = str(example)
         else:
             if greedy:
-                optionals[f'[{name}: {annotation.__name__}]…'] = str(example)
-            else: 
-                required[f'<{name}: {annotation.__name__}>'] = str(example) 
-    
+                optionals[f"[{name}: {annotation.__name__}]…"] = str(example)
+            else:
+                required[f"<{name}: {annotation.__name__}>"] = str(example)
+
     return required, optionals
 
 
 class Command(ItemPageSource):
     def format_page(self, menu: ui.View, **kwargs):
         command = {i: command for i, command in enumerate(menu.items)}[self.item]
-        
-        embed = ShakeEmbed.default(menu.ctx,
-            title=_("{category} » {command} Command").format(category=menu.ctx.bot.get_cog(command.cog.category()).long_doc_title(), command=command.name.capitalize()), 
-            description="{}".format(_(command.help).format(prefix=menu.ctx.prefix) if command.help else _("No more detailed description given."))
+
+        embed = ShakeEmbed.default(
+            menu.ctx,
+            title=_("{category} » {command} Command").format(
+                category=menu.ctx.bot.get_cog(command.cog.category()).long_doc_title(),
+                command=command.name.capitalize(),
+            ),
+            description="{}".format(
+                _(command.help).format(prefix=menu.ctx.prefix)
+                if command.help
+                else _("No more detailed description given.")
+            ),
         )
-        embed.set_author(name=_('More detailed command description'))
+        embed.set_author(name=_("More detailed command description"))
         required, optionals = get_signature(menu, command)
         if bool(required) or bool(optionals):
-            count = 3 if len(optionals.items()) > 3 else len(optionals.items())+1
-            combinations = [subset for L in range(len(optionals.keys()) + 1) for subset in cmb(optionals.keys(), L)]
-            fetched = sample([combi for combi in combinations], count) # if not any(not bool(x) for x in combi)
+            count = 3 if len(optionals.items()) > 3 else len(optionals.items()) + 1
+            combinations = [
+                subset
+                for L in range(len(optionals.keys()) + 1)
+                for subset in cmb(optionals.keys(), L)
+            ]
+            fetched = sample(
+                [combi for combi in combinations], count
+            )  # if not any(not bool(x) for x in combi)
 
             usgs = [[k for k in combina] for combina in fetched]
             exmpls = [[optionals[k] for k in combina] for combina in fetched]
 
-            usage = [f'```\n{_("Usage of the {command} command").format(command=command.name.capitalize())}\n```']
+            usage = [
+                f'```\n{_("Usage of the {command} command").format(command=command.name.capitalize())}\n```'
+            ]
             for usg in usgs:
-                usage.append('\n> ' + '\n '.join([f'**/{command.name}** ' + ' '.join(required.keys()) + ' ' + ' '.join(usg)]))
-            embed.add_field(name="\u200b", inline=False, value=''.join(usage))
+                usage.append(
+                    "\n> "
+                    + "\n ".join(
+                        [
+                            f"**/{command.name}** "
+                            + " ".join(required.keys())
+                            + " "
+                            + " ".join(usg)
+                        ]
+                    )
+                )
+            embed.add_field(name="\u200b", inline=False, value="".join(usage))
 
-            examples = [f'```\n{_("Examples of the {command} command").format(command=command.name.capitalize())}\n```']
+            examples = [
+                f'```\n{_("Examples of the {command} command").format(command=command.name.capitalize())}\n```'
+            ]
             for exmpl in exmpls:
-                examples.append('\n> ' + '\n '.join([f'**/{command.name}** ' + ' '.join(required.values()) + ' ' + ' '.join(exmpl)])) 
-            embed.add_field(name="\u200b", inline=False, value=''.join(examples))
+                examples.append(
+                    "\n> "
+                    + "\n ".join(
+                        [
+                            f"**/{command.name}** "
+                            + " ".join(required.values())
+                            + " "
+                            + " ".join(exmpl)
+                        ]
+                    )
+                )
+            embed.add_field(name="\u200b", inline=False, value="".join(examples))
 
-        bot_permissions = command.extras.get('permissions', {}).get('bot', [])
-        user_permissions = command.extras.get('permissions', {}).get('user', [])
+        bot_permissions = command.extras.get("permissions", {}).get("bot", [])
+        user_permissions = command.extras.get("permissions", {}).get("user", [])
         if bool(bot_permissions) or bool(user_permissions):
             bot = []
             if bool(bot_permissions):
                 for bot_permission in bot_permissions:
-                    bot.append(f'{bot_permission}')
-                bot = ', '.join(bot)
+                    bot.append(f"{bot_permission}")
+                bot = ", ".join(bot)
                 bot = f'\n> **{_("Bot")}:**\n' + bot
             user = []
             if bool(user_permissions):
                 for user_permission in user_permissions:
-                    user.append(f'{user_permission}')
-                user = ', '.join(user)
+                    user.append(f"{user_permission}")
+                user = ", ".join(user)
                 user = f'\n> **{_("User")}:** ' + user
-            embed.add_field(name="\u200b", inline=False, value=(
-                f'```{_("Necessary user permissions")}```{user if bool(user) else str()}{bot if bool(bot) else str()}')
+            embed.add_field(
+                name="\u200b",
+                inline=False,
+                value=(
+                    f'```{_("Necessary user permissions")}```{user if bool(user) else str()}{bot if bool(bot) else str()}'
+                ),
             )
-            embed.add_field(name='\u200b', value=menu.ctx.bot.config.embed.footer, inline=False)
+            embed.add_field(
+                name="\u200b", value=menu.ctx.bot.config.embed.footer, inline=False
+            )
         return embed, None
 
 
 class Cog(ListPageSource):
     def __init__(
-            self, ctx: ShakeContext, 
-            group: commands.Cog, items: list[commands.Command],
-            paginating: bool = True, per_page: int = 6, **kwargs
-        ):
-        title: str = getattr(group, 'help_command_title', None) or f'{group.qualified_name} Befehle'
+        self,
+        ctx: ShakeContext,
+        group: commands.Cog,
+        items: list[commands.Command],
+        paginating: bool = True,
+        per_page: int = 6,
+        **kwargs,
+    ):
+        title: str = (
+            getattr(group, "help_command_title", None)
+            or f"{group.qualified_name} Befehle"
+        )
         super().__init__(
-            ctx=ctx, group=group, items=items, description=group.description, 
-            paginating=paginating, per_page=per_page, title=title
+            ctx=ctx,
+            group=group,
+            items=items,
+            description=group.description,
+            paginating=paginating,
+            per_page=per_page,
+            title=title,
         )
         self.suffixes = set()
 
     def getsig(self, command: commands.Command):
         signature = []
-        count = 28 + command.signature.count('…') + command.signature.count(' ') + command.signature.count('...')
-        for argument in getattr(command, 'signature', '').replace('...', '…').split(' '):
+        count = (
+            28
+            + command.signature.count("…")
+            + command.signature.count(" ")
+            + command.signature.count("...")
+        )
+        for argument in (
+            getattr(command, "signature", "").replace("...", "…").split(" ")
+        ):
             if not bool(argument):
                 continue
-            if len(''.join(signature)+argument)+1 > count:
-                signature.append('[…]')
+            if len("".join(signature) + argument) + 1 > count:
+                signature.append("[…]")
                 break
-            signature.append('{}'.format(argument))
+            signature.append("{}".format(argument))
         return signature
 
     def add_field(self, embed: ShakeEmbed, item: Any, config):
         suffix: dict[str, dict] = {
             extra: config[extra]
-                for extra, key in getattr(item.callback, 'extras', {}).items() if key is True and extra in set(config.keys())
+            for extra, key in getattr(item.callback, "extras", {}).items()
+            if key is True and extra in set(config.keys())
         }
         self.suffixes.update(set(suffix.keys()))
-        arguments = (' `' + ' '.join(sig) + '`') if bool(sig := self.getsig(item)) else ''
+        arguments = (
+            (" `" + " ".join(sig) + "`") if bool(sig := self.getsig(item)) else ""
+        )
         badges = (
-            ' **➜** '+' '.join([
-                str(configuration['suffix']) for configuration in suffix.values()
-            ])
-        ) if bool(suffix) else ''
-        emoji = getattr(item.cog, 'display_emoji', '👀')
+            (
+                " **➜** "
+                + " ".join(
+                    [str(configuration["suffix"]) for configuration in suffix.values()]
+                )
+            )
+            if bool(suffix)
+            else ""
+        )
+        emoji = getattr(item.cog, "display_emoji", "👀")
 
-        signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}" 
-        embed.add_field(name=signature, inline=False, value='> '+(_(item.help).split('\n', 1)[0] if item.help else _("No help given... (You should report this)")).capitalize()+badges)
+        signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
+        embed.add_field(
+            name=signature,
+            inline=False,
+            value="> "
+            + (
+                _(item.help).split("\n", 1)[0]
+                if item.help
+                else _("No help given... (You should report this)")
+            ).capitalize()
+            + badges,
+        )
         return
 
-    async def format_page(self, menu: Union[Pages, ui.View], items: list[commands.Command]):
+    async def format_page(
+        self, menu: Union[Pages, ui.View], items: list[commands.Command]
+    ):
         config = configurations(self.bot)
         menu.items = items
-        locale = await self.bot.locale.get_user_locale(menu.ctx.author.id) or 'en-US'
+        locale = await self.bot.locale.get_user_locale(menu.ctx.author.id) or "en-US"
         await self.bot.locale.set_user_locale(menu.ctx.author.id, locale)
-        embed = ShakeEmbed.default(menu.ctx, title=self.title, description=self.description+"\n\u200b", )#discord.Colour(0xA8B9CD))
-        embed.set_author(name=_("Page {current}/{max} ({entries} commands)").format(
-            current=menu.page+1, max=self.get_max_pages(), entries=len(self.entries)
-        ))
+        embed = ShakeEmbed.default(
+            menu.ctx,
+            title=self.title,
+            description=self.description + "\n\u200b",
+        )  # discord.Colour(0xA8B9CD))
+        embed.set_author(
+            name=_("Page {current}/{max} ({entries} commands)").format(
+                current=menu.page + 1,
+                max=self.get_max_pages(),
+                entries=len(self.entries),
+            )
+        )
         for item in items:
-            self.add_field(embed, item, config=config)            
+            self.add_field(embed, item, config=config)
 
-        last_embed = ["**{0}・{1}**".format(config[key].get('suffix'), config[key].get('text')) for key in self.suffixes]
-        if bool(last_embed): 
+        last_embed = [
+            "**{0}・{1}**".format(config[key].get("suffix"), config[key].get("text"))
+            for key in self.suffixes
+        ]
+        if bool(last_embed):
             embed.add_field(name="\u200b", value="\n".join(last_embed))
 
         return embed, None
@@ -574,10 +798,10 @@ class Front(FrontPageSource):
         self.timeouted = timeout
         return self
 
-    def is_paginating(self) -> bool: 
+    def is_paginating(self) -> bool:
         return True
 
-    def get_max_pages(self) -> Optional[int]: 
+    def get_max_pages(self) -> Optional[int]:
         return 3
 
     async def get_page(self, index: int) -> Any:
@@ -585,57 +809,83 @@ class Front(FrontPageSource):
         return self
 
     def format_page(self, menu: ui.View, items: Any):
-        embed = ShakeEmbed.default(menu.ctx, title = (
-            _("{emoji} Bot Help (Timeouted type ?help again!)") if self.timeouted else _("{emoji} Bot Help")).format(
-                emoji=PartialEmoji(animated=True, name='thanks', id=984980175525666887
-            )
-        ))
+        embed = ShakeEmbed.default(
+            menu.ctx,
+            title=(
+                _("{emoji} Bot Help (Timeouted type ?help again!)")
+                if self.timeouted
+                else _("{emoji} Bot Help")
+            ).format(
+                emoji=PartialEmoji(animated=True, name="thanks", id=984980175525666887)
+            ),
+        )
         if self.index in [1, 2]:
             embed.description = _(
                 """Hello and welcome to my help page {emoji}
                 Type `{prefix}help <command/category>` to get more information on a\ncommand/category."""
-            ).format(
-                emoji='', 
-                prefix=menu.ctx.clean_prefix
-            )
+            ).format(emoji="", prefix=menu.ctx.clean_prefix)
             embed.add_field(
-                name=_("Support Server"), inline=False,
-                value=_("You can get more help if you join the official server at\n{support_server}").format(
-                    support_server=menu.ctx.bot.config.other.server
-                )
+                name=_("Support Server"),
+                inline=False,
+                value=_(
+                    "You can get more help if you join the official server at\n{support_server}"
+                ).format(support_server=menu.ctx.bot.config.other.server),
             )
         file = None
         if self.index == 0:
-            embed.set_image(url="https://cdn.discordapp.com/attachments/946862628179939338/1060213944981143692/banner.png")
-            embed.add_field(name=_("Who am I?"), inline=False,
+            embed.set_image(
+                url="https://cdn.discordapp.com/attachments/946862628179939338/1060213944981143692/banner.png"
+            )
+            embed.add_field(
+                name=_("Who am I?"),
+                inline=False,
                 value=_(
                     """{user}, which is partially intended for the public.
-                    Written with only `{lines:,}` lines of code. Please be nice""").format(
-                        user=menu.ctx.bot.user.mention, lines=menu.ctx.bot.lines
-                    ))
+                    Written with only `{lines:,}` lines of code. Please be nice"""
+                ).format(user=menu.ctx.bot.user.mention, lines=menu.ctx.bot.lines),
+            )
         elif self.index == 1:
-            embed.add_field(name=_("What am I for?"), inline=False,
+            embed.add_field(
+                name=_("What am I for?"),
+                inline=False,
                 value=_(
                     """I am a functional all-in-one bot that will simplify setting up your server for you!
 
                     I have been created {created_at} & 
                     I have functions like voting, level system, music, moderation & much more. 
                     You can get more information by using the dropdown menu below.
-                    dropdown menu.""").format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")))
+                    dropdown menu."""
+                ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
+            )
         elif self.index == 2:
             entries = (
-                ('<' + _('argument') + '>', _("Stands for the argument being __**necessary**__.")),
-                ('[' + _('argument') + ']', _("Stands for that the argument is __**optional**__.")),
-                ('[A|B]', _("Stands for the argument can be __**either A or B**__.")),
-                (f"[{_('argument')}]…", _(
-                    """Stands for the fact that you can use multiple arguments.
+                (
+                    "<" + _("argument") + ">",
+                    _("Stands for the argument being __**necessary**__."),
+                ),
+                (
+                    "[" + _("argument") + "]",
+                    _("Stands for that the argument is __**optional**__."),
+                ),
+                ("[A|B]", _("Stands for the argument can be __**either A or B**__.")),
+                (
+                    f"[{_('argument')}]…",
+                    _(
+                        """Stands for the fact that you can use multiple arguments.
 
                     Now that you know the basics, you should still know that...
                     __**You don't include the parentheses!**__"""
+                    ),
                 ),
-            ))
-            embed.add_field(name=_("How do I use the bot?"), value=_("Reading the bot structure is pretty easy."))
-            for name, value in entries: embed.add_field(name=name, value=value, inline=False)
+            )
+            embed.add_field(
+                name=_("How do I use the bot?"),
+                value=_("Reading the bot structure is pretty easy."),
+            )
+            for name, value in entries:
+                embed.add_field(name=name, value=value, inline=False)
         return embed, file
+
+
 #
 ############

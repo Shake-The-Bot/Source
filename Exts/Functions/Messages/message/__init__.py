@@ -1,10 +1,16 @@
 ############
 #
-from discord import Message
 from importlib import reload
-from Classes import Testing, ShakeBot
-from . import message as _message, testing
+
+from discord import Message
 from discord.ext.commands import Cog
+
+from Classes import ShakeBot, Testing
+
+from . import message as _message
+from . import testing
+
+
 ########
 #
 class on_message(Cog):
@@ -19,29 +25,37 @@ class on_message(Cog):
     async def on_message(self, message: Message):
         await self.bot.wait_until_ready()
 
-        if message.author.bot: 
+        if message.author.bot:
             return
-        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [message.channel, message.guild, message.author])
-        
+        test = any(
+            x.id in set(self.bot.testing.keys())
+            for x in [message.channel, message.guild, message.author]
+        )
+
         if test:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 test = False
         do = testing if test else _message
 
         try:
             await do.Event(message=message, bot=self.bot).__await__()
-    
+
         except:
             if test:
                 raise Testing
             raise
-    
-async def setup(bot: ShakeBot): 
+
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(on_message(bot))
+
+
 #
 ############

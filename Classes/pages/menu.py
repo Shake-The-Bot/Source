@@ -1,9 +1,20 @@
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from discord import ButtonStyle, Interaction, ui
 from discord.ext import menus
-from Classes.pages import source as _source, page, select as _select
-from Classes.pages.source import Sources, ItemPageSource, ListPageSource, FrontPageSource
-from typing import Any, Optional, TYPE_CHECKING, Dict, Union, List
-from discord import ui, ButtonStyle, Interaction
+
+from Classes.pages import page
+from Classes.pages import select as _select
+from Classes.pages import source as _source
+from Classes.pages.source import (
+    FrontPageSource,
+    ItemPageSource,
+    ListPageSource,
+    Sources,
+)
+
+__all__ = ("ListMenu", "CategoricalMenu", "LinkingSource")
+
 Group = Item = Any
 
 if TYPE_CHECKING:
@@ -11,8 +22,10 @@ if TYPE_CHECKING:
 else:
     from discord.ext.commands import Context as ShakeContext
 
+
 class JokerItems:
     pass
+
 
 class LinkingSource:
     value: str
@@ -31,14 +44,16 @@ class LinkingSource:
         self.__await__()
         return self
 
-    def __await__(self,):
+    def __await__(
+        self,
+    ):
         raise NotImplemented
-    
+
     def __str__(self) -> str:
         raise NotImplemented
-    
+
     @property
-    def label(self) -> str: 
+    def label(self) -> str:
         raise NotImplemented
 
 
@@ -58,22 +73,35 @@ class ListMenu(page.Pages):
 
 class CategoricalMenu(page.Pages):
     def __init__(
-            self, ctx: ShakeContext, source: menus.PageSource, select: _select.CategoricalSelect, 
-            front: Optional[_source.FrontPageSource] = None, timeout: Optional[float] = 180.0, **kwargs: Any
-        ):
+        self,
+        ctx: ShakeContext,
+        source: menus.PageSource,
+        select: _select.CategoricalSelect,
+        front: Optional[_source.FrontPageSource] = None,
+        timeout: Optional[float] = 180.0,
+        **kwargs: Any
+    ):
         super().__init__(source=source, ctx=ctx, timeout=timeout, **kwargs)
         self.select: _select.CategoricalSelect = select
         self.__front: _source.FrontPageSource = front or source
 
     @property
-    def front(self,) -> _source.FrontPageSource:
+    def front(
+        self,
+    ) -> _source.FrontPageSource:
         return self.__front
 
     @front.setter
     def front(self, value) -> None:
         self.__front = value
 
-    async def rebind(self, source: menus.PageSource, page: Optional[int] = 0, interaction: Optional[Interaction] = None, update: Optional[bool] = True) -> None:
+    async def rebind(
+        self,
+        source: menus.PageSource,
+        page: Optional[int] = 0,
+        interaction: Optional[Interaction] = None,
+        update: Optional[bool] = True,
+    ) -> None:
         self.source = source
         self.page = 0 if isinstance(source, _source.ItemPageSource) else page
         if update:
@@ -81,21 +109,51 @@ class CategoricalMenu(page.Pages):
         await source._prepare_once()
         page_source = await source.get_page(page)
         self.kwargs, self.file = await self._get_from_page(page_source)
-        
+
         if interaction or self.message:
             try:
-                if not interaction or not isinstance(interaction, Interaction) or interaction.response.is_done():
+                if (
+                    not interaction
+                    or not isinstance(interaction, Interaction)
+                    or interaction.response.is_done()
+                ):
                     if self.message:
-                        await self.message.edit(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
+                        await self.message.edit(
+                            **self.kwargs,
+                            attachments=(
+                                self.file
+                                if isinstance(self.file, list)
+                                else [self.file]
+                            )
+                            if self.file
+                            else [],
+                            view=self
+                        )
                 else:
-                    await interaction.response.edit_message(**self.kwargs, attachments=(self.file if isinstance(self.file, list) else [self.file]) if self.file else [], view=self)
+                    await interaction.response.edit_message(
+                        **self.kwargs,
+                        attachments=(
+                            self.file if isinstance(self.file, list) else [self.file]
+                        )
+                        if self.file
+                        else [],
+                        view=self
+                    )
             except:
                 pass
 
-
-    def add_categories(self, categories: Dict[Union[Group, Any], Union[List[Item], Sources]]) -> None:
+    def add_categories(
+        self, categories: Dict[Union[Group, Any], Union[List[Item], Sources]]
+    ) -> None:
         for key, value in dict(categories).items():
-            source = isinstance(key, (ItemPageSource, ListPageSource, FrontPageSource,))
+            source = isinstance(
+                key,
+                (
+                    ItemPageSource,
+                    ListPageSource,
+                    FrontPageSource,
+                ),
+            )
             if source and value is None:
                 continue
             if not bool(value) and not value == JokerItems:
@@ -106,11 +164,12 @@ class CategoricalMenu(page.Pages):
         self.add_item(self.select())
         self.fill()
 
-
     async def on_timeout(self, interaction: Optional[Interaction] = None) -> None:
         await self.rebind(self.front(timeout=True), interaction=interaction)
         for item in self._children:
             if isinstance(item, ui.Button) or isinstance(item, ui.Select):
                 item.disabled = True
                 item.style = ButtonStyle.grey
-        await self.rebind(self.front(timeout=True), interaction=interaction, update=False)
+        await self.rebind(
+            self.front(timeout=True), interaction=interaction, update=False
+        )

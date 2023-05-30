@@ -1,11 +1,17 @@
 ############
 #
 from importlib import reload
-from . import command_error, testing as testfile
-from typing import Union, Optional
+from typing import Optional, Union
+
+from discord import Client, Interaction
 from discord.ext.commands import Cog, CommandError
-from Classes import ShakeContext, ShakeBot, Testing
-from discord import Interaction, Client
+
+from Classes import ShakeBot, ShakeContext, Testing
+
+from . import command_error
+from . import testing as testfile
+
+
 ########
 #
 class on_command_error(Cog):
@@ -17,30 +23,44 @@ class on_command_error(Cog):
             pass
 
     @Cog.listener()
-    async def on_command_error(self, ctx: Union[ShakeContext, Interaction], error: CommandError):
-        if isinstance(ctx, ShakeContext) and ctx.cog and ctx.cog._get_overridden_method(ctx.cog.cog_command_error) is not None:
+    async def on_command_error(
+        self, ctx: Union[ShakeContext, Interaction], error: CommandError
+    ):
+        if (
+            isinstance(ctx, ShakeContext)
+            and ctx.cog
+            and ctx.cog._get_overridden_method(ctx.cog.cog_command_error) is not None
+        ):
             return
-        
+
         author: ShakeBot = ctx.author if isinstance(ctx, ShakeContext) else ctx.user
-        test = any(x.id in set(self.bot.cache['testing'].keys()) for x in [author, ctx.guild, ctx.channel])
-        
+        test = any(
+            x.id in set(self.bot.testing.keys())
+            for x in [author, ctx.guild, ctx.channel]
+        )
+
         if test:
             try:
                 reload(testfile)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testfile.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testfile.__file__, type=e.__class__.__name__
+                    )
+                )
                 test = False
         do = testfile if test else command_error
 
         try:
             await do.Event(ctx=ctx, error=error).__await__()
-    
+
         except:
             raise
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(on_command_error(bot))
+
+
 #
 ############

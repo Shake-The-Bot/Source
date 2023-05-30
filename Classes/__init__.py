@@ -12,19 +12,16 @@ from bot import ShakeBot
 
 from .checks import *
 from .converter import *
-from .database import *
 from .exceptions import *
 from .helpful import *
 from .i18n import *
 from .logging import *
+from .necessary import *
 from .tomls import *
 from .useful import *
 
 ############
 #
-
-emojis = Emojis("Assets/utils/emojis.toml")
-config = Config("config.toml")
 
 
 class VersionInfo(NamedTuple):

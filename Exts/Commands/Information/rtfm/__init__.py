@@ -1,40 +1,46 @@
 ############
 #
-from discord import PartialEmoji, Member
-from importlib import reload
-from Classes import ShakeContext, _, locale_doc, Testing, ShakeBot
-from . import rtfm, testing
 from enum import Enum
-from discord import app_commands, Interaction
-from discord.ext.commands import Cog, guild_only, hybrid_group, Greedy
+from importlib import reload
+
+from discord import Interaction, Member, PartialEmoji, app_commands
+from discord.ext.commands import Greedy, guild_only, hybrid_group
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc
+
+from ..information import Information
+from . import rtfm, testing
+
 ########
 #
 
-class Keys(Enum):
-  # format: name = "value"
-  discordpy = "latest"
-  python = "python"
-  Blue = "blue"
 
-class rtfm_extension(Cog):
+class Keys(Enum):
+    discordpy = "latest"
+    python = "python"
+    Blue = "blue"
+
+
+class rtfm_extension(Information):
     """
     rtfm_cog
     """
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
 
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
+        try:
+            reload(rtfm)
+        except:
+            pass
 
     @property
-    def display_emoji(self) -> str: 
-        return PartialEmoji(name='\N{BOOKS}')
+    def display_emoji(self) -> str:
+        return PartialEmoji(name="\N{BOOKS}")
 
-
-    def category(self) -> str: 
-        return "information"
-    
-
-    async def rtfm_slash_autocomplete(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
-        if not hasattr(self.bot, '_rtfm_cache'):
+    async def rtfm_slash_autocomplete(
+        self, interaction: Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        if not hasattr(self.bot, "_rtfm_cache"):
             await interaction.response.autocomplete([])
             await rtfm.build_rtfm_lookup_table()
             return []
@@ -50,8 +56,7 @@ class rtfm_extension(Cog):
         matches = rtfm.finder(current, self.bot._rtfm_cache[key])[:10]
         return [app_commands.Choice(name=m, value=m) for m in matches]
 
-
-    @hybrid_group(name='rtfm')
+    @hybrid_group(name="rtfm")
     @guild_only()
     @app_commands.autocomplete(entity=rtfm_slash_autocomplete)
     @locale_doc
@@ -66,20 +71,21 @@ class rtfm_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else rtfm
 
-        try:    
+        try:
             await do.command(ctx, key.value, entity).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
-
 
     @rtfm.command(name="stats")
     @locale_doc
@@ -97,24 +103,26 @@ class rtfm_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else rtfm
 
-        try:    
+        try:
             await do.command(ctx=ctx, member=member).do_sub()
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
 
-
-async def setup(bot: ShakeBot): 
+async def setup(bot: ShakeBot):
     await bot.add_cog(rtfm_extension(bot))
+
+
 #
 ############
-

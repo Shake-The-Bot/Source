@@ -1,23 +1,34 @@
 ############
 #
-from Classes import _
-from Classes.useful import MISSING
-from Classes.exceptions import NothingHereYet
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+
 from discord import File, Interaction, PartialEmoji
 from discord.ext import menus
+
+from Classes import _
+from Classes.exceptions import NothingHereYet
 from Classes.pages import page
-from typing import Optional, Any, Tuple, TYPE_CHECKING, Union, Dict, List
+from Classes.useful import MISSING
 
 if TYPE_CHECKING:
-    from Classes import ShakeBot, ShakeEmbed, ShakeContext
+    from Classes import ShakeBot, ShakeContext, ShakeEmbed
 else:
-    from discord.ext.commands import Context as ShakeContext, Bot as ShakeBot
     from discord import Embed as ShakeEmbed
+    from discord.ext.commands import Bot as ShakeBot
+    from discord.ext.commands import Context as ShakeContext
+
+__all__ = (
+    "AnyPageSource",
+    "FrontPageSource",
+    "ItemPageSource",
+    "ListPageSource",
+)
+
 
 class AnyPageSource(menus.PageSource):
-    def is_paginating(self) -> bool: 
+    def is_paginating(self) -> bool:
         raise NothingHereYet
-    
+
     def get_max_pages(self) -> Optional[int]:
         raise NothingHereYet
 
@@ -28,11 +39,18 @@ class AnyPageSource(menus.PageSource):
     def format_page(self, menu: page.menus, items: Any) -> Tuple[ShakeEmbed, File]:
         raise NothingHereYet
 
+
 class ItemPageSource(menus.PageSource):
     def __init__(
-            self, ctx: Union[ShakeContext, Interaction], item: Any, title: str, description: str = '', 
-            label: Optional[str] = MISSING, *args, **kwargs
-        ):
+        self,
+        ctx: Union[ShakeContext, Interaction],
+        item: Any,
+        title: str,
+        description: str = "",
+        label: Optional[str] = MISSING,
+        *args,
+        **kwargs,
+    ):
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
         self.item: Any = item
@@ -44,16 +62,16 @@ class ItemPageSource(menus.PageSource):
         super().__init__()
 
     @property
-    def label(self) -> str: 
+    def label(self) -> str:
         return self.__label
-    
+
     @property
     def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name='dot', id=1093146860182568961)
+        return PartialEmoji(name="dot", id=1093146860182568961)
 
-    def is_paginating(self) -> bool: 
+    def is_paginating(self) -> bool:
         return True
-    
+
     def get_max_pages(self) -> Optional[int]:
         return 1
 
@@ -67,9 +85,18 @@ class ItemPageSource(menus.PageSource):
 
 class ListPageSource(menus.ListPageSource):
     def __init__(
-            self, ctx: Union[ShakeContext, Interaction], items: List[Any], title: str, group: Optional[Any] = MISSING, description: str = '', 
-            paginating: bool = True, per_page: Optional[int] = 6, label: Optional[str] = MISSING, *args, **kwargs
-        ):
+        self,
+        ctx: Union[ShakeContext, Interaction],
+        items: List[Any],
+        title: str,
+        group: Optional[Any] = MISSING,
+        description: str = "",
+        paginating: bool = True,
+        per_page: Optional[int] = 6,
+        label: Optional[str] = MISSING,
+        *args,
+        **kwargs,
+    ):
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
         self.group: Any = group
@@ -86,17 +113,17 @@ class ListPageSource(menus.ListPageSource):
         if isinstance(item, tuple):
             embed.add_field(name=item[0], value=item[1])
             return
-        if hasattr(item, 'name') and hasattr(item, 'value'):
+        if hasattr(item, "name") and hasattr(item, "value"):
             embed.add_field(name=item.name, value=item.value)
             return
         raise NothingHereYet
-    
-    @property
-    def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name='dot', id=1093146860182568961)
 
     @property
-    def label(self) -> str: 
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="dot", id=1093146860182568961)
+
+    @property
+    def label(self) -> str:
         return self.__label
 
     @property
@@ -108,13 +135,16 @@ class ListPageSource(menus.ListPageSource):
 
     async def format_page(self, menu: page.menus, items: list[Any]):
         file = None
-        details = (f' 〈 {menu.page + 1} / {self.maximum} 〉') if self.maximum > 1 else ''
-        title = self.title + (details if self.description else '')
-        description = self.description if self.description else '**'+details+'**'
-        embed = ShakeEmbed(colour=self.bot.config.embed.colour, title=title, description=description)
+        details = (f" 〈 {menu.page + 1} / {self.maximum} 〉") if self.maximum > 1 else ""
+        title = self.title + (details if self.description else "")
+        description = self.description if self.description else "**" + details + "**"
+        embed = ShakeEmbed(
+            colour=self.bot.config.embed.colour, title=title, description=description
+        )
         for item in items:
             self.add_field(embed, item)
         return embed, file
+
 
 class FrontPageSource(menus.PageSource):
     index: int
@@ -132,8 +162,9 @@ class FrontPageSource(menus.PageSource):
         self.index = index
         return self
 
-    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]: 
+    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
         raise NothingHereYet
+
 
 sources = (ItemPageSource, ListPageSource, FrontPageSource)
 Sources = Union[ItemPageSource, ListPageSource, FrontPageSource]

@@ -1,40 +1,38 @@
 ############
 #
-from discord.ext import commands
 from discord import PartialEmoji
-from Classes import _, ShakeBot
+from discord.ext import commands
+
+from Classes import ShakeBot, _
+
+
 ########
 #
-class information(commands.Cog):
-    def __init__(self, bot) -> None: 
+class Information(commands.Cog):
+    def __init__(self, bot: ShakeBot) -> None:
         self.bot = bot
-        self.description = _(
+        self.category_description = _(
             """Informative commands about a wide variety of things.
             Sometimes you find out new things 🤷"""
         )
         self.names = [_("information"), _("info")]
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{INFORMATION SOURCE}')
+    def category_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{INFORMATION SOURCE}")
 
     @property
-    def long_doc_title(self) -> str: 
+    def category_title(self) -> str:
         return f"{self.display_emoji}︱{self.label}"
 
     @property
-    def label(self) -> str: 
-        return _("Information")
+    def category_label(self) -> str:
+        return _("Information Commands")
 
     @property
     def describe(self) -> bool:
         return False
 
-    @property
-    def help_command_title(self) -> str: 
-        return _("Information Commands")
 
-async def setup(bot: ShakeBot): 
-    await bot.add_cog(information(bot))
 #
 ############

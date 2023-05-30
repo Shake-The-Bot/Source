@@ -1,35 +1,40 @@
 ############
 #
-from typing import Union, Optional
-from discord import PartialEmoji, Member, User
-from discord.ext.commands.converter import MemberConverter, MemberNotFound
-from random import choice
 from importlib import reload
-from . import userinfo, testing
-from Classes import _, locale_doc, setlocale, ShakeBot, ShakeContext, Testing
-from discord.ext.commands import hybrid_command, Cog, guild_only
+from random import choice
+from typing import Optional, Union
+
+from discord import Member, PartialEmoji, User
+from discord.ext.commands import Cog, guild_only, hybrid_command
+from discord.ext.commands.converter import MemberConverter, MemberNotFound
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+
+from ..information import Information
+from . import testing, userinfo
+
+
 ########
 #
-class userinfo_extension(Cog):
-    def __init__(self, bot) -> None: 
-        self.bot: ShakeBot = bot
+class userinfo_extension(Information):
+    def __init__(self, bot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(userinfo)
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='ℹ️')
-        
-    def category(self) -> str: 
-        return "information"
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="ℹ️")
 
     @hybrid_command(name="userinfo", aliases=["ui"])
     @guild_only()
     @setlocale()
     @locale_doc
-    async def userinfo(self, ctx: ShakeContext, user: Optional[Union[User, Member]] = None):
+    async def userinfo(
+        self, ctx: ShakeContext, user: Optional[Union[User, Member]] = None
+    ):
         _(
             """Get information about you or a specified user.
             
@@ -42,11 +47,12 @@ class userinfo_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
-
 
         do = testing if ctx.testing else userinfo
 
@@ -57,12 +63,13 @@ class userinfo_extension(Cog):
             except MemberNotFound:
                 pass
 
-
         fallback = None
         if user is None:
             user = await self.bot.fetch_user(ctx.author.id)
             try:
-                member = await MemberConverter().convert(ctx=ctx, argument=str(ctx.author))
+                member = await MemberConverter().convert(
+                    ctx=ctx, argument=str(ctx.author)
+                )
             except MemberNotFound:
                 pass
 
@@ -75,7 +82,9 @@ class userinfo_extension(Cog):
                 user = await self.bot.fetch_user(user.id)
 
                 try:
-                    member = await MemberConverter().convert(ctx=ctx, argument=str(user))
+                    member = await MemberConverter().convert(
+                        ctx=ctx, argument=str(user)
+                    )
                 except MemberNotFound:
                     if bool(user.mutual_guilds):
                         guild = choice(user.mutual_guilds)
@@ -84,19 +93,25 @@ class userinfo_extension(Cog):
                         pass
 
             else:
-                self.bot.log.debug('userinfo command passed unknown <user> arg: {}'.format(user))
+                self.bot.log.debug(
+                    "userinfo command passed unknown <user> arg: {}".format(user)
+                )
                 member = None
 
         try:
-            await do.command(ctx=ctx, user=user or ctx.author, member=member, fallback=fallback).__await__()
-    
+            await do.command(
+                ctx=ctx, user=user or ctx.author, member=member, fallback=fallback
+            ).__await__()
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
 
-async def setup(bot: ShakeBot): 
+async def setup(bot: ShakeBot):
     await bot.add_cog(userinfo_extension(bot))
+
+
 #
 ############

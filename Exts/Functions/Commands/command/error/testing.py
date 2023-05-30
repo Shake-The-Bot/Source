@@ -20,6 +20,7 @@ class Event:
         self.error: errors.CommandError = error
 
     async def __await__(self):
+        await self.bot.register_command(self.ctx)
         if not self.ctx in self.bot.cache["context"]:
             self.bot.cache["context"].append(self.ctx)
         original = getattr(self.error, "original", self.error)
