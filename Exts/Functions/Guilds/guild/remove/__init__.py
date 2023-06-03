@@ -28,11 +28,7 @@ class on_guild_remove(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
         do = testing if test else guild_remove
 

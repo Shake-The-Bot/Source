@@ -43,11 +43,7 @@ class on_command_error(Cog):
             try:
                 reload(testfile)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testfile.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testfile, error=e)
                 test = False
         do = testfile if test else command_error
 

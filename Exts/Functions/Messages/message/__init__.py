@@ -2,7 +2,7 @@
 #
 from importlib import reload
 
-from discord import Message
+from discord import Member, Message
 from discord.ext.commands import Cog
 
 from Classes import ShakeBot, Testing
@@ -23,24 +23,20 @@ class on_message(Cog):
 
     @Cog.listener()
     async def on_message(self, message: Message):
-        await self.bot.wait_until_ready()
-
         if message.author.bot:
             return
+        if not message.guild:
+            return
+
         test = any(
             x.id in set(self.bot.testing.keys())
             for x in [message.channel, message.guild, message.author]
         )
-
         if test:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
         do = testing if test else _message
 

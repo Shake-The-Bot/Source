@@ -1,15 +1,20 @@
 ############
 #
-from discord import PartialEmoji, Object
 from importlib import reload
-from typing import Optional, Literal
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
+from typing import Literal, Optional
+
+from discord import Object, PartialEmoji
+from discord.ext.commands import Cog, Greedy, command, guild_only, is_owner
+
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+
 from . import sync, testing
-from discord.ext.commands import Greedy, guild_only, is_owner, Cog, command
+
+
 ########
 #
 class sync_extension(Cog):
-    def __init__(self, bot) -> None: 
+    def __init__(self, bot) -> None:
         self.bot: ShakeBot = bot
         try:
             reload(sync)
@@ -17,10 +22,10 @@ class sync_extension(Cog):
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{SATELLITE ANTENNA}')
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{SATELLITE ANTENNA}")
 
-    def category(self) -> str: 
+    def category(self) -> str:
         return "moderation"
 
     @command(name="sync")
@@ -29,7 +34,13 @@ class sync_extension(Cog):
     @is_owner()
     @setlocale()
     @locale_doc
-    async def sync(self, ctx: ShakeContext, guilds: Greedy[Object] = None, spec: Optional[Literal["~", "*", "^"]] = None, dump: Optional[bool] = False):
+    async def sync(
+        self,
+        ctx: ShakeContext,
+        guilds: Greedy[Object] = None,
+        spec: Optional[Literal["~", "*", "^"]] = None,
+        dump: Optional[bool] = False,
+    ):
         _(
             """synchronize the bot with its commands
 
@@ -54,15 +65,13 @@ class sync_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
         do = testing if ctx.testing else sync
 
         try:
             await do.command(ctx=ctx, guilds=guilds, spec=spec, dump=dump).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
@@ -71,5 +80,7 @@ class sync_extension(Cog):
 
 async def setup(bot):
     await bot.add_cog(sync_extension(bot))
+
+
 #
 ############

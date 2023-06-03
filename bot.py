@@ -1,12 +1,13 @@
 from logging import Logger, getLogger
-from typing import TYPE_CHECKING, Optional, Sequence
+from types import ModuleType
+from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
 from asyncpg import Pool
 from discord import Message
 from discord.abc import Snowflake
 from discord.ext.commands import Cog
 
-from Classes.helpful import BotBase
+from Classes.helpful import BotBase, DatabaseProtocol
 from Classes.i18n import _
 from Classes.reddit import Reddit
 from Classes.useful import MISSING
@@ -17,14 +18,15 @@ if TYPE_CHECKING:
 else:
     __version__ = MISSING
 
-__all__ = "ShakeBot"
+__all__ = ("ShakeBot",)
+
 ############
 #
 
 
 class ShakeBot(BotBase):
     pool: Pool
-    gpool: Pool
+    gpool: DatabaseProtocol
     logger: Logger
 
     def __init__(self, **options):
@@ -41,6 +43,16 @@ class ShakeBot(BotBase):
     async def setup_hook(self):
         self.reddit: Reddit = Reddit()
         return await super().setup_hook()
+
+    async def testing_error(
+        self, module: Dict[str, ModuleType], error: Exception
+    ) -> None:
+        self.log.critical(
+            "Could not load {name}, will fallback ({type})".format(
+                name=module.__file__, type=error.__class__.__name__
+            )
+        )
+        return None
 
     async def add_cog(
         self,
@@ -60,10 +72,7 @@ class ShakeBot(BotBase):
     async def close(self) -> None:
         print()
         self.log.info("Bot is shutting down")
-        await self.reddit.reddit.close()
-        self.scheduler.shutdown()
-        if self.session and not self.session.closed:
-            await self.session.close()
+        await self.reddit.client.close()
         await super().close()
 
     async def dump(self, content: str, lang: Optional[str] = "txt") -> Optional[str]:

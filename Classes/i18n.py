@@ -7,7 +7,7 @@ from os import getcwd, path, walk
 from subprocess import call
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
-from discord import Guild, User
+from discord import Guild, Interaction, User
 from discord.ext.commands import check
 from discord.ext.commands._types import Check
 
@@ -87,11 +87,20 @@ def use_current_gettext(*args: Any, **kwargs: Any) -> str:
 
 
 def setlocale(guild: Optional[bool] = False) -> Check[Any]:
-    async def predicate(ctx: ShakeContext) -> bool:
-        locale = await ctx.bot.locale.get_guild_locale(ctx.guild.id) or (
-            "en-US"
+    async def predicate(
+        ctx: Optional[ShakeContext] = None, interaction: Optional[Interaction] = None
+    ) -> bool:
+        if not ctx is None:
+            bot: ShakeBot = ctx.bot
+        elif not interaction is None:
+            bot: ShakeBot = interaction.client
+        else:
+            return False
+
+        locale = (
+            await bot.locale.get_guild_locale(ctx.guild.id, default="en-US")
             if guild
-            else (await ctx.bot.locale.get_user_locale(ctx.author.id) or "en-US")
+            else await bot.locale.get_user_locale(ctx.author.id, default="en-US")
         )
         current.set(locale)
         return True
@@ -208,7 +217,7 @@ class Locale:
         self.cache["locales"][user_id] = locale
         return True
 
-    async def get_user_locale(self, user_id: User.id):
+    async def get_user_locale(self, user_id: User.id, default: Optional[str] = None):
         if self.cache["locales"].get(user_id, None):
             return self.cache["locales"][user_id]
 
@@ -222,7 +231,7 @@ class Locale:
                 or None
             )
         self.cache["locales"][user_id] = value
-        return self.cache["locales"][user_id]
+        return self.cache["locales"][user_id] or default
 
     async def set_guild_locale(self, guild_id: Guild.id, locale: str):
         async with self.pool.acquire() as connection:
@@ -237,7 +246,7 @@ class Locale:
         self.cache["locales"][guild_id] = locale
         return True
 
-    async def get_guild_locale(self, guild_id: Guild.id):
+    async def get_guild_locale(self, guild_id: Guild.id, default: Optional[str] = None):
         if self.cache["locales"].get(guild_id, None):
             return self.cache["locales"][guild_id]
         async with self.pool.acquire() as connection:
@@ -250,7 +259,7 @@ class Locale:
                 or None
             )
         self.cache["locales"][guild_id] = value
-        return self.cache["locales"][guild_id]
+        return self.cache["locales"][guild_id] or default
 
 
 #

@@ -2,7 +2,8 @@ from enum import Enum
 from functools import partial
 from io import BytesIO
 from math import floor
-from os import getcwd, listdir, path
+from os import getcwd, listdir
+from os.path import isdir, isfile
 from random import choice as rchoice
 from random import random, randrange
 from sys import exc_info
@@ -12,55 +13,68 @@ from typing import (
     Any,
     Callable,
     Iterator,
+    List,
     Literal,
     Optional,
+    Protocol,
     Sequence,
+    Tuple,
     Union,
     _SpecialForm,
     _type_check,
 )
 from urllib.parse import quote
 
+from _collections_abc import dict_items
 from aiohttp import ClientSession
+from asyncpg import Connection, InvalidCatalogNameError, connect
 from dateutil.relativedelta import relativedelta
-from discord import File, Interaction
-from discord.ext.commands import Context
-from discord.ext.commands.errors import (
-    ExtensionAlreadyLoaded,
-    ExtensionNotFound,
-    ExtensionNotLoaded,
-    NoEntryPointError,
+from discord import (
+    ClientException,
+    FFmpegPCMAudio,
+    File,
+    Guild,
+    Interaction,
+    Member,
+    PartialEmoji,
+    TextChannel,
+    VoiceChannel,
 )
-from numpy import zeros
+from discord.abc import T
+from discord.ext.commands import ChannelNotFound as _ChannelNotFound
+from discord.ext.commands import Context, VoiceChannelConverter
+from discord.ext.commands.errors import ExtensionAlreadyLoaded, ExtensionNotLoaded
+from discord.player import AudioPlayer
 from PIL import Image, ImageDraw, ImageFont
 
 from Classes.converter import ValidCog
-from Classes.exceptions import NoDumpingSpots, NotVoted
-from Classes.i18n import _
+from Classes.exceptions import ChannelNotFound, NoDumpingSpots, NotVoted
+from Classes.i18n import _, current
+from Classes.tomls import config
 
 if TYPE_CHECKING:
     from bot import ShakeBot
     from Classes.helpful import ShakeContext, ShakeEmbed
-    from Classes.necessary import config
 
 else:
-    config = object()
     from discord import Embed as ShakeEmbed
     from discord.ext.commands import Bot as ShakeBot
     from discord.ext.commands import Context as ShakeContext
 
-
 __all__ = (
+    "ensure_uri_can_run",
     "captcha",
     "perform_operation",
     "human_join",
     "source_lines",
-    "levenshtein",
     "high_level_function",
     "calc",
+    "aboveme",
+    "counting",
     "votecheck",
     "Ready",
     "dump",
+    "DatabaseProtocol",
     "FormatTypes",
     "cogshandler",
     "MISSING",
@@ -70,6 +84,9 @@ __all__ = (
     "TextFormat",
     "TracebackType",
 )
+
+
+b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
 
 try:
     raise TypeError
@@ -384,55 +401,30 @@ def human_join(
     return delimiter.join(seq[:-1]) + f" {final} {seq[-1]}"
 
 
-def source_lines(root: Optional[str] = None) -> int:
-    root = root or getcwd()
+def source_lines(path: Optional[str] = None) -> int:
+    path = path or getcwd()
 
-    def _iterate_source_line_counts(root: str) -> Iterator[int]:
-        for child in listdir(root):
-            _path = f"{root}/{child}"
-            if path.isdir(_path):
-                yield from _iterate_source_line_counts(_path)
-            if (
-                child.startswith(".")
-                or child.endswith(".toml")
-                or child in ["LICENSE", "README.md"]
-            ):
+    def _iterate_source_line_counts(_path: str) -> Iterator[int]:
+        for file in listdir(_path):
+            __path: str = f"{_path}/{file}"
+
+            if isdir(__path):
+                yield from _iterate_source_line_counts(__path)
+
+            if not isfile(__path):
                 continue
-            else:
-                if _path.endswith((".py")):
-                    with open(_path, encoding="utf8") as f:
-                        yield len(f.readlines())
 
-    return sum(_iterate_source_line_counts(root))
+            if file.endswith((".py")) and not file.startswith("."):
+                with open(__path, encoding="utf8") as f:
+                    yield len(
+                        [
+                            line
+                            for line in f.readlines()
+                            if not line.strip().startswith("#") and not "import" in line
+                        ]
+                    )
 
-
-def levenshtein(one: str, two: str, ratio_calc: Optional[bool] = False):
-    rows, columns = (len(one) + 1, len(two) + 1)
-    distance = zeros((rows, columns), dtype=int)
-
-    for i in range(1, rows):
-        for k in range(1, columns):
-            distance[i][0], distance[0][k] = (i, k)
-
-    for column in range(1, columns):
-        for row in range(1, rows):
-            if one[row - 1] == two[column - 1]:
-                cost = 0
-            else:
-                if ratio_calc:
-                    cost = 2
-                else:
-                    cost = 1
-            distance[row][column] = min(
-                distance[row - 1][column] + 1,
-                distance[row][column - 1] + 1,
-                distance[row - 1][column - 1] + cost,
-            )
-
-    if ratio_calc:
-        return ((len(one) + len(two)) - distance[row][column]) / (len(one) + len(two))
-    else:
-        return distance[row][column]
+    return sum(_iterate_source_line_counts(path))
 
 
 def Duration(duration: str) -> Optional[relativedelta]:
@@ -521,6 +513,9 @@ class ExpiringCache(dict):
         ]
         for k in to_remove:
             del self[k]
+
+    def items(self) -> dict_items:
+        return [(k, v) for k, (v, t) in super().items()]
 
     def __contains__(self, key: str):
         self.__verify_cache_integrity()
@@ -668,3 +663,409 @@ async def dump(
             return text
 
     raise NoDumpingSpots("All tried hosts did not work")
+
+
+async def ensure_uri_can_run(config, type: Literal["guild", "bot"]) -> bool:
+    conn = connection = None
+    conn: Connection = await connect(config.database.postgresql)
+    try:
+        connection: Connection = await connect(config.database.postgresql + type)
+    except InvalidCatalogNameError:
+        try:
+            await conn.execute(
+                f'CREATE DATABASE "{type}" OWNER "{config.database.user}"'
+            )
+        except:
+            raise
+        finally:
+            await conn.close()
+    else:
+        await conn.close()
+        await connection.close()
+
+    return True
+
+
+class Voice:
+    """
+    A class representing functions with Voice
+    """
+
+    def __init__(self, ctx: ShakeContext, channel: VoiceChannel):
+        self.ctx: ShakeContext = ctx
+        self.bot: "ShakeBot" = ctx.bot
+        self._channel: VoiceChannel = channel
+        self._player: Optional[AudioPlayer] = None
+
+    async def __await__(self, channel: Optional[VoiceChannel] = MISSING):
+        try:
+            channel = await VoiceChannelConverter().convert(
+                self.ctx, channel or self._channel
+            )
+        except _ChannelNotFound:
+            raise ChannelNotFound("I could not find the given VoiceChannel")
+        else:
+            self._channel = channel
+        finally:
+            return self.channel
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @property
+    def channel(self):
+        return self._channel
+
+    async def set_volume(self, volume):
+        if not self.player:
+            return
+
+    async def set_channel(self, channel):
+        channel = await self.__await__(channel)
+        await self.cancel()
+
+    async def connect(self, channel: Optional[VoiceChannel] = MISSING, **kwargs) -> T:
+        try:
+            voice = await (channel or self._channel).connect(
+                reconnect=True, self_deaf=True, **kwargs
+            )
+        except ClientException:
+            pass
+        except TimeoutError:
+            pass
+        else:
+            self._voice = voice
+        finally:
+            return self._voice
+
+    async def play(self, filepath, volume):
+        self.filepath = filepath
+        self.volume = volume
+
+        self._voice = await self._channel.connect(reconnect=True, self_deaf=True)
+
+        if self._voice.is_playing():
+            self._voice.stop()
+
+        self._voice.play(source=FFmpegPCMAudio(filepath))
+        self._player = self._voice._player
+
+        # Wait until the sound clip is finished before leaving
+        while self._player.is_playing():
+            pass
+        await self._voice.disconnect()
+
+
+class aboveme:
+    def __init__(
+        self,
+        bot: ShakeBot,
+        member: Member,
+        channel: TextChannel,
+        guild: Guild,
+        content: str,
+    ):
+        self.bot: ShakeBot = bot
+        self.pool: DatabaseProtocol = bot.gpool
+        self.member: Member = member
+        self.content: str = content
+        self.channel: TextChannel = channel
+        self.guild: Guild = guild
+        self.testing = any(
+            x.id in set(self.bot.testing.keys()) for x in [channel, guild, member]
+        )
+
+    async def phrase_check(self, content: str, phrases: List[str]):
+        if content.strip() in phrases:
+            return False
+        return True
+
+    async def syntax_check(self, content: str):
+        if not content.lower().startswith(self.trigger.lower()):
+            return False
+
+        if not content.lower().removeprefix(self.trigger.lower()).strip():
+            return False
+        return True
+
+    async def member_check(self, user_id: int):
+        if self.testing and await self.bot.is_owner(self.member):
+            return True
+        elif user_id == self.member.id:
+            return False
+        return True
+
+    async def __await__(self) -> Tuple[Optional[ShakeEmbed], bool, bool]:
+        async with self.pool.acquire() as connection:
+            record = await connection.fetchrow(
+                "SELECT * FROM aboveme WHERE channel_id = $1",
+                self.channel.id,
+            )
+
+        user_id: int = record["user_id"]
+        count: int = record["count"] or 0
+        phrases: List[str] = record["phrases"] or []
+        hardcore: bool = record["hardcore"]
+
+        current.set(
+            await self.bot.locale.get_guild_locale(self.guild.id, default="en-US")
+        )
+
+        self.trigger: str = _("the one above me")
+
+        embed = ShakeEmbed(timestamp=None)
+
+        delete = bad_reaction = xyz = False
+
+        if not await self.member_check(user_id):
+            embed.description = _(
+                """{user} ruined it {facepalm} **You can't show off several times in a row**.
+                Someone should still go on."""
+            ).format(
+                user=self.member.mention,
+                facepalm=str(PartialEmoji(name="facepalm", id=1038177759983304784)),
+            )
+
+            if hardcore:
+                embed.description = _(
+                    """{user} you are not allowed show off multiple numbers in a row."""
+                ).format(user=self.member.mention)
+                delete = bad_reaction = True
+
+        elif not await self.syntax_check(self.content):
+            embed.description = _(
+                "{emoji} Your message should start with „{trigger}“ and should make sense."
+            ).format(
+                emoji="<a:nananaa:1038185829631266981>",
+                trigger=b(self.trigger.capitalize()),
+            )
+            delete = bad_reaction = True
+
+        elif not await self.phrase_check(self.content, phrases):
+            embed.description = _(
+                "{emoji} Your message should be something new"
+            ).format(
+                emoji="<a:nananaa:1038185829631266981>",
+            )
+            delete = bad_reaction = True
+
+        else:
+            xyz = True
+            embed = None
+
+        async with self.pool.acquire() as connection:
+            p = phrases.copy()
+            if len(p) >= 10:
+                for i in range(len(p[10:-1])):
+                    p.pop(i)
+            p.insert(0, self.content)
+
+            await connection.execute(
+                "UPDATE aboveme SET user_id = $2, phrases = $3, count = $4 WHERE channel_id = $1;",
+                self.channel.id,
+                self.member.id,
+                phrases,
+                count + 1 if xyz else count,
+            )
+        return embed, delete, bad_reaction
+
+
+class counting:
+    def __init__(
+        self,
+        bot: ShakeBot,
+        member: Member,
+        channel: TextChannel,
+        guild: Guild,
+        content: str,
+    ):
+        self.bot: ShakeBot = bot
+        self.pool: DatabaseProtocol = bot.gpool
+        self.member: Member = member
+        self.content: str = content
+        self.channel: TextChannel = channel
+        self.guild: Guild = guild
+        self.testing = any(
+            x.id in set(self.bot.testing.keys()) for x in [channel, guild, member]
+        )
+
+    def tens(self, count: int, last: int = 1):
+        if 0 <= count <= 10:
+            return 1
+        if len(str(count)) <= last:
+            last = len(str(count)) - 1
+        digits = [int(_) for _ in str(count)]
+        for zahl in range(last):
+            zahl = zahl + 1
+            digits[-zahl] = 0
+        return int("".join(str(x) for x in digits))
+
+    async def syntax_check(self, content: str):
+        if not content.isdigit():
+            return False
+        return True
+
+    async def check_number(self, content: str, count: int):
+        if not int(content) == count + 1:
+            return False
+        return True
+
+    async def member_check(self, user_id: int):
+        if self.testing and await self.bot.is_owner(self.member):
+            return True
+        elif user_id == self.member.id:
+            return False
+        return True
+
+    async def __await__(self):
+        async with self.pool.acquire() as connection:
+            record = await connection.fetchrow(
+                "SELECT * FROM counting WHERE channel_id = $1",
+                self.channel.id,
+            )
+
+        streak: int = record["streak"] or 0
+        best: int = record["best"] or 0
+        user_id: int = record["user_id"]
+        hardcore: bool = record["hardcore"]
+        goal: int = record["goal"]
+        count: int = record["count"] or 0
+        numbers: bool = record["numbers"]
+
+        backup: int = self.tens(count)
+        reached: bool = False
+
+        current.set(
+            await self.bot.locale.get_guild_locale(self.guild.id, default="en-US")
+        )
+
+        embed = ShakeEmbed(timestamp=None)
+        delete = xyz = False
+        bad_reaction = 0
+
+        if not await self.syntax_check(self.content):
+            if numbers:
+                embed.description = _(
+                    "{emoji} You're not allowed to use anything except numbers here"
+                ).format(emoji="<a:nananaa:1038185829631266981>")
+                delete = True
+                bad_reaction = 1
+            else:
+                return None, None, None
+
+        elif not await self.member_check(user_id):
+            embed.description = _(
+                "{user} you are not allowed to count multiple numbers in a row."
+            ).format(user=self.member.mention)
+
+            delete = True
+            if hardcore:
+                pass
+                # embed.description = _(
+                #     """{user} ruined it at **{count}** {facepalm} **You can't count multiple numbers in a row**. The __next__ number {verb} ` {last} `. {streak}""").format(
+                #             user=self.member.mention, count=record['count'], facepalm='<:facepalm:1038177759983304784>',
+                #             streak=_("**You've topped your best streak with {} 🔥**".format(self.streak)) if self.streak > self.best_streak else '',
+                #             verb=(_("is") if not last_ten == record['count'] else _("remains")), last=last_ten)
+                # async with db.acquire():
+                #     await db.execute(
+                #         'UPDATE counting SET user_id = $2, count = $3, streak = 0, best_streak = $4 WHERE channel_id = $1;',
+                #         record['channel_id'], self.member.id, last_ten, self.streak if self.streak>self.best_streak else self.best_streak
+                #     )
+                # delete = bad_reaction = True
+
+        elif not await self.check_number(self.content, count):
+            if int(count) in [0, 1]:
+                embed.description = _(
+                    (
+                        "Incorrect number! The __next__ number is ` {last} `. "
+                        "**No stats have been changed since the current number was {count}.**"
+                        ""
+                    )
+                ).format(last=backup, count=int(record["count"]) - 1)
+                bad_reaction = 2
+            else:
+                s = ""
+                if streak > best:
+                    s = b(
+                        _("You've topped your best streak with {} numbers 🔥").format(
+                            self.streak
+                        )
+                    )
+
+                embed.description = _(
+                    (
+                        "{user} ruined it at **{count}** {facepalm}. "
+                        "**You apparently can't count properly**. "
+                        "The __next__ number is ` {last} `. {streak}"
+                    )
+                ).format(
+                    user=self.member.mention,
+                    count=record["count"],
+                    facepalm="<:facepalm:1038177759983304784>",
+                    streak=s,
+                    last=backup,
+                )
+                bad_reaction = 1
+
+        else:
+            xyz = True
+
+            if goal and count + 1 >= config["goal"]:
+                reached = True
+                embed.description = b(
+                    _(
+                        "You've reached your goal of {goal} {emoji} Congratulations!"
+                    ).format(goal=config["goal"], emoji="<a:tadaa:1038228851173625876>")
+                )
+            else:
+                embed = None
+
+        async with self.pool.acquire() as connection:
+            s = streak + 1 if xyz else streak
+            await connection.execute(
+                "UPDATE counting SET user_id = $2, count = $3, streak = $4, best = $5, goal = $6 WHERE channel_id = $1;",
+                self.channel.id,
+                self.member.id,
+                count + 1 if xyz else count,
+                s,
+                s if s > best else best,
+                None if reached else goal,
+            )
+        return embed, delete, bad_reaction
+
+
+class ConnectionContextManager(Protocol):
+    async def __aenter__(self) -> Connection:
+        ...
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        ...
+
+
+class DatabaseProtocol(Protocol):
+    async def execute(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> str:
+        ...
+
+    async def fetch(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> list[Any]:
+        ...
+
+    async def fetchrow(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> Optional[Any]:
+        ...
+
+    def acquire(self, *, timeout: Optional[float] = None) -> ConnectionContextManager:
+        ...
+
+    def release(self, connection: Connection) -> None:
+        ...

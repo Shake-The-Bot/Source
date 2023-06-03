@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from asyncio import TimeoutError
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from inspect import signature
+from json import dump, load
+from os import replace
+from pathlib import Path
+from re import Match, compile, sub
+from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -11,12 +16,14 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Literal,
     Optional,
-    Protocol,
     Sequence,
     Tuple,
+    TypedDict,
     Union,
 )
+from uuid import uuid4
 
 from aiohttp import ClientSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -24,12 +31,10 @@ from asyncpg import Connection, Pool
 from discord import (
     AllowedMentions,
     AppInfo,
-    ClientException,
     ClientUser,
     Colour,
     DMChannel,
     Embed,
-    FFmpegPCMAudio,
     File,
     Forbidden,
     GuildSticker,
@@ -45,25 +50,27 @@ from discord import (
     VoiceChannel,
     utils,
 )
-from discord.abc import T
-from discord.ext.commands import AutoShardedBot
-from discord.ext.commands import ChannelNotFound as _ChannelNotFound
 from discord.ext.commands import (
+    AutoShardedBot,
     CheckFailure,
     Command,
     CommandError,
     CommandNotFound,
     Context,
-    VoiceChannelConverter,
 )
-from discord.player import AudioPlayer
 from discord.ui import View
 
-from Classes.exceptions import ChannelNotFound
-from Classes.i18n import Locale, mo
-from Classes.necessary import config, emojis
-from Classes.tomls import Config, Emojis
-from Classes.useful import MISSING, ExpiringCache, Ready, TracebackType, source_lines
+from Classes.i18n import Locale, _, mo
+from Classes.tomls import Config, Emojis, config, emojis
+from Classes.useful import (
+    MISSING,
+    DatabaseProtocol,
+    ExpiringCache,
+    FormatTypes,
+    Ready,
+    TextFormat,
+    source_lines,
+)
 from Exts.Functions.Debug.error import error
 
 if TYPE_CHECKING:
@@ -74,10 +81,17 @@ else:
     from discord import Embed as ShakeEmbed
     from discord.ext.commands import Bot as ShakeBot
     from discord.ext.commands import Context as ShakeContext
+p = ThreadPoolExecutor(2)
+b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
 ############
 #
 
-__all__ = ("BotBase", "ShakeContext", "ShakeEmbed", "DatabaseProtocol")
+__all__ = (
+    "BotBase",
+    "ShakeContext",
+    "ShakeEmbed",
+    "Migration",
+)
 
 
 _kwargs = {"command_timeout": 60, "max_size": 2, "min_size": 1}
@@ -131,7 +145,7 @@ class ShakeContext(Context):
 
     @property
     def db(self) -> DatabaseProtocol:
-        return self.pool  # type: ignore
+        return self.bot.gpool
 
     @property
     def testing(self) -> bool:
@@ -369,42 +383,6 @@ class ShakeContext(Context):
         return self.messages.pop(message_id, None)
 
 
-class ConnectionContextManager(Protocol):
-    async def __aenter__(self) -> Connection:
-        ...
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> None:
-        ...
-
-
-class DatabaseProtocol(Protocol):
-    async def execute(
-        self, query: str, *args: Any, timeout: Optional[float] = None
-    ) -> str:
-        ...
-
-    async def fetch(
-        self, query: str, *args: Any, timeout: Optional[float] = None
-    ) -> list[Any]:
-        ...
-
-    async def fetchrow(
-        self, query: str, *args: Any, timeout: Optional[float] = None
-    ) -> Optional[Any]:
-        ...
-
-    def acquire(self, *, timeout: Optional[float] = None) -> ConnectionContextManager:
-        ...
-
-    def release(self, connection: Connection) -> None:
-        ...
-
-
 """     Custom Bot (Inherits from discord.ext.commands.AutoSharedBot)
 """
 
@@ -424,7 +402,7 @@ class BotBase(AutoShardedBot):
         self.shake_id, *_ = owner_ids
         self.cache.setdefault("locales", dict())
         self.cache.setdefault("_data_batch", list())
-        self.cache.setdefault("testing", {1092397505800568834: None})
+        self.cache.setdefault("testing", {1036952232719024129: None})
         self.cache.setdefault("context", deque(maxlen=100))
         self.cache.setdefault("tests", ExpiringCache(60 * 5))
         self.cache.setdefault("cached_posts", dict())
@@ -501,8 +479,7 @@ class BotBase(AutoShardedBot):
         dispatch = flags.get("dispatch", True)
         if ctx.command is not None:
             if ctx.testing:
-                tests: dict = self.cache["tests"]
-                tests[ctx.command] = ctx
+                self.cache["tests"][ctx.command] = ctx
             run_in_task = flags.pop("in_task", True)
             if run_in_task:
                 command_task = self.loop.create_task(
@@ -525,6 +502,13 @@ class BotBase(AutoShardedBot):
     ) -> Union[ShakeContext, Context]:
         context = await super().get_context(message, cls=cls)
         return context
+
+    async def close(self):
+        if hasattr(self, "scheduler") and self.scheduler.running:
+            self.scheduler.shutdown()
+        if self.session and not self.session.closed:
+            await self.session.close()
+        await super().close()
 
     async def load_extensions(self):
         for extension in self.config.client.extensions:
@@ -560,46 +544,28 @@ class BotBase(AutoShardedBot):
         mo()
         self.lines: int = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
-        self.loop.create_task(self.load_extensions())
+        await self.load_extensions()
         self.scheduler.start()
 
     async def register_command(self, ctx: ShakeContext) -> None:
         if ctx.command is None:
             return
 
-        async with self._batch_lock:
-            self._data_batch.append(
-                {
-                    "guild": None if ctx.guild is None else ctx.guild.id,
-                    "channel": ctx.channel.id,
-                    "author": ctx.author.id,
-                    "used": ctx.message.created_at.isoformat(),
-                    "prefix": ctx.prefix,
-                    "command": ctx.command.qualified_name,
-                    "failed": ctx.command_failed,
-                    "app_command": ctx.interaction is not None,
-                }
-            )
+        self.cache["_data_batch"].append(
+            {
+                "guild": None if ctx.guild is None else ctx.guild.id,
+                "channel": ctx.channel.id,
+                "author": ctx.author.id,
+                "used": ctx.message.created_at.isoformat(),
+                "prefix": ctx.prefix,
+                "command": ctx.command.qualified_name,
+                "failed": ctx.command_failed,
+                "app_command": ctx.interaction is not None,
+            }
+        )
 
     async def on_error(self, event, *args, **kwargs):
         await error(bot=self, event=event).__await__()
-
-    async def on_shard_ready(self, shard_id):
-        self.ready_shards.ready(shard_id)
-
-    async def on_shard_connect(self, shard_id):
-        # logger.info("Shard ID {id} has successfully CONNECTED to Discord.".format(id=shard_id))
-        pass
-
-    @staticmethod
-    async def on_shard_resumed(shard_id):
-        # logger.info("Shard ID {id} has successfully RESUMED Connection to Discord.".format(id=shard_id))
-        pass
-
-    @staticmethod
-    async def on_shard_disconnect(shard_id):
-        # logger.info("Shard ID {id} has LOST Connection to Discord.".format(id=shard_id))
-        pass
 
     async def start(self, token: str) -> None:
         try:
@@ -609,7 +575,7 @@ class BotBase(AutoShardedBot):
 
 
 class ShakeEmbed(Embed):
-    """"""
+    """lazy"""
 
     def __init__(
         self,
@@ -619,8 +585,6 @@ class ShakeEmbed(Embed):
         field_inline: bool = False,
         **kwargs: Any,
     ):
-        from Classes import config
-
         super().__init__(
             colour=colour or config.embed.colour,
             timestamp=timestamp if not timestamp is MISSING else utils.utcnow(),
@@ -658,8 +622,6 @@ class ShakeEmbed(Embed):
         colour: Optional[Union[Colour, int]] = None,
         **kwargs: Any,
     ) -> ShakeEmbed:
-        from Classes import config
-
         bot: "ShakeBot" = (
             getattr(ctx, "bot", str(MISSING))
             if isinstance(ctx, (ShakeContext, Context))
@@ -680,8 +642,6 @@ class ShakeEmbed(Embed):
         colour: Optional[Union[Colour, int]] = MISSING,
         **kwargs: Any,
     ) -> ShakeEmbed:
-        from Classes import config
-
         colour = colour or config.embed.error_colour
         bot: "ShakeBot" = (
             getattr(ctx, "bot", str(MISSING))
@@ -697,75 +657,147 @@ class ShakeEmbed(Embed):
         return instance
 
 
-class Voice:
-    """
-    A class representing functions with Voice
-    """
+class Revisions(TypedDict):
+    # The version key represents the current activated version
+    # So v1 means v1 is active and the next revision should be v2
+    # In order for this to work the number has to be monotonically increasing
+    # and have no gaps
+    version: int
+    base_url: str
 
-    def __init__(self, ctx: ShakeContext, channel: VoiceChannel):
-        self.ctx: ShakeContext = ctx
-        self.bot: "ShakeBot" = ctx.bot
-        self._channel: VoiceChannel = channel
-        self._player: Optional[AudioPlayer] = None
 
-    async def __await__(self, channel: Optional[VoiceChannel] = MISSING):
+REVISION_FILE = compile(
+    r"(?P<kind>V|U)(?P<version>[0-9]+)_(?P<type>bot|guild)_(?P<description>.+).sql"
+)
+
+
+class Revision:
+    __slots__ = ("kind", "version", "description", "file")
+
+    def __init__(
+        self, *, kind: str, version: int, description: str, file: Path
+    ) -> None:
+        self.kind: str = kind
+        self.version: int = version
+        self.description: str = description
+        self.file: Path = file
+
+    @classmethod
+    def from_match(cls, match: Match[str], file: Path):
+        return cls(
+            kind=match.group("kind"),
+            version=int(match.group("version")),
+            description=match.group("description"),
+            file=file,
+        )
+
+
+class Migration:
+    def __init__(
+        self,
+        type: Literal["guild", "bot"],
+        base_url: str = config.database.postgresql,
+        *,
+        filename: str = "Migrations/revisions.json",
+    ):
+        self.filename: str = filename
+        self.base_url = base_url
+        self.type: Literal["guild", "bot"] = type
+        self.root: Path = Path(filename).parent
+        self.revisions: dict[int, Revision] = self.get_revisions()
+        self.load()
+
+    def ensure_path(self) -> None:
+        self.root.mkdir(exist_ok=True)
+
+    def load_metadata(self) -> Revisions:
         try:
-            channel = await VoiceChannelConverter().convert(
-                self.ctx, channel or self._channel
-            )
-        except _ChannelNotFound:
-            raise ChannelNotFound("I could not find the given VoiceChannel")
-        else:
-            self._channel = channel
-        finally:
-            return self.channel
+            with open(self.filename, "r", encoding="utf-8") as fp:
+                return load(fp)
+        except FileNotFoundError:
+            return {
+                "version": 0,
+                "base_url": MISSING,
+            }
+
+    def get_revisions(self) -> dict[int, Revision]:
+        result: dict[int, Revision] = {}
+        for file in self.root.glob("*.sql"):
+            match = REVISION_FILE.match(file.name)
+            if match is not None:
+                rev = Revision.from_match(match, file)
+                result[rev.version] = rev
+
+        return result
+
+    def dump(self) -> Revisions:
+        return {
+            "version": self.version,
+            "base_url": self.base_url,
+        }
+
+    def load(self) -> None:
+        self.ensure_path()
+        data = self.load_metadata()
+        self.version: int = data["version"]
+        self.using_uri: str = self.base_url + self.type
+
+    def save(self):
+        temp = f"{self.filename}.{uuid4()}.tmp"
+        with open(temp, "w", encoding="utf-8") as tmp:
+            dump(self.dump(), tmp)
+
+        # atomically move the file
+        replace(temp, self.filename)
+
+    def is_next_revision_taken(self) -> bool:
+        return self.version + 1 in self.revisions
 
     @property
-    def volume(self):
-        return self._volume
+    def ordered_revisions(self) -> list[Revision]:
+        return sorted(self.revisions.values(), key=lambda r: r.version)
 
-    @property
-    def channel(self):
-        return self._channel
+    def create_revision(self, reason: str, *, kind: str = "V") -> Revision:
+        cleaned = sub(r"\s", "_", reason)
+        sql = f"{kind}{self.version + 1}_{self.type}_{cleaned}.sql"
+        path = self.root / sql
 
-    async def set_volume(self, volume):
-        if not self.player:
-            return
+        stub = (
+            f"-- Revises: V{self.version + 1}\n"
+            f"-- Creation Date: {datetime.utcnow()} UTC\n"
+            f"-- Reason: {reason}\n\n"
+        )
 
-    async def set_channel(self, channel):
-        channel = await self.__await__(channel)
-        await self.cancel()
+        with open(path, "w", encoding="utf-8", newline="\n") as fp:
+            fp.write(stub)
 
-    async def connect(self, channel: Optional[VoiceChannel] = MISSING, **kwargs) -> T:
-        try:
-            voice = await (channel or self._channel).connect(
-                reconnect=True, self_deaf=True, **kwargs
-            )
-        except ClientException:
-            pass
-        except TimeoutError:
-            pass
-        else:
-            self._voice = voice
-        finally:
-            return self._voice
+        self.save()
+        return Revision(
+            kind=kind, description=reason, version=self.version + 1, file=path
+        )
 
-    async def play(self, filepath, volume):
-        self.filepath = filepath
-        self.volume = volume
+    async def upgrade(self, connection: Connection) -> int:
+        ordered = self.ordered_revisions
+        successes = 0
+        async with connection.transaction():
+            for revision in ordered:
+                if revision.version > self.version:
+                    sql = revision.file.read_text("utf-8")
+                    await connection.execute(sql)
+                    successes += 1
 
-        self._voice = await self._channel.connect(reconnect=True, self_deaf=True)
+        self.version += successes
+        self.save()
+        return successes
 
-        if self._voice.is_playing():
-            self._voice.stop()
-
-        self._voice.play(source=FFmpegPCMAudio(filepath))
-        self._player = self._voice._player
-
-        # Wait until the sound clip is finished before leaving
-        while self._player.is_playing():
-            pass
-        await self._voice.disconnect()
+    def display(self) -> None:
+        ordered = self.ordered_revisions
+        for revision in ordered:
+            if revision.version > self.version:
+                print(1, revision)
+                print(2, revision.file)
+                sql = revision.file.read_text("utf-8")
+                print(sql)
 
 
 #

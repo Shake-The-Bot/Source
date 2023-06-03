@@ -25,7 +25,7 @@ else:
 class Reddit:
     def __init__(self):
         self.posts = set()
-        self.reddit = asyncpraw.Reddit(
+        self.client = asyncpraw.Reddit(
             client_id=config.reddit.client_id,
             client_secret=config.reddit.client_secret,
             username=config.reddit.username,
@@ -51,7 +51,7 @@ class Reddit:
             pass
 
     async def create(self, ctx, subreddits):
-        subs: Subreddit = await self.reddit.subreddit("+".join(subreddits), fetch=False)
+        subs: Subreddit = await self.client.subreddit("+".join(subreddits), fetch=False)
         posts = [
             post
             async for post in subs.new(limit=25)

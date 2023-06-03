@@ -4,8 +4,9 @@ from importlib import reload
 from random import choice
 from typing import Optional, Union
 
-from discord import Member, PartialEmoji, User
-from discord.ext.commands import Cog, guild_only, hybrid_command
+from discord import Interaction, Member, Message, PartialEmoji, User
+from discord.app_commands import ContextMenu
+from discord.ext.commands import guild_only, hybrid_command
 from discord.ext.commands.converter import MemberConverter, MemberNotFound
 
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
@@ -19,14 +20,28 @@ from . import testing, userinfo
 class userinfo_extension(Information):
     def __init__(self, bot) -> None:
         super().__init__(bot=bot)
+        self.menu = ContextMenu(
+            name="userinfo",
+            callback=self.context_menu,
+        )
+        self.bot.tree.add_command(self.menu)
         try:
             reload(userinfo)
         except:
             pass
 
+    async def cog_unload(self) -> None:
+        self.bot.tree.remove_command(self.menu.name, type=self.menu.type)
+
     @property
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="ℹ️")
+
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def context_menu(self, interaction: Interaction, message: Message) -> None:
+        await interaction.response.send_message("hello...")
 
     @hybrid_command(name="userinfo", aliases=["ui"])
     @guild_only()
@@ -47,11 +62,7 @@ class userinfo_extension(Information):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
 
         do = testing if ctx.testing else userinfo

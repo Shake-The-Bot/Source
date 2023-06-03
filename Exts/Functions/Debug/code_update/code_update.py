@@ -1,15 +1,16 @@
-
 from importlib import reload
-from sys import modules
-from typing import Union, Tuple, List
 from inspect import getfile
-from time import time
-from Classes import ShakeBot, ShakeContext
-from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 from os import path
-from watchdog.observers import Observer
-from discord.ext.commands import Cog, ExtensionNotLoaded, Command
+from sys import modules
+from time import time
+from typing import List, Tuple, Union
+
 from discord import Message
+from discord.ext.commands import Cog, Command, ExtensionNotLoaded
+from watchdog.events import DirModifiedEvent, FileModifiedEvent, FileSystemEventHandler
+from watchdog.observers import Observer
+
+from Classes import ShakeBot, ShakeContext
 
 
 class Handler(FileSystemEventHandler):
@@ -19,7 +20,7 @@ class Handler(FileSystemEventHandler):
         self.tasks = self.history = dict()
 
     def interval(self, event, seconds: int = 1):
-        form = f'{type(event).__name__}:{event.src_path}'
+        form = f"{type(event).__name__}:{event.src_path}"
 
         if form not in self.tasks:
             self.tasks[form] = time()
@@ -32,7 +33,9 @@ class Handler(FileSystemEventHandler):
                 self.tasks[form] = time()
                 return True
 
-    def add_test(self,):
+    def add_test(
+        self,
+    ):
         pass
 
     def on_moved(self, event):
@@ -49,46 +52,53 @@ class Handler(FileSystemEventHandler):
             self.bot.loop.create_task(self.modified(event))
 
     def utils(self, path: str):
-        cases = set([
-            not 'Classes' in path, 
-            path.endswith('.tmp'),
-            not path.endswith('.py'),
-        ])
+        cases = set(
+            [
+                not "Classes" in path,
+                path.endswith(".tmp"),
+                not path.endswith(".py"),
+            ]
+        )
         if any(x for x in cases):
             return False
         return True
 
     def testing(self, path: str):
-        cases = set([
-            'pycache' in path, 
-            path.endswith('.tmp'),
-            not path.endswith('.py'),
-        ])
+        cases = set(
+            [
+                "pycache" in path,
+                path.endswith(".tmp"),
+                not path.endswith(".py"),
+            ]
+        )
         if any(x for x in cases):
             return False
-        if not any(_ in path for _ in ['Functions', 'Commands']):
+        if not any(_ in path for _ in ["Functions", "Commands"]):
             return False
-        if not path.endswith('testing.py') and not path.endswith('__init__.py'):
+        if not path.endswith("testing.py") and not path.endswith("__init__.py"):
             return False
         return True
-    
+
     def is_active_test(self, source: str):
-        parts = str(source).split('/')[1:]
+        parts = str(source).split("/")[1:]
         name, category = (parts[-2], parts[1:3])
 
         testings = dict()
-        for command, ctx in self.bot.cache['tests'].items():
-            cog: Cog = getattr(command, 'cog', getattr(command, 'binding', None))
+        for command, ctx in self.bot.cache["tests"].items():
+            cog: Cog = getattr(command, "cog", getattr(command, "binding", None))
             if not cog:
                 continue
-            parts = getfile(cog.__class__).removesuffix('.py').split('/')
-            testings[tuple(parts[parts.index('Exts')+1:parts.index('Exts')+3]) + tuple(parts[-2])] = ctx
+            parts = getfile(cog.__class__).removesuffix(".py").split("/")
+            testings[
+                tuple(parts[parts.index("Exts") + 1 : parts.index("Exts") + 3])
+                + tuple(parts[-2])
+            ] = ctx
 
-        if not tuple(category)+tuple(name) in list(testings.keys()):
+        if not tuple(category) + tuple(name) in list(testings.keys()):
             return None, None
 
-        ctx: ShakeContext = testings[tuple(category)+tuple(name)]
-        reloadable = '.'.join(parts[parts.index('Exts'):]).removesuffix('.py')
+        ctx: ShakeContext = testings[tuple(category) + tuple(name)]
+        reloadable = ".".join(parts[parts.index("Exts") :]).removesuffix(".py")
         return ctx, reloadable
 
     async def modified(self, event: Union[DirModifiedEvent, FileModifiedEvent]):
@@ -98,11 +108,11 @@ class Handler(FileSystemEventHandler):
 
         if self.testing(event.src_path):
             ctx, reloadable = self.is_active_test(event.src_path)
-            if any(_ is None for _ in [ctx, reloadable]):
+            if all([ctx is None, reloadable is None]):
                 return
 
-            message = f'`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`'
-    
+            message = f"`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`"
+
             sent = await ctx.channel.send(content=message)
 
             content = None
@@ -112,19 +122,19 @@ class Handler(FileSystemEventHandler):
                 except ExtensionNotLoaded:
                     await self.bot.load_extension(reloadable)
                 except:
-                    content = f'`[Watchdog]` Unknown extension {reloadable}'
-                
+                    content = f"`[Watchdog]` Unknown extension {reloadable}"
+
             except Exception as ex:
-                content=f'`[Watchdog]` Reloading `{reloadable}` failed: {ex}'
+                content = f"`[Watchdog]` Reloading `{reloadable}` failed: {ex}"
             else:
-                content=f'`[Watchdog]` `{reloadable}` reloaded.'
-            
+                content = f"`[Watchdog]` `{reloadable}` reloaded."
+
             if not content is None:
                 await sent.edit(content=content)
 
         elif self.utils(event.src_path):
-            parts = str(event.src_path).split('/')[1:]
-            reloadable = '.'.join(parts[parts.index('Classes'):]).removesuffix('.py')  
+            parts = str(event.src_path).split("/")[1:]
+            reloadable = ".".join(parts[parts.index("Classes") :]).removesuffix(".py")
             try:
                 if reloadable in modules.keys():
                     reload(modules[reloadable])

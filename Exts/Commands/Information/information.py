@@ -10,7 +10,7 @@ from Classes import ShakeBot, _
 #
 class Information(commands.Cog):
     def __init__(self, bot: ShakeBot) -> None:
-        self.bot = bot
+        self.bot: ShakeBot = bot
         self.category_description = _(
             """Informative commands about a wide variety of things.
             Sometimes you find out new things 🤷"""

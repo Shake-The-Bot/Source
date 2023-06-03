@@ -71,11 +71,7 @@ class rtfm_extension(Information):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
         do = testing if ctx.testing else rtfm
 
@@ -103,11 +99,7 @@ class rtfm_extension(Information):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
         do = testing if ctx.testing else rtfm
 

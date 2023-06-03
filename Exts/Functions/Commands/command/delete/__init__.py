@@ -70,11 +70,7 @@ class on_context_delete(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
         do = testing if test else delete
 
@@ -100,11 +96,7 @@ class on_context_delete(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
         do = testing if test else delete
 
@@ -130,11 +122,7 @@ class on_context_delete(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
         do = testing if test else delete
 
