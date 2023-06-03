@@ -25,9 +25,6 @@ class everyone_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{ANGRY FACE}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="everyone")
     @guild_only()
     @setlocale()

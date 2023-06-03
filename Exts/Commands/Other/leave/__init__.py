@@ -26,9 +26,6 @@ class leave_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="blobleave", animated=True, id=1058033660755972219)
 
-    def category(self) -> str:
-        return "other"
-
     @command(name="leave")
     @extras(owner=True)
     @guild_only()

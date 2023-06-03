@@ -26,9 +26,6 @@ class meme_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{INPUT SYMBOL FOR NUMBERS}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="meme")
     @extras(beta=True)
     @guild_only()

@@ -26,9 +26,6 @@ class sudo_extension(Moderation):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{WASTEBASKET}")
 
-    def category(self) -> str:
-        return "moderation"
-
     @hybrid_command(name="sudo")
     @extras(permissions=True)
     @has_permissions(administrator=True)

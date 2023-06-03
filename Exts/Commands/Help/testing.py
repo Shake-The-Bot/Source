@@ -198,7 +198,9 @@ class HelpPaginatedCommand:
             alias = command.name if not parent else f"{parent} {command.name}"
         return f"{alias} {command.signature}"
 
-    async def all_commands(self: HelpPaginatedCommand, bot: ShakeBot, user):
+    async def all_commands(
+        self: HelpPaginatedCommand, bot: ShakeBot, user
+    ) -> Dict[Cog, list[Command]]:
         def key(command: Command) -> str:
             cog = command.cog
             return (
@@ -225,20 +227,18 @@ class HelpPaginatedCommand:
         )
         all_commands: dict[Cog, list[Command]] = dict()
         for name, children in groupby(entries, key=key):
-            if name == "":  # "\U0010ffff"
+            if not bool(name):  # "\U0010ffff"
                 continue
 
-            # -> transitional
             cog: Cog = bot.get_cog(name)
-            if hasattr(cog, "category"):
-                category = bot.get_cog(cog.category())
-            else:
-                category = cog.__class__.__bases__[0]
+            assert cog is not None
+            name = cog.__class__.__bases__[0].__name__
+            if name in ("Cog", "cog"):
+                continue
 
-            if category is None:
-                print(f"{cog} has not category set properly")
-
+            category = bot.get_cog(name)
             assert category is not None
+
             all_commands.setdefault(category, []).append(
                 sorted(children, key=lambda c: c.qualified_name)[0]
             )
@@ -246,7 +246,9 @@ class HelpPaginatedCommand:
 
     async def send_bot_help(self: HelpPaginatedCommand):
         menu = HelpMenu(ctx=self.ctx, source=Front())
-        commands = await self.all_commands(self.ctx.bot, self.ctx.author)
+        commands: Dict[Cog, list[Command]] = await self.all_commands(
+            self.ctx.bot, self.ctx.author
+        )
         menu.add_categories(categories=commands)
 
         if await menu.setup():
@@ -350,7 +352,7 @@ class HelpMenu(CategoricalMenu):
             ctx,
             source=source,
             front=front,
-            select=CategoricalSelect(ctx, source=Cog),
+            select=CategoricalSelect(ctx, source=CogPage),
             **kwargs,
         )
         self.cache["source"] = self.cache["page"] = None

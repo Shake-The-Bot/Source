@@ -26,9 +26,6 @@ class sync_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{SATELLITE ANTENNA}")
 
-    def category(self) -> str:
-        return "moderation"
-
     @command(name="sync")
     @extras(owner=True)
     @guild_only()

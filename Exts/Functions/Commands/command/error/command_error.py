@@ -144,7 +144,7 @@ class Event:
                     f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}"
                 )
             except:
-                print(
+                self.bot.log.warning(
                     "".join(
                         format_exception(
                             self.error.__class__, self.error, self.error.__traceback__

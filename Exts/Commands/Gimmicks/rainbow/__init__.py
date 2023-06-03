@@ -26,9 +26,6 @@ class rainbow_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{RAINBOW}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="rainbow")
     @guild_only()
     @setlocale()

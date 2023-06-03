@@ -30,9 +30,6 @@ class repl_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{WASTEBASKET}")
 
-    def category(self) -> str:
-        return "other"
-
     @command(name="repl")
     @extras(owner=True)
     @guild_only()

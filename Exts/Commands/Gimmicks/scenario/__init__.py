@@ -21,9 +21,6 @@ class scenario_extension(Gimmicks):
         except:
             pass
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @property
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(animated=True, name="shakeloading", id=1092832911163654245)

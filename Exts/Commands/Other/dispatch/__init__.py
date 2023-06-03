@@ -26,9 +26,6 @@ class dispatch_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{PISTOL}")
 
-    def category(self) -> str:
-        return "other"
-
     @command(name="dispatch")
     @extras(owner=True)
     @guild_only()

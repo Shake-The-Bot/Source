@@ -25,9 +25,6 @@ class bash_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{DESKTOP COMPUTER}")
 
-    def category(self) -> str:
-        return "other"
-
     @command(name="bash")
     @extras(owner=True)
     @guild_only()

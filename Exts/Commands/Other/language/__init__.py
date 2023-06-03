@@ -27,9 +27,6 @@ class language_extension(Other):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{EARTH GLOBE EUROPE-AFRICA}")
 
-    def category(self) -> str:
-        return "other"
-
     @hybrid_group(name="language")
     @guild_only()
     @setlocale()

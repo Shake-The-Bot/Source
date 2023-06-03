@@ -10,23 +10,30 @@ from Classes import ShakeBot, _
 class Other(commands.Cog):
     def __init__(self, bot: ShakeBot) -> None:
         self.bot = bot
-        self.category_description = _("""Other commands without categories""")
+
+    @property
+    def description(self) -> str:
+        return _("""Other commands without categories""")
 
     @staticmethod
-    def category_emoji() -> PartialEmoji:
+    def emoji() -> PartialEmoji:
         return PartialEmoji(name="\N{GLOBE WITH MERIDIANS}")
 
-    @staticmethod
-    def label() -> str:
+    @property
+    def label(self) -> str:
         return _("Other")
 
-    @staticmethod
-    def category_title() -> str:
-        return f"{Other.category_emoji}︱{Other.label}"
+    @property
+    def title(self) -> str:
+        return f"{Other.emoji}︱{Other.label}"
 
-    @staticmethod
-    def describe() -> bool:
+    @property
+    def describe(self) -> bool:
         return False
+
+
+async def setup(bot: ShakeBot):
+    await bot.add_cog(Other(bot))
 
 
 #

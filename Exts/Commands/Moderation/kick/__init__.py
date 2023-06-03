@@ -32,9 +32,6 @@ class kick_extension(Moderation):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="🚨")
 
-    def category(self) -> str:
-        return "moderation"
-
     @hybrid_command(name="kick")
     @guild_only()
     @extras(permissions=True)

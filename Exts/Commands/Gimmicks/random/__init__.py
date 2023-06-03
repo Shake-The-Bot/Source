@@ -26,9 +26,6 @@ class random_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{VIDEO GAME}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="random")
     @guild_only()
     @setlocale()

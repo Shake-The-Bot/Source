@@ -25,9 +25,6 @@ class do_extension(Moderation):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{PRINTER}")
 
-    def category(self) -> str:
-        return "moderation"
-
     @hybrid_command(name="do")
     @extras(permissions=True)
     @guild_only()

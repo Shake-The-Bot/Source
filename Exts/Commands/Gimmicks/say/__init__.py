@@ -26,9 +26,6 @@ class say_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{SPEECH BALLOON}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="say")
     @guild_only()
     @setlocale()

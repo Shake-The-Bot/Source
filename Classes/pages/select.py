@@ -51,12 +51,18 @@ class CategoricalSelect(ui.Select):
     def categories(self, value: Any):
         self.__categories = value
 
-    def describe(group: Group):
-        return (
-            getattr(Group, "description").split("\n", 1)[0] or None
-            if isinstance(getattr(Group, "description"), str)
-            else getattr(Group, "description")().split("\n", 1)[0] or None
-        )
+    def getter(self, group: Group, attribute: str):
+        if not hasattr(group, attribute):
+            return None
+
+        attr = None
+        unknown = getattr(group, attribute)
+        if callable(unknown):
+            attr = unknown()
+        else:
+            attr = unknown
+
+        return attr
 
     def __fill_options(self) -> None:
         assert self.categories is not None
@@ -65,16 +71,24 @@ class CategoricalSelect(ui.Select):
             emoji=PartialEmoji(name="left", id=1033551843210579988),
             value="shake_back",
         )
-        for Group in self.categories.keys():
-            value = getattr(Group, "qualified_name", str(Group))
-            self.find[value] = Group
+        for group in self.categories.keys():
+            value = getattr(group, "qualified_name", str(group))
+            self.find[value] = group
 
-            label = getattr(Group, "label", "<LABEL NOT FOUND>")
-            emoji = getattr(Group, "display_emoji", None)
-            description = self.describe(Group)
+            label = self.getter(group, "label")
+            describe = self.getter(group, "describe") or self.describe
+            emoji = self.getter(group, "emoji")
+            description = (
+                (des := self.getter(group, "description")).split("\n", 1)[0]
+                if des
+                else None
+            )
 
             self.add_option(
-                label=label, value=value, description=description, emoji=emoji
+                label=label or "<LABEL NOT FOUND>",
+                value=value,
+                description=description if self.describe and describe else None,
+                emoji=emoji,
             )
 
     async def callback(self, interaction: Interaction):
@@ -97,12 +111,14 @@ class CategoricalSelect(ui.Select):
         else:
             group = self.find.get(value, MISSING)
             items = self.categories.get(group, MISSING)
-            if group == MISSING or items == MISSING:
+
+            if any(_ is MISSING for _ in (group, items)):
                 await interaction.response.send_message(
                     _("This category either does not exist or has no items for you."),
                     ephemeral=True,
                 )
                 return
+
             source = self.source(
                 ctx=self.ctx, group=group, items=items, interaction=interaction
             )

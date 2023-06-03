@@ -41,9 +41,6 @@ class timeout_extension(Moderation):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="🚨")
 
-    def category(self) -> str:
-        return "moderation"
-
     @hybrid_command(name="timeout", aliases=["mute"])
     @guild_only()
     @extras(permissions=True)

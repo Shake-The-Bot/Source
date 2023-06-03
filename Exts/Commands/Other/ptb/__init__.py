@@ -22,9 +22,6 @@ class ptb_extension(Other):
         except:
             pass
 
-    def category(self) -> str:
-        return "other"
-
     @property
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{HEAVY PLUS SIGN}")

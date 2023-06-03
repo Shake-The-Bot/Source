@@ -22,9 +22,6 @@ class wouldyou_extension(Gimmicks):
         except:
             pass
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @property
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="scale", id=1099618823348437032)

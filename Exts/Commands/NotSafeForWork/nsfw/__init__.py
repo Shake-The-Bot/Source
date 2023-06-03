@@ -1,26 +1,26 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
-from Classes import _, locale_doc, setlocale
-from Classes import ShakeContext, ShakeBot, extras
-from discord.ext.commands import is_owner, is_nsfw, Cog, hybrid_group, guild_only
+
+from discord import PartialEmoji
+from discord.ext.commands import Cog, guild_only, hybrid_group, is_nsfw, is_owner
+
+from Classes import ShakeBot, ShakeContext, _, extras, locale_doc, setlocale
+
+
 ########
 #
 class nsfw_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot:ShakeBot = bot
+    def __init__(self, bot: ShakeBot) -> None:
+        self.bot: ShakeBot = bot
         try:
             pass
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{WASTEBASKET}')
-
-    def category(self) -> str: 
-        return "notsafeforwork"
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{WASTEBASKET}")
 
     @hybrid_group(name="nsfw")
     @extras(owner=True, nsfw=True)
@@ -29,7 +29,9 @@ class nsfw_extension(Cog):
     @is_nsfw()
     @setlocale()
     @locale_doc
-    async def nsfw(self, ctx: ShakeContext, command, amount: int) -> None: # amount: int 1-20 [-30 (pro)]
+    async def nsfw(
+        self, ctx: ShakeContext, command, amount: int
+    ) -> None:  # amount: int 1-20 [-30 (pro)]
         _(
             """Find NSFW content for predefined tags.
 
@@ -44,9 +46,12 @@ class nsfw_extension(Cog):
             amount: Optional[int]
                 Amount of posts from 1 to 20 (or 30 with Shake+)."""
         )
-        pass # TODO: yeah..
+        pass  # TODO: yeah..
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(nsfw_extension(bot))
+
+
 #
 ############

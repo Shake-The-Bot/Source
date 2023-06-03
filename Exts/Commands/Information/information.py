@@ -11,27 +11,33 @@ from Classes import ShakeBot, _
 class Information(commands.Cog):
     def __init__(self, bot: ShakeBot) -> None:
         self.bot: ShakeBot = bot
-        self.category_description = _(
+
+    @property
+    def description(self) -> str:
+        return _(
             """Informative commands about a wide variety of things.
             Sometimes you find out new things 🤷"""
         )
-        self.names = [_("information"), _("info")]
 
-    @property
-    def category_emoji(self) -> PartialEmoji:
+    @staticmethod
+    def emoji() -> PartialEmoji:
         return PartialEmoji(name="\N{INFORMATION SOURCE}")
 
     @property
-    def category_title(self) -> str:
-        return f"{self.display_emoji}︱{self.label}"
+    def title(self) -> str:
+        return f"{Information.emoji}︱{Information.label}"
 
     @property
-    def category_label(self) -> str:
-        return _("Information Commands")
+    def label(self) -> str:
+        return _("Information")
 
     @property
     def describe(self) -> bool:
         return False
+
+
+async def setup(bot: ShakeBot):
+    await bot.add_cog(Information(bot))
 
 
 #

@@ -26,9 +26,6 @@ class roll_extension(Gimmicks):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{GAME DIE}")
 
-    def category(self) -> str:
-        return "gimmicks"
-
     @hybrid_command(name="roll")
     @guild_only()
     @setlocale()
