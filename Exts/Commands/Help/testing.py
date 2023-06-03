@@ -4,7 +4,6 @@ from contextlib import suppress
 from copy import copy
 from itertools import combinations as cmb
 from itertools import groupby
-from logging import getLogger
 from random import choice, sample
 from re import Match
 from typing import (
@@ -38,9 +37,7 @@ from discord import (
     ui,
 )
 from discord.ext import commands, menus
-from discord.ext.commands import Cog as _Cog
-from discord.ext.commands import Command as _Command
-from discord.ext.commands import CommandError, Greedy, Group, errors
+from discord.ext.commands import Cog, Command, CommandError, Greedy, Group, errors
 from discord.utils import format_dt, maybe_coroutine
 
 from Classes import MISSING, ShakeBot, ShakeContext, ShakeEmbed, _
@@ -139,17 +136,17 @@ class HelpPaginatedCommand:
 
     async def filter_commands(
         self: HelpPaginatedCommand,
-        commands: Iterable[_Command[Any, ..., Any]],
+        commands: Iterable[Command[Any, ..., Any]],
         /,
         *,
         sort: bool = False,
-        key: Optional[Callable[[_Command[Any, ..., Any]], Any]] = None,
+        key: Optional[Callable[[Command[Any, ..., Any]], Any]] = None,
     ) -> List[Command[Any, ..., Any]]:
         if sort and key is None:
             key = lambda c: c.name
         iterator = filter(lambda c: not c.hidden, commands)
 
-        async def predicate(cmd: _Command[Any, ..., Any]) -> bool:
+        async def predicate(cmd: Command[Any, ..., Any]) -> bool:
             try:
                 return await cmd.can_run(self.ctx)
             except CommandError:
@@ -165,7 +162,7 @@ class HelpPaginatedCommand:
         return ret
 
     def subcommand_not_found(
-        self: HelpPaginatedCommand, command: _Command[Any, ..., Any], string: str, /
+        self: HelpPaginatedCommand, command: Command[Any, ..., Any], string: str, /
     ) -> ShakeEmbed:
         embed = ShakeEmbed.default(
             self.ctx,
@@ -189,7 +186,7 @@ class HelpPaginatedCommand:
 
         return self.MENTION_PATTERN.sub(replace, string)
 
-    def get_command_signature(self: HelpPaginatedCommand, command: _Command) -> str:
+    def get_command_signature(self: HelpPaginatedCommand, command: Command) -> str:
         parent = command.full_parent_name
         if len(command.aliases) > 0:
             aliases = "|".join(command.aliases)
@@ -202,9 +199,13 @@ class HelpPaginatedCommand:
         return f"{alias} {command.signature}"
 
     async def all_commands(self: HelpPaginatedCommand, bot: ShakeBot, user):
-        def key(command: _Command) -> str:
+        def key(command: Command) -> str:
             cog = command.cog
-            return "" if command.cog_name == "help_extension" else cog.qualified_name
+            return (
+                ""
+                if command.__class__.__name__ == "help_extension"
+                else cog.qualified_name
+            )
 
         filtered = []
         for command in bot.commands:
@@ -217,12 +218,12 @@ class HelpPaginatedCommand:
             ) and (not command.callback.extras.get("hidden", False)):
                 filtered.append(command)
 
-        entries: list[_Command] = await self.filter_commands(
+        entries: list[Command] = await self.filter_commands(
             filtered,
             sort=True,
             key=key,
         )
-        all_commands: dict[_Cog, list[_Command]] = dict()
+        all_commands: dict[Cog, list[Command]] = dict()
         for name, children in groupby(entries, key=key):
             if name == "":  # "\U0010ffff"
                 continue
@@ -233,6 +234,9 @@ class HelpPaginatedCommand:
                 category = bot.get_cog(cog.category())
             else:
                 category = cog.__class__.__bases__[0]
+
+            if category is None:
+                print(f"{cog} has not category set properly")
 
             assert category is not None
             all_commands.setdefault(category, []).append(
@@ -252,10 +256,10 @@ class HelpPaginatedCommand:
         def key(command) -> str:
             return command.cog.qualified_name if command.cog else "\U0010ffff"
 
-        entries: list[_Command] = await self.filter_commands(
+        entries: list[Command] = await self.filter_commands(
             self.ctx.bot.commands, sort=True, key=key
         )
-        commands: list[_Command] = []
+        commands: list[Command] = []
         for name, children in groupby(entries, key=key):
             if name == "\U0010ffff":
                 continue
@@ -274,7 +278,7 @@ class HelpPaginatedCommand:
         if not getattr(cog, "help_command_title", False):
             cog = self.ctx.bot.get_cog(cog.category())
         commands = await self.commands_from_cog(cog)
-        source = Cog(
+        source = CogPage(
             self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True
         )
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
@@ -292,7 +296,7 @@ class HelpPaginatedCommand:
             return await self.send_bot_help(self.ctx)
         category = self.ctx.bot.get_cog(command.cog.category())
         commands = await self.commands_from_cog(category)
-        source = Cog(self.ctx, category, commands, paginating=True)
+        source = CogPage(self.ctx, category, commands, paginating=True)
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front())
         commands = await self.all_commands(self.ctx.bot, self.ctx.author)
         menu.add_categories(categories=commands)
@@ -305,7 +309,7 @@ class HelpPaginatedCommand:
             if v.qualified_name == command.qualified_name:
                 index = k
                 break
-        source = Command()
+        source = CommandPage()
         await menu.rebind(source, index)
         await menu.send()
 
@@ -377,7 +381,7 @@ class HelpMenu(CategoricalMenu):
                     break
             if index is None:
                 return await self.hear()
-            await self.rebind(Command(), index)
+            await self.rebind(CommandPage(), index)
             with suppress(NotFound, Forbidden, HTTPException):
                 await msg.delete()
 
@@ -583,7 +587,7 @@ def get_signature(
     return required, optionals
 
 
-class Command(ItemPageSource):
+class CommandPage(ItemPageSource):
     def format_page(self, menu: ui.View, **kwargs):
         command = {i: command for i, command in enumerate(menu.items)}[self.item]
 
@@ -677,7 +681,7 @@ class Command(ItemPageSource):
         return embed, None
 
 
-class Cog(ListPageSource):
+class CogPage(ListPageSource):
     def __init__(
         self,
         ctx: ShakeContext,

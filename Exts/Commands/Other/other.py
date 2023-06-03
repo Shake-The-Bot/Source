@@ -1,40 +1,33 @@
-############
-#
 from discord import PartialEmoji
 from discord.ext import commands
-from Classes import _, ShakeBot
-########
+
+from Classes import ShakeBot, _
+
+############
 #
-#@locale_doc
-class other(commands.Cog):
-    def __init__(self, bot) -> None:
-        self.names = ['other', 'other', 'others']
-        self.description = _(
-            """Other commands without categories"""
-        )
+
+
+class Other(commands.Cog):
+    def __init__(self, bot: ShakeBot) -> None:
         self.bot = bot
-        
-    @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{GLOBE WITH MERIDIANS}')
+        self.category_description = _("""Other commands without categories""")
 
-    
-    def long_doc_title(self) -> str: 
-        return f"{self.display_emoji}︱{self.label}"
+    @staticmethod
+    def category_emoji() -> PartialEmoji:
+        return PartialEmoji(name="\N{GLOBE WITH MERIDIANS}")
 
-    @property
-    def label(self) -> str: 
+    @staticmethod
+    def label() -> str:
         return _("Other")
 
-    @property
-    def describe(self) -> bool:
-        return False
-    
-    @property
-    def help_command_title(self) -> str: 
-        return _("Other Commands")
+    @staticmethod
+    def category_title() -> str:
+        return f"{Other.category_emoji}︱{Other.label}"
 
-async def setup(bot: ShakeBot): 
-    await bot.add_cog(other(bot))
+    @staticmethod
+    def describe() -> bool:
+        return False
+
+
 #
 ############

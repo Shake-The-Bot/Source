@@ -1,16 +1,28 @@
 ############
 #
-from discord import PartialEmoji, Member
 from importlib import reload
-from . import kick, testing
-from Classes import ShakeBot, _, locale_doc, setlocale, Testing, ShakeContext, extras
 from typing import Optional
-from discord.ext.commands import Greedy, Cog, hybrid_command, has_permissions, bot_has_permissions, guild_only
+
+from discord import Member, PartialEmoji
+from discord.ext.commands import (
+    Greedy,
+    bot_has_permissions,
+    guild_only,
+    has_permissions,
+    hybrid_command,
+)
+
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+
+from ..moderation import Moderation
+from . import kick, testing
+
+
 ########
 #
-class kick_extension(Cog):
-    def __init__(self, bot):
-        self.bot: ShakeBot = bot
+class kick_extension(Moderation):
+    def __init__(self, bot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(kick)
         except:
@@ -30,7 +42,9 @@ class kick_extension(Cog):
     @bot_has_permissions(kick_members=True)
     @setlocale(guild=True)
     @locale_doc
-    async def kick(self, ctx: ShakeContext, member: Greedy[Member], *, reason: Optional[str] = None):
+    async def kick(
+        self, ctx: ShakeContext, member: Greedy[Member], *, reason: Optional[str] = None
+    ):
         _(
             """kicks a member
 
@@ -48,15 +62,17 @@ class kick_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else kick
 
-        try:    
+        try:
             await do.command(ctx=ctx, member=member, reason=reason).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
@@ -65,5 +81,7 @@ class kick_extension(Cog):
 
 async def setup(bot: ShakeBot):
     await bot.add_cog(kick_extension(bot))
+
+
 #
 ############

@@ -1,16 +1,37 @@
 ############
 #
-from discord import PartialEmoji, Member
 from importlib import reload
-from . import timeout, testing
 from typing import Optional
-from discord.ext.commands import Greedy, hybrid_command, has_permissions, Cog, guild_only, bot_has_permissions
-from Classes import ShakeContext, ShakeBot, Testing, _, locale_doc, setlocale, DurationDelta, extras
+
+from discord import Member, PartialEmoji
+from discord.ext.commands import (
+    Greedy,
+    bot_has_permissions,
+    guild_only,
+    has_permissions,
+    hybrid_command,
+)
+
+from Classes import (
+    DurationDelta,
+    ShakeBot,
+    ShakeContext,
+    Testing,
+    _,
+    extras,
+    locale_doc,
+    setlocale,
+)
+
+from ..moderation import Moderation
+from . import testing, timeout
+
+
 ########
 #
-class timeout_extension(Cog):
-    def __init__(self, bot):
-        self.bot: ShakeBot = bot
+class timeout_extension(Moderation):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(timeout)
         except:
@@ -31,10 +52,11 @@ class timeout_extension(Cog):
     @setlocale(guild=True)
     @locale_doc
     async def timeout(
-        self, ctx: ShakeContext, 
-        member: Greedy[Member], 
+        self,
+        ctx: ShakeContext,
+        member: Greedy[Member],
         time: DurationDelta = "1h",
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ):
         _(
             """Puts member(s) in the timeout of a given time (default 1h)
@@ -56,15 +78,19 @@ class timeout_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else timeout
 
-        try:    
-            await do.command(ctx=ctx, member=member, time=time, reason=reason).__await__()
-    
+        try:
+            await do.command(
+                ctx=ctx, member=member, time=time, reason=reason
+            ).__await__()
+
         except:
             if ctx.testing:
                 raise Testing
@@ -73,5 +99,7 @@ class timeout_extension(Cog):
 
 async def setup(bot):
     await bot.add_cog(timeout_extension(bot))
+
+
 #
 ############

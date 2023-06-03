@@ -1,29 +1,35 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeContext, ShakeBot, _, locale_doc, setlocale, extras, Testing
 from typing import Optional
+
+from discord import PartialEmoji
+from discord.ext.commands import command, guild_only, is_owner
+
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+
+from ..other import Other
 from . import leave, testing
-from discord.ext.commands import command, guild_only, is_owner, Cog
+
+
 ########
 #
-class leave_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
+class leave_extension(Other):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(leave)
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='blobleave', animated=True, id=1058033660755972219)
-    
-    def category(self) -> str: 
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="blobleave", animated=True, id=1058033660755972219)
+
+    def category(self) -> str:
         return "other"
-    
-    @command(name='leave')
+
+    @command(name="leave")
     @extras(owner=True)
     @guild_only()
     @is_owner()
@@ -43,22 +49,26 @@ class leave_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else leave
 
-        try:    
+        try:
             await do.command(ctx=ctx, guild=guild).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
-            
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(leave_extension(bot))
+
+
 #
 ############

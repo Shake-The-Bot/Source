@@ -1,39 +1,36 @@
+from discord import PartialEmoji
+from discord.ext import commands
+
+from Classes import ShakeBot, _
+
 ############
 #
-from discord.ext import commands
-from discord import PartialEmoji
-from Classes import _
-########
-#
-class moderation(commands.Cog):
-    def __init__(self, bot) -> None: 
-        self.names = ['moderation', 'mod']
-        self.description = _(
-        """Moderation related commands.
-        (Each of these commands requires certain authorization)."""
-        )
+
+
+class Moderation(commands.Cog):
+    def __init__(self, bot: ShakeBot) -> None:
         self.bot = bot
+        self.category_description = _(
+            """Moderation related commands.
+            (Each of these commands requires certain authorization)."""
+        )
 
-    @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{POLICE OFFICER}')
+    @staticmethod
+    def category_emoji() -> PartialEmoji:
+        return PartialEmoji(name="\N{POLICE OFFICER}")
 
-    def long_doc_title(self) -> str: 
-        return f"{self.display_emoji}︱{self.label}"
+    @staticmethod
+    def label() -> str:
+        return _("Moderation")
 
-    @property
-    def label(self) -> str: 
-        return ("Moderation")
+    @staticmethod
+    def category_title() -> str:
+        return f"{Moderation.category_emoji}︱{Moderation.label}"
 
-    @property
-    def describe(self) -> bool:
+    @staticmethod
+    def describe() -> bool:
         return False
 
-    @property
-    def help_command_title(self) -> str: 
-        return "Moderations Befehle"
 
-async def setup(bot): 
-    await bot.add_cog(moderation(bot))
 #
 ############

@@ -1,13 +1,18 @@
 ############
 #
-from . import help, testing
-from typing import Optional
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
-from Classes.useful import Categorys
 from importlib import reload
-from discord.ext.commands import Cog, hybrid_command, guild_only
+from typing import Optional
+
+from discord.ext.commands import Cog, guild_only, hybrid_command
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from Classes.useful import Categorys
+
+from . import help, testing
+
 ########
 #
+
 
 class help_extension(Cog):
     def __init__(self, bot) -> None:
@@ -17,14 +22,16 @@ class help_extension(Cog):
         except:
             pass
 
-    def category(self) -> str: 
-        return "help_extension"
-
     @hybrid_command(name="help")
     @guild_only()
     @setlocale()
     @locale_doc
-    async def help(self, ctx: ShakeContext, category: Optional[Categorys] = None, command: Optional[str] = None):
+    async def help(
+        self,
+        ctx: ShakeContext,
+        category: Optional[Categorys] = None,
+        command: Optional[str] = None,
+    ):
         _(
             """Shows all Shake bot commands and provides helpful links
         
@@ -37,32 +44,36 @@ class help_extension(Cog):
                 the name of a command you want information about
             """
         )
-        
+
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
 
         do = testing if ctx.testing else help
 
         try:
             await do.command(ctx=ctx, category=category, command=command).__await__()
-        
+
         except:
             if ctx.testing:
                 raise Testing
             raise
-            
 
-        return 
+        return
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     bot.remove_command("help")
-    #bot.help_command = HelpPaginatedCommand()
+    # bot.help_command = HelpPaginatedCommand()
     await bot.add_cog(help_extension(bot))
+
+
 #
 ############

@@ -4,18 +4,19 @@ from importlib import reload
 from typing import Literal, Optional
 
 from discord import Object, PartialEmoji
-from discord.ext.commands import Cog, Greedy, command, guild_only, is_owner
+from discord.ext.commands import Greedy, command, guild_only, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
+from ..other import Other
 from . import sync, testing
 
 
 ########
 #
-class sync_extension(Cog):
+class sync_extension(Other):
     def __init__(self, bot) -> None:
-        self.bot: ShakeBot = bot
+        super().__init__(bot=bot)
         try:
             reload(sync)
         except:

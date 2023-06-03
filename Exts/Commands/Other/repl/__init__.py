@@ -1,18 +1,24 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
-from . import repl, testing
 from typing import Any
-from Classes import _, locale_doc, setlocale, ShakeContext, ShakeBot, Testing
+
+from discord import PartialEmoji
 from discord.app_commands import guild_only
+from discord.ext.commands import command, is_owner
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from Classes.checks import extras
-from discord.ext.commands import is_owner, Cog, command
+
+from ..other import Other
+from . import repl, testing
+
+
 ########
 #
-class repl_extension(Cog):
+class repl_extension(Other):
     def __init__(self, bot: ShakeBot):
-        self.bot: ShakeBot = bot
+        super().__init__(bot=bot)
         self.last: Any = None
         self.env = dict()
         try:
@@ -21,10 +27,10 @@ class repl_extension(Cog):
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{WASTEBASKET}')
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{WASTEBASKET}")
 
-    def category(self) -> str: 
+    def category(self) -> str:
         return "other"
 
     @command(name="repl")
@@ -58,23 +64,30 @@ class repl_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else repl
-        try:    
-            last = await do.command(ctx=ctx, code=code, env=self.env, last=self.last).__await__()
-            
+        try:
+            last = await do.command(
+                ctx=ctx, code=code, env=self.env, last=self.last
+            ).__await__()
+
             if last:
                 self.last = last
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(repl_extension(bot))
+
+
 #
 ############

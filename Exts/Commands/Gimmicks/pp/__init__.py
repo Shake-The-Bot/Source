@@ -1,27 +1,33 @@
 ############
 #
-from discord import PartialEmoji, Member
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, Testing
+
+from discord import Member, PartialEmoji
+from discord.ext.commands import Greedy, guild_only, hybrid_command
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+
+from ..gimmicks import Gimmicks
 from . import pp, testing
-from discord.ext.commands import Cog, guild_only, Greedy, hybrid_command
+
+
 ########
 #
-class pp_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
+class pp_extension(Gimmicks):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(pp)
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{VIDEO GAME}')
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{VIDEO GAME}")
 
-    def category(self) -> str: 
+    def category(self) -> str:
         return "gimmicks"
-    
+
     @hybrid_command(name="pp")
     @guild_only()
     @setlocale()
@@ -45,23 +51,28 @@ class pp_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
 
         do = testing if ctx.testing else pp
-        try:    
+        try:
             await do.command(ctx=ctx, member=member or [ctx.author]).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
+
 ########
 #
-async def setup(bot: ShakeBot): 
+async def setup(bot: ShakeBot):
     await bot.add_cog(pp_extension(bot))
+
+
 #
 ############

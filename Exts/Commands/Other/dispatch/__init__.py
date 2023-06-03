@@ -1,28 +1,34 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, _, locale_doc, setlocale, extras, Testing
-from . import dispatch, testing
 from typing import Optional
-from discord.ext.commands import Cog, command, guild_only, is_owner
+
+from discord import PartialEmoji
+from discord.ext.commands import command, guild_only, is_owner
+
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+
+from ..other import Other
+from . import dispatch, testing
+
+
 ########
 #
-class dispatch_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
+class dispatch_extension(Other):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(dispatch)
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{PISTOL}')
-    
-    def category(self) -> str: 
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{PISTOL}")
+
+    def category(self) -> str:
         return "other"
-    
+
     @command(name="dispatch")
     @extras(owner=True)
     @guild_only()
@@ -46,22 +52,26 @@ class dispatch_extension(Cog):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
         do = testing if ctx.testing else dispatch
 
-        try:    
+        try:
             await do.command(ctx, event, kwargs).__await__()
-    
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
 
-async def setup(bot: ShakeBot): 
+async def setup(bot: ShakeBot):
     await bot.add_cog(dispatch_extension(bot))
+
+
 #
 ############

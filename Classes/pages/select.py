@@ -51,6 +51,13 @@ class CategoricalSelect(ui.Select):
     def categories(self, value: Any):
         self.__categories = value
 
+    def describe(group: Group):
+        return (
+            getattr(Group, "description").split("\n", 1)[0] or None
+            if isinstance(getattr(Group, "description"), str)
+            else getattr(Group, "description")().split("\n", 1)[0] or None
+        )
+
     def __fill_options(self) -> None:
         assert self.categories is not None
         self.add_option(
@@ -64,11 +71,7 @@ class CategoricalSelect(ui.Select):
 
             label = getattr(Group, "label", "<LABEL NOT FOUND>")
             emoji = getattr(Group, "display_emoji", None)
-            description = (
-                (getattr(Group, "description", "").split("\n", 1)[0] or None)
-                if getattr(Group, "describe", True)
-                else None
-            )
+            description = self.describe(Group)
 
             self.add_option(
                 label=label, value=value, description=description, emoji=emoji

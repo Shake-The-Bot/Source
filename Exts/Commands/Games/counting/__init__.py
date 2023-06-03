@@ -8,13 +8,13 @@ from discord.ext.commands import guild_only, hybrid_group
 
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
-from ..functions import Functions
+from ..games import Games
 from . import counting, testing
 
 
 ########
 #
-class counting_extension(Functions):
+class counting_extension(Games):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:

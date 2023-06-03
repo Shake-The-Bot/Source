@@ -1,28 +1,34 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
 from typing import Optional
+
+from discord import PartialEmoji
+from discord.ext.commands import command, guild_only, is_owner
+
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+
+from ..other import Other
 from . import ptb
-from Classes import ShakeBot, ShakeContext, extras, _, locale_doc, setlocale, Testing
-from discord.ext.commands import command, guild_only, is_owner, Cog
+
+
 ########
 #
-class ptb_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
+class ptb_extension(Other):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(ptb)
         except:
             pass
-    
-    def category(self) -> str: 
+
+    def category(self) -> str:
         return "other"
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{HEAVY PLUS SIGN}')
-    
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{HEAVY PLUS SIGN}")
+
     @command(name="ptb")
     @extras(owner=True)
     @guild_only()
@@ -30,9 +36,7 @@ class ptb_extension(Cog):
     @setlocale()
     @locale_doc
     async def ptb(self, ctx: ShakeContext, id: Optional[str] = None):
-        _(
-            """Temporarily adds a server/channel/user to the public test build"""
-        )
+        _("""Temporarily adds a server/channel/user to the public test build""")
 
         reload(ptb)
         try:
@@ -40,7 +44,10 @@ class ptb_extension(Cog):
         except:
             raise Testing
 
-async def setup(bot: ShakeBot): 
+
+async def setup(bot: ShakeBot):
     await bot.add_cog(ptb_extension(bot))
+
+
 #
 ############

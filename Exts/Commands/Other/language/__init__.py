@@ -1,28 +1,35 @@
 ############
 #
-from discord import PartialEmoji
 from importlib import reload
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
-from . import language as lang, testing
 from typing import Optional
-from discord.ext.commands import MissingPermissions, guild_only, Cog, hybrid_group
+
+from discord import PartialEmoji
+from discord.ext.commands import MissingPermissions, guild_only, hybrid_group
+
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+
+from ..other import Other
+from . import language as lang
+from . import testing
+
+
 ########
 #
-class language_extension(Cog):
-    def __init__(self, bot: ShakeBot) -> None: 
-        self.bot: ShakeBot = bot
+class language_extension(Other):
+    def __init__(self, bot: ShakeBot) -> None:
+        super().__init__(bot=bot)
         try:
             reload(lang)
         except:
             pass
 
     @property
-    def display_emoji(self) -> PartialEmoji: 
-        return PartialEmoji(name='\N{EARTH GLOBE EUROPE-AFRICA}')
+    def display_emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="\N{EARTH GLOBE EUROPE-AFRICA}")
 
-    def category(self) -> str: 
-        return "information"
-    
+    def category(self) -> str:
+        return "other"
+
     @hybrid_group(name="language")
     @guild_only()
     @setlocale()
@@ -30,7 +37,7 @@ class language_extension(Cog):
     async def language(self, ctx: ShakeContext):
         return
 
-    @language.command(name='list')
+    @language.command(name="list")
     @guild_only()
     @setlocale()
     @locale_doc
@@ -42,32 +49,35 @@ class language_extension(Cog):
             Some of these languages are no real languages but serve as a way to spice up the text.
             (If something is not yet translated, the english original text is used.)"""
         )
-        
+
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
 
         do = testing if ctx.testing else lang
 
         try:
             await do.command(ctx=ctx).list()
-        
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
-
-    @language.command(name='set')
+    @language.command(name="set")
     @guild_only()
     @setlocale()
     @locale_doc
-    async def set(self, ctx: ShakeContext, *, language: str, server: Optional[bool] = False) -> None:
+    async def set(
+        self, ctx: ShakeContext, *, language: str, server: Optional[bool] = False
+    ) -> None:
         _(
             """Set your language for Shake.
             Full list of available languages can be found with `{prefix}language`
@@ -80,34 +90,39 @@ class language_extension(Cog):
             server: Optional[bool]
                 If the language should be set for the whole server"""
         )
-        
+
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
 
         do = testing if ctx.testing else lang
 
-        try:        
+        try:
             if server == True:
-                if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
+                if missing := [
+                    perm
+                    for perm, value in {"administrator": True}.items()
+                    if getattr(ctx.permissions, perm) != value
+                ]:
                     raise MissingPermissions(missing)
                 await do.command(ctx=ctx).guild_locale(locale=language)
-                
+
             else:
                 await do.command(ctx=ctx).user_locale(locale=language)
-            
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
-
-    @language.command(name='reset')
+    @language.command(name="reset")
     @guild_only()
     @setlocale()
     @locale_doc
@@ -121,34 +136,42 @@ class language_extension(Cog):
             server: Optional[bool]
                 If the language should be reset for the whole server"""
         )
-        
+
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical('Could not load {name}, will fallback ({type})'.format(
-                    name=testing.__file__, type=e.__class__.__name__
-                ))
+                self.bot.log.critical(
+                    "Could not load {name}, will fallback ({type})".format(
+                        name=testing.__file__, type=e.__class__.__name__
+                    )
+                )
                 ctx.testing = False
 
         do = testing if ctx.testing else lang
 
-        try:        
+        try:
             if server == True:
-                if (missing := [perm for perm, value in {'administrator': True}.items() if getattr(ctx.permissions, perm) != value]):
+                if missing := [
+                    perm
+                    for perm, value in {"administrator": True}.items()
+                    if getattr(ctx.permissions, perm) != value
+                ]:
                     raise MissingPermissions(missing)
-                await do.command(ctx=ctx).guild_locale(locale='en-US')
-                
+                await do.command(ctx=ctx).guild_locale(locale="en-US")
+
             else:
-                await do.command(ctx=ctx).user_locale(locale='en-US')
-            
+                await do.command(ctx=ctx).user_locale(locale="en-US")
+
         except:
             if ctx.testing:
                 raise Testing
             raise
 
 
-async def setup(bot: ShakeBot): 
+async def setup(bot: ShakeBot):
     await bot.add_cog(language_extension(bot))
+
+
 #
 ############
