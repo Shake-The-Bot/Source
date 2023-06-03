@@ -24,7 +24,7 @@ class counting_extension(Games):
 
     @property
     def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name="\N{SQUARED UP WITH EXCLAMATION MARK}")
+        return PartialEmoji(name="\N{INPUT SYMBOL FOR NUMBERS}")
 
     @hybrid_group(name="counting")
     @guild_only()

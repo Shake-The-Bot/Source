@@ -76,13 +76,14 @@ class CategoricalSelect(ui.Select):
             self.find[value] = group
 
             label = self.getter(group, "label")
-            describe = self.getter(group, "describe") or self.describe
+
+            d = self.getter(group, "describe")
+            describe = d if d else self.describe
+
             emoji = self.getter(group, "emoji")
-            description = (
-                (des := self.getter(group, "description")).split("\n", 1)[0]
-                if des
-                else None
-            )
+
+            d = self.getter(group, "description")
+            description = d.split("\n", 1)[0] if d else None
 
             self.add_option(
                 label=label or "<LABEL NOT FOUND>",
