@@ -10,7 +10,7 @@ I'm a multi purpose Discord-Bot which helps you to manage your Server with tempv
 
 -   For a list of commands type "/help" (or "@Shake help") and use the select menu!
 
-## Dashboard
+## **Note** Dashboard
 
 -   Currently there is no dashbord and I am managable with my commands.
     This will be changed in future!
@@ -20,7 +20,7 @@ I'm a multi purpose Discord-Bot which helps you to manage your Server with tempv
 -   Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
     Please make sure to update tests as appropriate.
 
-## Self hosting
+## **Warning** Self hosting
 
 -   Please do not host me yourself. At least not now! My code is massively outdated and mostly only works platform specific.
 
