@@ -400,6 +400,7 @@ class BotBase(AutoShardedBot):
     def __init__(self, **options):
         owner_ids = options.pop("owner_ids")
         self.shake_id, *_ = owner_ids
+        self.cache.setdefault("pages", dict())
         self.cache.setdefault("locales", dict())
         self.cache.setdefault("_data_batch", list())
         self.cache.setdefault("testing", {1036952232719024129: None})
@@ -631,7 +632,7 @@ class ShakeEmbed(Embed):
             kwargs[
                 "description"
             ] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
-        instance = cls(colour=colour or config.embed.colour, **kwargs)
+        instance = cls(colour=colour or 0x00CC88, **kwargs)
         instance.timestamp = None
         return instance
 
@@ -642,7 +643,7 @@ class ShakeEmbed(Embed):
         colour: Optional[Union[Colour, int]] = MISSING,
         **kwargs: Any,
     ) -> ShakeEmbed:
-        colour = colour or config.embed.error_colour
+        colour = colour or 0xFF0000
         bot: "ShakeBot" = (
             getattr(ctx, "bot", str(MISSING))
             if isinstance(ctx, (ShakeContext, Context))

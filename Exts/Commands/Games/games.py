@@ -1,23 +1,19 @@
 ############
 #
 from discord import PartialEmoji
-from discord.ext import commands
 
-from Classes import ShakeBot, _
+from Classes import Category, ShakeBot, _
 
 
 ########
 #
-class Games(commands.Cog):
-    def __init__(self, bot: ShakeBot) -> None:
-        self.bot = bot
-
+class Games(Category):
     @property
     def description(self) -> str:
         return _("""Commands for the the Games I offer""")
 
-    @staticmethod
-    def emoji() -> PartialEmoji:
+    @property
+    def emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{VIDEO GAME}")
 
     @property
@@ -26,7 +22,7 @@ class Games(commands.Cog):
 
     @property
     def title(self) -> str:
-        return f"{Games.emoji}︱{Games.label}"
+        return f"{self.emoji} » {self.label}"
 
     @property
     def describe(self) -> bool:

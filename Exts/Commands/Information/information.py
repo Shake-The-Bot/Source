@@ -1,17 +1,13 @@
 ############
 #
 from discord import PartialEmoji
-from discord.ext import commands
 
-from Classes import ShakeBot, _
+from Classes import Category, ShakeBot, _
 
 
 ########
 #
-class Information(commands.Cog):
-    def __init__(self, bot: ShakeBot) -> None:
-        self.bot: ShakeBot = bot
-
+class Information(Category):
     @property
     def description(self) -> str:
         return _(
@@ -19,13 +15,13 @@ class Information(commands.Cog):
             Sometimes you find out new things 🤷"""
         )
 
-    @staticmethod
-    def emoji() -> PartialEmoji:
-        return PartialEmoji(name="\N{INFORMATION SOURCE}")
+    @property
+    def emoji(self) -> PartialEmoji:
+        return PartialEmoji(name="ℹ️")
 
     @property
     def title(self) -> str:
-        return f"{Information.emoji}︱{Information.label}"
+        return f"{self.emoji} » {self.label}"
 
     @property
     def label(self) -> str:

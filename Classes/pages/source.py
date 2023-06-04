@@ -7,15 +7,9 @@ from discord.ext import menus
 
 from Classes import _
 from Classes.exceptions import NothingHereYet
+from Classes.helpful import ShakeBot, ShakeContext, ShakeEmbed
 from Classes.pages import page
 from Classes.useful import MISSING
-
-if TYPE_CHECKING:
-    from Classes import ShakeBot, ShakeContext, ShakeEmbed
-else:
-    from discord import Embed as ShakeEmbed
-    from discord.ext.commands import Bot as ShakeBot
-    from discord.ext.commands import Context as ShakeContext
 
 __all__ = (
     "AnyPageSource",
@@ -44,10 +38,10 @@ class ItemPageSource(menus.PageSource):
     def __init__(
         self,
         ctx: Union[ShakeContext, Interaction],
-        item: Any,
-        title: str,
-        description: str = "",
+        item: Optional[Any] = MISSING,
         label: Optional[str] = MISSING,
+        title: Optional[str] = MISSING,
+        description: Optional[str] = MISSING,
         *args,
         **kwargs,
     ):
@@ -76,7 +70,7 @@ class ItemPageSource(menus.PageSource):
         return 1
 
     async def get_page(self, page: int) -> Any:
-        self.page = page
+        self.item = page
         return self
 
     def format_page(self, menu: page.menus, item: Any) -> Tuple[ShakeEmbed, File]:
@@ -90,7 +84,7 @@ class ListPageSource(menus.ListPageSource):
         items: List[Any],
         title: str,
         group: Optional[Any] = MISSING,
-        description: str = "",
+        description: Optional[str] = MISSING,
         paginating: bool = True,
         per_page: Optional[int] = 6,
         label: Optional[str] = MISSING,
@@ -101,13 +95,13 @@ class ListPageSource(menus.ListPageSource):
         self.bot: ShakeBot = ctx.bot
         self.group: Any = group
         self.items: List[Any] = items
-        self.title: str = title
+        self.title: str = title or getattr(group, "title", MISSING)
         self.description: Optional[str] = description
         self.paginating = paginating
         self.args = args
         self.kwargs = kwargs
         self.__label = label or title
-        super().__init__(entries=items, per_page=per_page)
+        super().__init__(entries=list(items), per_page=per_page)
 
     def add_field(self, embed: ShakeEmbed, item: Union[Any, Tuple[Any, Any]]):
         if isinstance(item, tuple):
@@ -137,9 +131,16 @@ class ListPageSource(menus.ListPageSource):
         file = None
         details = (f" 〈 {menu.page + 1} / {self.maximum} 〉") if self.maximum > 1 else ""
         title = self.title + (details if self.description else "")
-        description = self.description if self.description else "**" + details + "**"
-        embed = ShakeEmbed(
-            colour=self.bot.config.embed.colour, title=title, description=description
+        description = (
+            self.description
+            if self.description
+            else ("**" + details + "**" if details else "")
+        )
+        embed = ShakeEmbed().default(
+            ctx=self.ctx,
+            colour=self.bot.config.embed.colour,
+            title=title,
+            description=description,
         )
         for item in items:
             self.add_field(embed, item)

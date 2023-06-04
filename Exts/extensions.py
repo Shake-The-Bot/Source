@@ -37,6 +37,7 @@ extensions = [
     "Exts.Commands.Other.other",
     "Exts.Commands.Other.language.__init__",
     "Exts.Commands.Other.extensions.__init__",
+    "Exts.Commands.Other.hoisters.__init__",
     "Exts.Commands.Other.bash.__init__",
     "Exts.Commands.Other.repl.__init__",
     "Exts.Commands.Other.restart.__init__",

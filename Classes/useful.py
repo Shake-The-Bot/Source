@@ -22,6 +22,8 @@ from typing import (
     Union,
     _SpecialForm,
     _type_check,
+    get_args,
+    get_origin,
 )
 from urllib.parse import quote
 
@@ -30,21 +32,30 @@ from aiohttp import ClientSession
 from asyncpg import Connection, InvalidCatalogNameError, connect
 from dateutil.relativedelta import relativedelta
 from discord import (
+    Attachment,
     ClientException,
     FFmpegPCMAudio,
     File,
     Guild,
     Interaction,
     Member,
+    Message,
+    Object,
     PartialEmoji,
     TextChannel,
+    User,
     VoiceChannel,
 )
 from discord.abc import T
 from discord.ext.commands import ChannelNotFound as _ChannelNotFound
-from discord.ext.commands import Context, VoiceChannelConverter
-from discord.ext.commands.errors import ExtensionAlreadyLoaded, ExtensionNotLoaded
+from discord.ext.commands import Cog, Command, Context, Greedy, VoiceChannelConverter
+from discord.ext.commands.errors import (
+    ExtensionAlreadyLoaded,
+    ExtensionError,
+    ExtensionNotLoaded,
+)
 from discord.player import AudioPlayer
+from discord.ui import View
 from PIL import Image, ImageDraw, ImageFont
 
 from Classes.converter import ValidCog
@@ -70,10 +81,12 @@ __all__ = (
     "high_level_function",
     "calc",
     "aboveme",
+    "get_signature",
     "counting",
     "votecheck",
     "Ready",
     "dump",
+    "Category",
     "DatabaseProtocol",
     "FormatTypes",
     "cogshandler",
@@ -83,6 +96,13 @@ __all__ = (
     "ExpiringCache",
     "TextFormat",
     "TracebackType",
+    "multiblock",
+    "blockquotes",
+    "hyperlink",
+    "codeblock",
+    "bold",
+    "italics",
+    "multicode",
 )
 
 
@@ -381,6 +401,15 @@ class TextFormat:
         return type(t=text, *args, **kwargs)
 
 
+codeblock = lambda t: TextFormat.format(t, type=FormatTypes.codeblock)
+italics = lambda t: TextFormat.format(t, type=FormatTypes.italics)
+multicode = lambda t, f: TextFormat.format(t, f, type=FormatTypes.multicodeblock)
+bold = lambda t: TextFormat.format(t, type=FormatTypes.bold)
+hyperlink = lambda t: TextFormat.format(t, type=FormatTypes.hyperlink)
+blockquotes = lambda t: TextFormat.format(t, type=FormatTypes.blockquotes)
+multiblock = lambda t: TextFormat.format(t, type=FormatTypes.multiblockquotes)
+
+
 def human_join(
     seq: Sequence[str],
     delimiter: str = ", ",
@@ -580,6 +609,8 @@ class Methods(Enum):
 async def cogshandler(
     ctx: ShakeContext, extensions: list[ValidCog], method: Methods
 ) -> None:
+    extensions: List[str] = [extensions] if isinstance(extensions, str) else extensions
+
     async def handle(method: Methods, extension: ValidCog) -> str:
         function = method.value
         error = None
@@ -610,13 +641,15 @@ async def cogshandler(
     failures: int = 0
     for i, extension in enumerate(extensions, 1):
         handling = await handle(method, extension)
-        error = getattr(handling, "original", handling) if handling else MISSING
+        error: Optional[ExtensionError] = (
+            getattr(handling, "original", handling) if handling else None
+        )
 
         ext = f"`{extension}`"
         name = f"` {i}. ` {ext}"
         if error:
             failures += 1
-            value = "> ❌ {}".format(error.replace(extension, ext))
+            value = "> ❌ {}".format(str(error).replace(extension, ext))
         else:
             value = f"> ☑️ {method.name.lower().capitalize()}ed"
         embed.add_field(name=name, value=value)
@@ -1069,3 +1102,163 @@ class DatabaseProtocol(Protocol):
 
     def release(self, connection: Connection) -> None:
         ...
+
+
+class Category(Cog):
+    bot: ShakeBot
+
+    def __init__(self, bot: ShakeBot) -> None:
+        self.bot = bot
+
+    @property
+    def description(self) -> str:
+        raise NotImplemented
+
+    @property
+    def emoji(self) -> PartialEmoji:
+        raise NotImplemented
+
+    @property
+    def label(self) -> str:
+        raise NotImplemented
+
+    @property
+    def title(self) -> str:
+        raise NotImplemented
+
+    @property
+    def describe(self) -> bool:
+        raise NotImplemented
+
+
+def get_signature(
+    menu: View,
+    self: Command,
+):
+    bot: ShakeBot = menu.ctx.bot
+    ctx: ShakeContext = menu.ctx
+    guild: Guild = menu.ctx.guild
+
+    if self.usage is not None:
+        return self.usage
+
+    params = self.clean_params
+    if not params:
+        return {}, {}
+
+    optionals = dict()
+    required = dict()
+
+    all_text_channel = {
+        str(channel.name): channel.mention for channel in guild.text_channels
+    }
+    text_channel = (
+        all_text_channel.get(
+            sorted(set(all_text_channel.keys()), key=len, reverse=False)[0]
+        )
+        if bool(guild.text_channels)
+        else None
+    )
+
+    all_members = {str(member.name): member.mention for member in guild.members}
+    member = (
+        all_members.get(sorted(set(all_members.keys()), key=len, reverse=False)[0])
+        if bool(guild.members)
+        else None
+    )
+
+    all_voice_channel = {
+        str(channel.name): channel.mention for channel in guild.voice_channels
+    }
+    voice_channel = (
+        all_voice_channel.get(
+            sorted(set(all_voice_channel.keys()), key=len, reverse=False)[0]
+        )
+        if bool(guild.voice_channels)
+        else None
+    )
+
+    examples = {
+        int: [choice(range(0, 100))],
+        Member: [menu.ctx.bot.user.mention, menu.ctx.author.mention, member],
+        User: [menu.ctx.bot.user.mention],
+        TextChannel: [ctx.channel.mention if ctx.channel else None, text_channel],
+        VoiceChannel: [voice_channel],
+        Object: [guild.id],
+        Message: [menu.ctx.message.id, menu.message.id if menu.message else None],
+        str: ["abc", "hello", "xyz"],
+        bool: ["True", "False"],
+    }
+    for name, param in params.items():
+        greedy = isinstance(param.converter, Greedy)
+        typin = get_origin(param.converter) == Union and get_args(param.converter)[
+            -1
+        ] == type(None)
+        optional = False  # postpone evaluation of if it's an optional argument
+
+        if greedy:
+            annotation = param.converter.converter
+        elif typin:
+            args = list(get_args(param.converter))
+            del args[-1]
+            annotation = choice(args)
+        else:
+            annotation = param.converter
+
+        origin = getattr(annotation, "__origin__", None)
+        example = choice(examples.get(annotation, [f"{{{name}}}"])) or f"{{{name}}}"
+
+        if not greedy and origin is Union:
+            none_cls = type(None)
+            union_args = annotation.__args__
+            optional = union_args[-1] is none_cls
+            if len(union_args) == 2 and optional:
+                annotation = union_args[0]
+                origin = getattr(annotation, "__origin__", None)
+
+        if annotation is Attachment:
+            if optional:
+                optionals[_("[{name} (upload a file)]".format(name=name))] = str(
+                    example
+                )
+            else:
+                required[
+                    (
+                        _("<{name} (upload a file)>")
+                        if not greedy
+                        else _("[{name} (upload files)]…")
+                    ).format(name=name)
+                ] = str(example)
+            continue
+
+        if origin is Literal:
+            name = "|".join(
+                f'"{v}"' if isinstance(v, str) else str(v) for v in annotation.__args__
+            )
+
+        if not param.required:
+            if param.displayed_default:
+                optionals[
+                    f"[{name}: {annotation.__name__}]…"
+                    if greedy
+                    else f"[{name}: {annotation.__name__}]"
+                ] = str(example)
+                continue
+            else:
+                optionals[f"[{name}: {annotation.__name__}]"] = str(example)
+            continue
+
+        elif param.kind == param.VAR_POSITIONAL:
+            if self.require_var_positional:
+                required[f"<{name}: {annotation.__name__}…>"] = str(example)
+            else:
+                optionals[f"[{name}: {annotation.__name__}…]"] = str(example)
+        elif optional:
+            optionals[f"[{name}: {annotation.__name__}]"] = str(example)
+        else:
+            if greedy:
+                optionals[f"[{name}: {annotation.__name__}]…"] = str(example)
+            else:
+                required[f"<{name}: {annotation.__name__}>"] = str(example)
+
+    return required, optionals

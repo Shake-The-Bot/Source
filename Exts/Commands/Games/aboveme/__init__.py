@@ -6,7 +6,7 @@ from typing import Optional
 from discord import PartialEmoji, TextChannel
 from discord.ext.commands import guild_only, hybrid_group
 
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from Classes import ShakeBot, ShakeContext, Slash, Testing, _, locale_doc, setlocale
 
 from ..games import Games
 from . import aboveme, testing
@@ -31,6 +31,10 @@ class aboveme_extension(Games):
     @setlocale()
     @locale_doc
     async def aboveme(self, ctx: ShakeContext):
+        _(
+            """Throw nice, funny and sometimes annoying comments to the user above you! 
+            The AboveMe game offers a lot of fun and creats entertaining moments among each other!"""
+        )
         ...
 
     @aboveme.command(name="setup")
@@ -45,9 +49,13 @@ class aboveme_extension(Games):
         hardcore: Optional[bool] = False,
     ):
         _(
-            """Setup the whole aboveme game in seconds
+            """Setup the whole AboveMe game in seconds
             Get more information about the aboveme game with {command}"""
-        ).format(command="`/aboveme info`")
+        ).format(
+            command=await (
+                await Slash(ctx.bot).__await__(ctx.bot.get_command("aboveme"))
+            ).get_sub_command(ctx.bot.get_command("aboveme info"))[2]
+        )
 
         if ctx.testing:
             try:

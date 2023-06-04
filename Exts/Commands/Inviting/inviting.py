@@ -1,17 +1,13 @@
 ############
 #
 from discord import PartialEmoji
-from discord.ext import commands
 
-from Classes import _
+from Classes import Category, ShakeBot, _
 
 
 ########
 #
-class inviting(commands.Cog):
-    def __init__(self, bot) -> None:
-        self.bot = bot
-
+class inviting(Category):
     @property
     def description(self) -> str:
         return _(
@@ -38,7 +34,7 @@ class inviting(commands.Cog):
         return "invite Befehle"
 
 
-async def setup(bot):
+async def setup(bot: ShakeBot):
     await bot.add_cog(inviting(bot))
 
 

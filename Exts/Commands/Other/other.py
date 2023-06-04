@@ -1,22 +1,18 @@
 from discord import PartialEmoji
-from discord.ext import commands
 
-from Classes import ShakeBot, _
+from Classes import Category, ShakeBot, _
 
 ############
 #
 
 
-class Other(commands.Cog):
-    def __init__(self, bot: ShakeBot) -> None:
-        self.bot = bot
-
+class Other(Category):
     @property
     def description(self) -> str:
         return _("""Other commands without categories""")
 
-    @staticmethod
-    def emoji() -> PartialEmoji:
+    @property
+    def emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{GLOBE WITH MERIDIANS}")
 
     @property
@@ -25,7 +21,7 @@ class Other(commands.Cog):
 
     @property
     def title(self) -> str:
-        return f"{Other.emoji}︱{Other.label}"
+        return f"{self.emoji} » {self.label}"
 
     @property
     def describe(self) -> bool:

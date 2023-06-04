@@ -31,18 +31,14 @@ class do_extension(Moderation):
     @has_permissions(administrator=True)
     @setlocale(guild=True)
     @locale_doc
-    async def __await__(self, ctx: ShakeContext, times: int, command: str):
+    async def do(self, ctx: ShakeContext, times: int, command: str):
         _("""run commands multiple times""")
 
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
         _do = testing if ctx.testing else do
 

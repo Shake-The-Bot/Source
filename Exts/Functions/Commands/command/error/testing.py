@@ -124,15 +124,13 @@ class Event:
         ).format(invoked=invoked, help=help.app_command.mention)
 
         if bool(matches):
-            cmd = await Slash(self.bot).__await__(commands[matches[0]])
-            description = _(
-                """Nothing named `{invoked}` found. Did you mean {closest}?"""
-            ).format(
-                invoked=invoked,
-                closest=cmd.app_command.mention
-                if hasattr(cmd, "app_command")
-                else ctx.prefix + cmd.command.name,
-            )
+            for match in matches:
+                cmd = await Slash(self.bot).__await__(commands[match])
+                if getattr(cmd, "app_command", None):
+                    description = _(
+                        """Nothing named `{invoked}` found. Did you mean {closest}?"""
+                    ).format(invoked=invoked, closest=cmd.app_command.mention)
+                    break
 
         await self.send(description)
         return

@@ -113,18 +113,12 @@ class Event:
 
             To get started properly, you should take a look at the steps under **Start** as they are **honestly** useful 
             
-            Finally, if you have any problems with the bot, you can **[join my Discord server here]({invite})** and ask for help.
+            Finally, if you have any problems or want to suggest something, you can **[join my Discord server here]({invite})** and feel free to post.
             """.format(
             point=point, invite=self.bot.config.other.server, emoji=heart
         )
 
         await introdoucing().send(embed=embed)
-
-        # # „Database stuff“
-        # with suppress(Exception):
-        #     if self.bot.cache['pools'].get(self.guild.id, None):
-        #         await db.delete_database(self.guild.id,)
-        #     # create db
 
 
 #

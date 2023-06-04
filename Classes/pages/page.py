@@ -41,10 +41,11 @@ class Pages(ui.View):
         self, source: PageSource, ctx: ShakeContext, timeout: Optional[float] = 180.0
     ):
         super().__init__(timeout=timeout)
-        self.cache = dict()
         self.source: PageSource = source
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
+        self.bot.cache["pages"][self] = dict()
+        self.cache = self.bot.cache["pages"][self]
         self.clear_items()
         self.fill()
 
@@ -201,8 +202,8 @@ class Pages(ui.View):
             )
 
         await self.source._prepare_once()
-        page_source = await self.source.get_page(page)
-        self.kwargs, self.file = await self._get_from_page(page_source)
+        source_page = await self.source.get_page(page)
+        self.kwargs, self.file = await self._get_from_page(source_page)
 
         if content:
             self.kwargs.setdefault("content", content)

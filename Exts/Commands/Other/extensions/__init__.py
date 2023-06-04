@@ -1,6 +1,7 @@
 ############
 #
 from importlib import reload
+from typing import Literal
 
 from discord import PartialEmoji
 from discord.ext.commands import Greedy, command, guild_only, is_owner
@@ -37,14 +38,18 @@ class extensions_extension(Other):
             name="\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}"
         )
 
-    @command(name="extensions")
+    @command(name="extensions", aliases=["exts", "cogs"])
     @extras(owner=True)
     @guild_only()
     @is_owner()
     @setlocale()
     @locale_doc
     async def extensions(
-        self, ctx: ShakeContext, command: Methods, *, extension: Greedy[ValidCog]
+        self,
+        ctx: ShakeContext,
+        command: Literal["load", "unload", "reload"],
+        *,
+        extension: Greedy[ValidCog]
     ):
         _(
             """Reloads, unloads or loads extensions of the bot
@@ -61,16 +66,14 @@ class extensions_extension(Other):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
         do = testing if ctx.testing else extensions
 
         try:
-            await do.command(ctx=ctx, method=command, extension=extension).__await__()
+            await do.command(
+                ctx=ctx, method=Methods[command], extension=extension
+            ).__await__()
 
         except:
             if ctx.testing:

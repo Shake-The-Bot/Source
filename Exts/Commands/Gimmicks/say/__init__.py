@@ -32,7 +32,8 @@ class say_extension(Gimmicks):
     @locale_doc
     async def say(self, ctx: ShakeContext, reply: Optional[bool] = True, *, text: str):
         _(
-            """I will say whatever you tell me to say.
+            """I will say whatever you tell me to say, except...
+            Speak as if you were me.  **URLs/Invites not allowed!**
 
             Parameters
             -----------
@@ -47,11 +48,7 @@ class say_extension(Gimmicks):
             try:
                 reload(testing)
             except Exception as e:
-                self.bot.log.critical(
-                    "Could not load {name}, will fallback ({type})".format(
-                        name=testing.__file__, type=e.__class__.__name__
-                    )
-                )
+                await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
 
         do = testing if ctx.testing else say
