@@ -4,109 +4,71 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from inspect import signature
-from json import dump, load
+from io import BytesIO
+from json import dump, dumps, load, loads
+from math import floor
 from os import replace
 from pathlib import Path
-from re import Match, compile, sub
+from random import choice, random, randrange
+from re import Match, sub
 from threading import Thread
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterable,
-    Literal,
-    Optional,
-    Sequence,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from time import monotonic
+from typing import *
 from uuid import uuid4
 
+import asyncpraw
+from _collections_abc import dict_items
 from aiohttp import ClientSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from asyncpg import Connection, Pool
-from discord import (
-    AllowedMentions,
-    AppInfo,
-    ClientUser,
-    Colour,
-    DMChannel,
-    Embed,
-    File,
-    Forbidden,
-    GuildSticker,
-    HTTPException,
-    Interaction,
-    Message,
-    MessageReference,
-    PartialMessage,
-    StickerItem,
-    TextChannel,
-    Thread,
-    User,
-    VoiceChannel,
-    utils,
-)
-from discord.ext.commands import (
-    AutoShardedBot,
-    CheckFailure,
-    Command,
-    CommandError,
-    CommandNotFound,
-    Context,
-)
+from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
+from asyncpraw.models import Submission, Subreddit
+from discord import *
+from discord import Guild
+from discord.ext.commands import *
+from discord.player import AudioPlayer
 from discord.ui import View
+from PIL import Image, ImageDraw, ImageFont
 
 from Classes.i18n import Locale, _, mo
 from Classes.tomls import Config, Emojis, config, emojis
-from Classes.useful import (
-    MISSING,
-    DatabaseProtocol,
-    ExpiringCache,
-    FormatTypes,
-    Ready,
-    TextFormat,
-    source_lines,
-)
-from Exts.Functions.Debug.error import error
+from Classes.types import Regex, TracebackType
+from Classes.useful import MISSING, source_lines
+from Extensions.Functions.Debug.error import error
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes.helpful import ShakeContext, ShakeEmbed
+    from Classes import __version__
 
 else:
-    from discord import Embed as ShakeEmbed
     from discord.ext.commands import Bot as ShakeBot
-    from discord.ext.commands import Context as ShakeContext
+
+    __version__ = MISSING
+
 p = ThreadPoolExecutor(2)
-b = lambda t: TextFormat.format(t, type=FormatTypes.bold)
-############
-#
+
 
 __all__ = (
     "BotBase",
     "ShakeContext",
     "ShakeEmbed",
+    "DatabaseProtocol",
+    "Record",
+    "Reddit",
+    "Category",
     "Migration",
 )
 
 
-_kwargs = {"command_timeout": 60, "max_size": 2, "min_size": 1}
-########
+############
 #
 
 
-"""     Custom Context (Inherits from discord.ext.commands.Context)
-
-For this function, I learned from two other programmers who inspired me on this.
-https://github.com/Rapptz/RoboDanny & https://github.com/InterStella0/stella_bot"""
+"""     A Class representing the custom Context (Inherits from discord.ext.commands.Context)
+"""
 
 
 class ShakeContext(Context):
-    channel: Union[VoiceChannel, TextChannel, Thread, DMChannel]
+    channel: VoiceChannel | TextChannel | Thread | DMChannel
     command: Command[Any, ..., Any]
     message: Message
     testing: bool
@@ -206,11 +168,11 @@ class ShakeContext(Context):
         embeds: Optional[Sequence[Embed]] = None,
         file: Optional[File] = None,
         files: Optional[Sequence[File]] = None,
-        stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
+        stickers: Optional[Sequence[GuildSticker | StickerItem]] = None,
         delete_after: Optional[float] = None,
-        nonce: Optional[Union[str, int]] = None,
+        nonce: Optional[str | int] = None,
         allowed_mentions: Optional[AllowedMentions] = None,
-        reference: Optional[Union[Message, MessageReference, PartialMessage]] = None,
+        reference: Optional[Message | MessageReference | PartialMessage] = MISSING,
         mention_author: Optional[bool] = False,
         view: Optional[View] = None,
         suppress_embeds: bool = False,
@@ -233,7 +195,7 @@ class ShakeContext(Context):
                 ephemeral=ephemeral,
                 nonce=nonce,
                 allowed_mentions=allowed_mentions,
-                reference=reference or self.reference(),
+                reference=self.reference() if reference is MISSING else reference,
                 mention_author=mention_author,
                 suppress_embeds=suppress_embeds,
                 view=view,
@@ -253,9 +215,9 @@ class ShakeContext(Context):
         embeds: Optional[Sequence[ShakeEmbed]] = None,
         file: Optional[File] = None,
         files: Optional[Sequence[File]] = None,
-        stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
+        stickers: Optional[Sequence[GuildSticker | StickerItem]] = None,
         delete_after: Optional[float] = None,
-        nonce: Optional[Union[str, int]] = None,
+        nonce: Optional[str | int] = None,
         allowed_mentions: Optional[AllowedMentions] = None,
         mention_author: Optional[bool] = False,
         suppress_embeds: bool = False,
@@ -287,7 +249,7 @@ class ShakeContext(Context):
         else:
             return self.process(message)
 
-    async def smart_reply(
+    async def chat(
         self,
         content: Optional[str] = None,
         tts: bool = False,
@@ -295,12 +257,13 @@ class ShakeContext(Context):
         embeds: Optional[Sequence[ShakeEmbed]] = None,
         file: Optional[File] = None,
         files: Optional[Sequence[File]] = None,
-        stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
+        stickers: Optional[Sequence[GuildSticker | StickerItem]] = None,
         delete_after: Optional[float] = None,
-        nonce: Optional[Union[str, int]] = None,
+        nonce: Optional[str | int] = None,
         allowed_mentions: Optional[AllowedMentions] = None,
         mention_author: Optional[bool] = False,
         suppress_embeds: bool = False,
+        reference: Optional[Message | MessageReference | PartialMessage] = MISSING,
         view: Optional[View] = None,
         ephemeral: bool = False,
         forced: Optional[bool] = False,
@@ -318,12 +281,13 @@ class ShakeContext(Context):
             "files": files,
             "allowed_mentions": allowed_mentions,
             "view": view,
+            "reference": self.reference() if reference is MISSING else reference,
             "mention_author": mention_author,
             "tts": tts,
             "forced": forced,
         }
-        if ref := self.message.reference:
-            kwargs["reference"] = ref
+        ref = kwargs["reference"]
+        if not ref is None:
             if not mention_author:
                 author = ref.cached_message.author
                 kwargs["mention_author"] = (
@@ -331,10 +295,12 @@ class ShakeContext(Context):
                     and author.id not in self.message.raw_mentions
                 )
             return await self.send(**kwargs)
-        if getattr(self.channel, "last_message", MISSING) not in [
+        last_message = getattr(self.channel, "last_message", MISSING)
+        if last_message not in [
             self.message,
             MISSING,
         ]:
+            kwargs.pop("reference")
             return await self.reply(**kwargs)
         return await self.send(**kwargs)
 
@@ -363,6 +329,8 @@ class ShakeContext(Context):
             setattr(self, param, new_param)
         await self.bot.invoke(self, typing=False)
 
+    """ Do I really need following things? """
+
     async def delete_all(self) -> None:
         if self.channel.permissions_for(self.me).manage_messages:
             await self.channel.delete_messages(self.messages.values())
@@ -383,19 +351,20 @@ class ShakeContext(Context):
         return self.messages.pop(message_id, None)
 
 
-"""     Custom Bot (Inherits from discord.ext.commands.AutoSharedBot)
-"""
+"""     A Class representing the Base of the ShakeBot (Inherits from discord.ext.commands.AutoSharedBot)
+yeah.. lazy rn"""
 
 
 class BotBase(AutoShardedBot):
     user: ClientUser
+    pool: Pool
+    gpool: DatabaseProtocol
     boot: datetime
     gateway_handler: Any
     cache = dict()
     session: ClientSession
+    ready_shards: Record
     bot_app_info: AppInfo
-    _config: Config
-    _emojis: Emojis
 
     def __init__(self, **options):
         owner_ids = options.pop("owner_ids")
@@ -411,7 +380,7 @@ class BotBase(AutoShardedBot):
         self._config = config
         self._emojis = emojis
         super().__init__(**options)
-        self.ready_shards: "Ready" = Ready(sequence=range(self.shard_count))
+        self.ready_shards = Record(sequence=range(self.shard_count))
 
     @property
     def session(self) -> ClientSession:
@@ -500,15 +469,23 @@ class BotBase(AutoShardedBot):
 
     async def get_context(
         self, message: Message, *, cls: Optional[Context] = ShakeContext
-    ) -> Union[ShakeContext, Context]:
+    ) -> ShakeContext | Context:
         context = await super().get_context(message, cls=cls)
         return context
 
     async def close(self):
-        if hasattr(self, "scheduler") and self.scheduler.running:
-            self.scheduler.shutdown()
-        if self.session and not self.session.closed:
-            await self.session.close()
+        if hasattr(self, "scheduler"):
+            if self.scheduler.running:
+                self.scheduler.shutdown()
+
+        if hasattr(self, "session"):
+            if not self.session.closed:
+                await self.session.close()
+
+        if hasattr(self, "reddit"):
+            if not self.reddit.client.requestor.loop.is_closed():
+                await self.reddit.client.close()
+
         await super().close()
 
     async def load_extensions(self):
@@ -542,6 +519,7 @@ class BotBase(AutoShardedBot):
     async def setup_hook(self):
         self._session = ClientSession()
         self.locale: Locale = Locale(self)
+        self.reddit: Reddit = Reddit()
         mo()
         self.lines: int = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
@@ -575,12 +553,16 @@ class BotBase(AutoShardedBot):
             self.log.error(error)
 
 
+"""     Embed Helper
+yeah.. lazy rn"""
+
+
 class ShakeEmbed(Embed):
     """lazy"""
 
     def __init__(
         self,
-        colour: Union[Colour, int] = MISSING,
+        colour: Colour | int = MISSING,
         timestamp: Optional[datetime] = MISSING,
         fields: Iterable[Tuple[str, str]] = (),
         field_inline: bool = False,
@@ -595,9 +577,7 @@ class ShakeEmbed(Embed):
             self.add_field(name=n, value=v, inline=field_inline)
 
     @classmethod
-    def default(
-        cls, ctx: Union[ShakeContext, Interaction], **kwargs: Any
-    ) -> ShakeEmbed:
+    def default(cls, ctx: ShakeContext | Interaction, **kwargs: Any) -> ShakeEmbed:
         instance = cls(**kwargs)
         instance.timestamp = ctx.created_at
         author = (
@@ -619,8 +599,8 @@ class ShakeEmbed(Embed):
     @classmethod
     def to_success(
         cls,
-        ctx: Union[ShakeContext, Interaction],
-        colour: Optional[Union[Colour, int]] = None,
+        ctx: ShakeContext | Interaction,
+        colour: Optional[Colour | int] = None,
         **kwargs: Any,
     ) -> ShakeEmbed:
         bot: "ShakeBot" = (
@@ -639,8 +619,8 @@ class ShakeEmbed(Embed):
     @classmethod
     def to_error(
         cls,
-        ctx: Union[ShakeContext, Interaction],
-        colour: Optional[Union[Colour, int]] = MISSING,
+        ctx: ShakeContext | Interaction,
+        colour: Optional[Colour | int] = MISSING,
         **kwargs: Any,
     ) -> ShakeEmbed:
         colour = colour or 0xFF0000
@@ -658,18 +638,13 @@ class ShakeEmbed(Embed):
         return instance
 
 
+"""     Database Handler
+yeah.. lazy rn"""
+
+
 class Revisions(TypedDict):
-    # The version key represents the current activated version
-    # So v1 means v1 is active and the next revision should be v2
-    # In order for this to work the number has to be monotonically increasing
-    # and have no gaps
     version: int
     base_url: str
-
-
-REVISION_FILE = compile(
-    r"(?P<kind>V|U)(?P<version>[0-9]+)_(?P<type>bot|guild)_(?P<description>.+).sql"
-)
 
 
 class Revision:
@@ -699,7 +674,7 @@ class Migration:
         type: Literal["guild", "bot"],
         base_url: str = config.database.postgresql,
         *,
-        filename: str = "Migrations/revisions.json",
+        filename: str = "Schmemas/revisions.json",
     ):
         self.filename: str = filename
         self.base_url = base_url
@@ -724,7 +699,7 @@ class Migration:
     def get_revisions(self) -> dict[int, Revision]:
         result: dict[int, Revision] = {}
         for file in self.root.glob("*.sql"):
-            match = REVISION_FILE.match(file.name)
+            match = Regex.revision.match(file.name)
             if match is not None:
                 rev = Revision.from_match(match, file)
                 result[rev.version] = rev
@@ -777,6 +752,53 @@ class Migration:
             kind=kind, description=reason, version=self.version + 1, file=path
         )
 
+    @staticmethod
+    async def ensure_uri_can_run(config, type: Literal["guild", "bot"]) -> bool:
+        conn = connection = None
+        conn: Connection = await connect(config.database.postgresql)
+        try:
+            connection: Connection = await connect(config.database.postgresql + type)
+        except InvalidCatalogNameError:
+            try:
+                await conn.execute(
+                    f'CREATE DATABASE "{type}" OWNER "{config.database.user}"'
+                )
+            except:
+                raise
+            finally:
+                await conn.close()
+        else:
+            await conn.close()
+            await connection.close()
+
+        return True
+
+    @staticmethod
+    async def _create_pool(type: Literal["guild", "bot"] = "bot") -> Pool:
+        def _encode_jsonb(value):
+            return dumps(value)
+
+        def _decode_jsonb(value):
+            return loads(value)
+
+        async def init(con):
+            await con.set_type_codec(
+                "jsonb",
+                schema="pg_catalog",
+                encoder=_encode_jsonb,
+                decoder=_decode_jsonb,
+                format="text",
+            )
+
+        await Migration.ensure_uri_can_run(config=config, type=type)
+        return await create_pool(
+            config.database.postgresql + type,
+            init=init,
+            command_timeout=60,
+            max_size=20,
+            min_size=20,
+        )
+
     async def upgrade(self, connection: Connection) -> int:
         ordered = self.ordered_revisions
         successes = 0
@@ -799,6 +821,412 @@ class Migration:
                 print(2, revision.file)
                 sql = revision.file.read_text("utf-8")
                 print(sql)
+
+
+"""     Captcha Worker
+yeah.. lazy rn"""
+
+
+class Captcha:
+    def __init__(self, bot: ShakeBot) -> None:
+        self.bot: ShakeBot = bot
+        self.colour = bot.config.embed.hex_color
+        pass
+
+    def proove(self, message: str) -> bool:
+        if not message.lower() == self.password.lower():
+            return False
+        return True
+
+    async def create(self):
+        image = Image.new("RGBA", (325, 100), color=self.colour)  # (0, 0, 255))
+        draw = ImageDraw.Draw(image)
+        text = " ".join(choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ") for _ in range(5))
+        W, H = (325, 100)
+        w, h = draw.textsize(text, font=ImageFont.truetype(font="arial.ttf", size=60))
+        draw.text(
+            ((W - w) / 2, (H - h) / 2),
+            text,
+            font=ImageFont.truetype(font="arial.ttf", size=60),
+            fill="#000000",
+        )  # (90, 90, 90))
+        filename = "captcha" + str(choice(range(10)))
+
+        image = self.perform_operation(
+            images=[image], grid_width=4, grid_height=4, magnitude=14
+        )[0]
+
+        draw = ImageDraw.Draw(image)
+        for x, y in [
+            ((0, randrange(20, 40)), (325, randrange(20, 40))),
+            ((0, randrange(35, 55)), (325, randrange(35, 55))),
+            ((0, randrange(60, 90)), (325, randrange(60, 90))),
+        ]:
+            draw.line([x, y], fill=(90, 90, 90, 90), width=randrange(3, 4))  #'#6176f5'
+
+        noisePercentage = 0.60
+        pixels = image.load()
+        for i in range(image.size[0]):
+            for j in range(image.size[1]):
+                rdn = random()
+                if rdn < noisePercentage:
+                    pixels[i, j] = (60, 60, 60)
+
+        image = image.resize((150, 50))
+        self.password = "".join(text.split(" "))
+        with BytesIO() as image_binary:
+            image.save(image_binary, "PNG")
+            image_binary.seek(0)
+            return File(fp=image_binary, filename=f"{filename}.png")
+
+    def perform_operation(self, images, grid_width=4, grid_height=4, magnitude=14):
+        """Something to make something between disortion and magic
+        I don't really know but I needed to cut that part of code somewhere out"""
+        w, h = images[0].size
+        horizontal_tiles = grid_width
+        vertical_tiles = grid_height
+        width_of_square = int(floor(w / float(horizontal_tiles)))
+        height_of_square = int(floor(h / float(vertical_tiles)))
+        width_of_last_square = w - (width_of_square * (horizontal_tiles - 1))
+        height_of_last_square = h - (height_of_square * (vertical_tiles - 1))
+        dimensions = []
+
+        for vertical_tile in range(vertical_tiles):
+            for horizontal_tile in range(horizontal_tiles):
+                if vertical_tile == (vertical_tiles - 1) and horizontal_tile == (
+                    horizontal_tiles - 1
+                ):
+                    dimensions.append(
+                        [
+                            horizontal_tile * width_of_square,
+                            vertical_tile * height_of_square,
+                            width_of_last_square + (horizontal_tile * width_of_square),
+                            height_of_last_square + (height_of_square * vertical_tile),
+                        ]
+                    )
+                elif vertical_tile == (vertical_tiles - 1):
+                    dimensions.append(
+                        [
+                            horizontal_tile * width_of_square,
+                            vertical_tile * height_of_square,
+                            width_of_square + (horizontal_tile * width_of_square),
+                            height_of_last_square + (height_of_square * vertical_tile),
+                        ]
+                    )
+                elif horizontal_tile == (horizontal_tiles - 1):
+                    dimensions.append(
+                        [
+                            horizontal_tile * width_of_square,
+                            vertical_tile * height_of_square,
+                            width_of_last_square + (horizontal_tile * width_of_square),
+                            height_of_square + (height_of_square * vertical_tile),
+                        ]
+                    )
+                else:
+                    dimensions.append(
+                        [
+                            horizontal_tile * width_of_square,
+                            vertical_tile * height_of_square,
+                            width_of_square + (horizontal_tile * width_of_square),
+                            height_of_square + (height_of_square * vertical_tile),
+                        ]
+                    )
+
+        last_column = []
+        for i in range(vertical_tiles):
+            last_column.append((horizontal_tiles - 1) + horizontal_tiles * i)
+
+        last_row = range(
+            (horizontal_tiles * vertical_tiles) - horizontal_tiles,
+            horizontal_tiles * vertical_tiles,
+        )
+
+        polygons = []
+        for x1, y1, x2, y2 in dimensions:
+            polygons.append([x1, y1, x1, y2, x2, y2, x2, y1])
+
+        polygon_indices = []
+        for i in range((vertical_tiles * horizontal_tiles) - 1):
+            if i not in last_row and i not in last_column:
+                polygon_indices.append(
+                    [i, i + 1, i + horizontal_tiles, i + 1 + horizontal_tiles]
+                )
+
+        for a, b, c, d in polygon_indices:
+            dx = random.randint(-magnitude, magnitude)
+            dy = random.randint(-magnitude, magnitude)
+            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[a]
+            polygons[a] = [x1, y1, x2, y2, x3 + dx, y3 + dy, x4, y4]
+            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[b]
+            polygons[b] = [x1, y1, x2 + dx, y2 + dy, x3, y3, x4, y4]
+            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[c]
+            polygons[c] = [x1, y1, x2, y2, x3, y3, x4 + dx, y4 + dy]
+            x1, y1, x2, y2, x3, y3, x4, y4 = polygons[d]
+            polygons[d] = [x1 + dx, y1 + dy, x2, y2, x3, y3, x4, y4]
+
+        generated_mesh = []
+        for i in range(len(dimensions)):
+            generated_mesh.append([dimensions[i], polygons[i]])
+
+        def do(image):
+            return image.transform(
+                image.size, Image.MESH, generated_mesh, resample=Image.BICUBIC
+            )
+
+        augmented_images = []
+
+        for image in images:
+            augmented_images.append(do(image))
+
+        return augmented_images
+
+
+"""     Pool Handler
+yeah.. lazy rn"""
+
+
+class ConnectionContextManager(Protocol):
+    async def __aenter__(self) -> Connection:
+        ...
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        ...
+
+
+class DatabaseProtocol(Protocol):
+    async def execute(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> str:
+        ...
+
+    async def fetch(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> list[Any]:
+        ...
+
+    async def fetchrow(
+        self, query: str, *args: Any, timeout: Optional[float] = None
+    ) -> Optional[Any]:
+        ...
+
+    def acquire(self, *, timeout: Optional[float] = None) -> ConnectionContextManager:
+        ...
+
+    def release(self, connection: Connection) -> None:
+        ...
+
+
+"""A class representing functions with Voice
+yeah.. lazy rn"""
+
+
+class Voice:
+    def __init__(self, ctx: ShakeContext, channel: VoiceChannel):
+        self.ctx: ShakeContext = ctx
+        self.bot: "ShakeBot" = ctx.bot
+        self._channel: VoiceChannel = channel
+        self._player: Optional[AudioPlayer] = None
+
+    async def __await__(self, channel: Optional[VoiceChannel] = MISSING):
+        try:
+            channel = await VoiceChannelConverter().convert(
+                self.ctx, channel or self._channel
+            )
+        except:
+            raise
+        else:
+            self._channel = channel
+        finally:
+            return self.channel
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @property
+    def channel(self):
+        return self._channel
+
+    async def set_volume(self, volume):
+        if not self.player:
+            return
+
+    async def set_channel(self, channel):
+        channel = await self.__await__(channel)
+        await self.cancel()
+
+    async def connect(self, channel: Optional[VoiceChannel] = MISSING, **kwargs):
+        try:
+            voice = await (channel or self._channel).connect(
+                reconnect=True, self_deaf=True, **kwargs
+            )
+        except ClientException:
+            pass
+        except TimeoutError:
+            pass
+        else:
+            self._voice = voice
+        finally:
+            return self._voice
+
+    async def play(self, filepath, volume):
+        self.filepath = filepath
+        self.volume = volume
+
+        self._voice = await self._channel.connect(reconnect=True, self_deaf=True)
+
+        if self._voice.is_playing():
+            self._voice.stop()
+
+        self._voice.play(source=FFmpegPCMAudio(filepath))
+        self._player = self._voice._player
+
+        # Wait until the sound clip is finished before leaving
+        while self._player.is_playing():
+            pass
+        await self._voice.disconnect()
+
+
+""" Others  """
+
+
+class Record:
+    def __init__(self, sequence: Sequence) -> None:
+        for extension in sequence:
+            setattr(self, str(extension), False)
+
+    def add(self, item) -> None:
+        setattr(self, str(item), True)
+        return
+
+    def all(self) -> bool:
+        return all([getattr(self, item, False) for item in self.__dict__.keys()])
+
+    def added(self) -> dict:
+        return {
+            item: getattr(self, item, False)
+            for item in self.__dict__.keys()
+            if getattr(self, item, False)
+        }
+
+
+class ExpiringCache(dict):
+    def __init__(self, seconds: float):
+        self.__ttl: float = seconds
+        super().__init__()
+
+    def __verify_cache_integrity(self):
+        # Have to do this in two steps...
+        current_time = monotonic()
+        to_remove = [
+            k for (k, (v, t)) in self.items() if current_time > (t + self.__ttl)
+        ]
+        for k in to_remove:
+            del self[k]
+
+    def items(self) -> dict_items:
+        return [(k, v) for k, (v, t) in super().items()]
+
+    def __contains__(self, key: str):
+        self.__verify_cache_integrity()
+        return super().__contains__(key)
+
+    def __getitem__(self, key: str):
+        self.__verify_cache_integrity()
+        return super().__getitem__(key)[0]
+
+    def __setitem__(self, key: str, value: Any):
+        super().__setitem__(key, (value, monotonic()))
+
+
+class Category(Cog):
+    bot: ShakeBot
+
+    def __init__(self, bot: ShakeBot, cog: Optional[Cog] = None) -> None:
+        self.bot = bot
+
+    @property
+    def description(self) -> str:
+        raise NotImplemented
+
+    @property
+    def emoji(self) -> PartialEmoji:
+        raise NotImplemented
+
+    @property
+    def label(self) -> str:
+        raise NotImplemented
+
+    @property
+    def title(self) -> str:
+        raise NotImplemented
+
+    @property
+    def describe(self) -> bool:
+        raise NotImplemented
+
+
+class Reddit:
+    def __init__(self):
+        self.posts = set()
+        self.client = asyncpraw.Reddit(
+            client_id=config.reddit.client_id,
+            client_secret=config.reddit.client_secret,
+            username=config.reddit.username,
+            password=config.reddit.password,
+            user_agent="Shake/{}".format(__version__),
+        )
+
+    async def __await__(self, ctx: ShakeContext):
+        self.ctx: ShakeContext = ctx
+        self.bot: ShakeBot = ctx.bot
+        self.guild: Guild = ctx.guild
+        self.guild_posts = ctx.bot.cache["cached_posts"].setdefault(
+            ctx.guild.id, deque(maxlen=1000)
+        )
+        await self.prepare()
+
+    async def prepare(self):
+        if not bool(len(self.posts)):
+            pass
+            return
+
+        for post in self.posts:
+            pass
+
+    async def create(self, ctx, subreddits):
+        subs: Subreddit = await self.client.subreddit("+".join(subreddits), fetch=False)
+        posts = [
+            post
+            async for post in subs.new(limit=25)
+            if not post.over_18 and not post in self.guild_posts
+        ]
+        for post in posts:
+            self.posts.add(post)
+        return posts
+
+    @classmethod
+    def expire(self, post: Submission):
+        self.guild_posts.add(post)
+
+    async def get_post(self, ctx: ShakeContext, subreddit):
+        if not bool(len(self.posts)):
+            await self.create(ctx, subreddit)
+
+        for post in self.posts:
+            if post in self.guild_posts:
+                continue
+            self.expire(ctx, post)
+            return post
+
+        post = choice(list(await self.create(ctx, subreddit)))
+        self.expire(ctx, post)
+        return post
 
 
 #

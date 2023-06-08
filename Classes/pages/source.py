@@ -1,15 +1,17 @@
-############
-#
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 from discord import File, Interaction, PartialEmoji
 from discord.ext import menus
 
-from Classes import _
-from Classes.exceptions import NothingHereYet
-from Classes.helpful import ShakeBot, ShakeContext, ShakeEmbed
+from Classes.helpful import ShakeEmbed
+from Classes.i18n import _
 from Classes.pages import page
 from Classes.useful import MISSING
+
+if TYPE_CHECKING:
+    from Classes.helpful import ShakeBot, ShakeContext
 
 __all__ = (
     "AnyPageSource",
@@ -18,26 +20,29 @@ __all__ = (
     "ListPageSource",
 )
 
+############
+#
+
 
 class AnyPageSource(menus.PageSource):
     def is_paginating(self) -> bool:
-        raise NothingHereYet
+        raise NotImplemented
 
     def get_max_pages(self) -> Optional[int]:
-        raise NothingHereYet
+        raise NotImplemented
 
     async def get_page(self, page: int) -> Any:
         self.page = page
         return self
 
     def format_page(self, menu: page.menus, items: Any) -> Tuple[ShakeEmbed, File]:
-        raise NothingHereYet
+        raise NotImplemented
 
 
 class ItemPageSource(menus.PageSource):
     def __init__(
         self,
-        ctx: Union[ShakeContext, Interaction],
+        ctx: ShakeContext | Interaction,
         item: Optional[Any] = MISSING,
         label: Optional[str] = MISSING,
         title: Optional[str] = MISSING,
@@ -74,13 +79,13 @@ class ItemPageSource(menus.PageSource):
         return self
 
     def format_page(self, menu: page.menus, item: Any) -> Tuple[ShakeEmbed, File]:
-        raise NothingHereYet
+        raise NotImplemented
 
 
 class ListPageSource(menus.ListPageSource):
     def __init__(
         self,
-        ctx: Union[ShakeContext, Interaction],
+        ctx: ShakeContext | Interaction,
         items: List[Any],
         title: str,
         group: Optional[Any] = MISSING,
@@ -103,14 +108,14 @@ class ListPageSource(menus.ListPageSource):
         self.__label = label or title
         super().__init__(entries=list(items), per_page=per_page)
 
-    def add_field(self, embed: ShakeEmbed, item: Union[Any, Tuple[Any, Any]]):
+    def add_field(self, embed: ShakeEmbed, item: Any | Tuple[Any, Any]):
         if isinstance(item, tuple):
             embed.add_field(name=item[0], value=item[1])
             return
         if hasattr(item, "name") and hasattr(item, "value"):
             embed.add_field(name=item.name, value=item.value)
             return
-        raise NothingHereYet
+        raise NotImplemented
 
     @property
     def display_emoji(self) -> PartialEmoji:
@@ -164,10 +169,11 @@ class FrontPageSource(menus.PageSource):
         return self
 
     def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
-        raise NothingHereYet
+        raise NotImplemented
 
 
+SourceTypes = ItemPageSource | ListPageSource | FrontPageSource
 sources = (ItemPageSource, ListPageSource, FrontPageSource)
-Sources = Union[ItemPageSource, ListPageSource, FrontPageSource]
+
 #
 ############

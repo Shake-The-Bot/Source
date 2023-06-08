@@ -1,17 +1,14 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from discord import ButtonStyle, Interaction, ui
 from discord.ext import menus
 
-from Classes.pages import page
-from Classes.pages import select as _select
 from Classes.pages import source as _source
-from Classes.pages.source import (
-    FrontPageSource,
-    ItemPageSource,
-    ListPageSource,
-    Sources,
-)
+from Classes.pages.page import ShakePages
+from Classes.pages.select import CategoricalSelect
+from Classes.pages.source import FrontPageSource, ItemPageSource, ListPageSource
 
 __all__ = ("ListMenu", "CategoricalMenu", "LinkingSource")
 
@@ -19,8 +16,7 @@ Group = Item = Any
 
 if TYPE_CHECKING:
     from Classes import ShakeContext
-else:
-    from discord.ext.commands import Context as ShakeContext
+    from Classes.types import sourcetypes
 
 
 class JokerItems:
@@ -33,14 +29,14 @@ class LinkingSource:
 
     def __init__(self, source: menus.PageSource, **kwargs) -> None:
         self.source: menus.PageSource = source
-        self.items: Dict[Any, Union[Any, List[Any]]] = dict()
+        self.items: Dict[Any, Any | List[Any]] = dict()
         for k, v in kwargs:
             setattr(self, k, v)
         self.__await__()
         pass
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        self.items: Dict[Any, Union[Any, List[Any]]] = dict()
+        self.items: Dict[Any, Any | List[Any]] = dict()
         self.__await__()
         return self
 
@@ -57,7 +53,7 @@ class LinkingSource:
         raise NotImplemented
 
 
-class ListMenu(page.Pages):
+class ListMenu(ShakePages):
     def __init__(self, source: _source.ListPageSource, ctx: ShakeContext):
         super().__init__(source, ctx=ctx)
 
@@ -71,18 +67,18 @@ class ListMenu(page.Pages):
         await interaction.response.edit_message(**kwargs, view=self)
 
 
-class CategoricalMenu(page.Pages):
+class CategoricalMenu(ShakePages):
     def __init__(
         self,
         ctx: ShakeContext,
         source: menus.PageSource,
-        select: _select.CategoricalSelect,
+        select: CategoricalSelect,
         front: Optional[_source.FrontPageSource] = None,
         timeout: Optional[float] = 180.0,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(source=source, ctx=ctx, timeout=timeout, **kwargs)
-        self.select: _select.CategoricalSelect = select
+        self.select: CategoricalSelect = select
         self.__front: _source.FrontPageSource = front or source
 
     @property
@@ -127,7 +123,7 @@ class CategoricalMenu(page.Pages):
                             )
                             if self.file
                             else [],
-                            view=self
+                            view=self,
                         )
                 else:
                     await interaction.response.edit_message(
@@ -137,13 +133,13 @@ class CategoricalMenu(page.Pages):
                         )
                         if self.file
                         else [],
-                        view=self
+                        view=self,
                     )
             except:
                 pass
 
     def add_categories(
-        self, categories: Dict[Union[Group, Any], Union[List[Item], Sources]]
+        self, categories: Dict[Group | Any, List[Item] | sourcetypes]
     ) -> None:
         for key, value in dict(categories).items():
             source = isinstance(

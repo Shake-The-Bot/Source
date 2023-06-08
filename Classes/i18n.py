@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ast import AsyncFunctionDef, Call, ClassDef, Expr, Name, Str, parse
 from contextvars import ContextVar
 from gettext import NullTranslations, gettext, translation
@@ -8,20 +10,15 @@ from subprocess import call
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from discord import Guild, Interaction, User
-from discord.ext.commands import check
+from discord.ext.commands import Context, check
 from discord.ext.commands._types import Check
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes import DatabaseProtocol, ShakeContext
-else:
-    from asyncpg import Connection as DatabaseProtocol
-    from discord.ext.commands import Bot as ShakeBot
-    from discord.ext.commands import Context as ShakeContext
+    from Classes.helpful import DatabaseProtocol
 
 __all__ = (
     "Locale",
-    "available",
     "locale_doc",
     "mo",
     "localedir",
@@ -88,7 +85,7 @@ def use_current_gettext(*args: Any, **kwargs: Any) -> str:
 
 def setlocale(guild: Optional[bool] = False) -> Check[Any]:
     async def predicate(
-        ctx: Optional[ShakeContext] = None, interaction: Optional[Interaction] = None
+        ctx: Optional[Context] = None, interaction: Optional[Interaction] = None
     ) -> bool:
         if not ctx is None:
             bot: ShakeBot = ctx.bot
@@ -144,64 +141,15 @@ _ = use_current_gettext
 locale_doc = i18n_docstring
 current.set(default_locale)
 
-available = {
-    "en-US": {
-        "language": "English",
-        "simplified": ["american english", "english"],
-        "_": "English (american)",
-    },
-    "en-GB": {
-        "language": "English",
-        "simplified": ["british english"],
-        "_": "English (british)",
-    },
-    "bg-BG": {"language": "български", "simplified": ["bulgarian"]},
-    "zh-CN": {
-        "language": "中国人",
-        "simplified": ["chinese", "simplified chinese"],
-        "_": "中国人 (简化的)",
-    },
-    "zh-TW": {"language": "中國人", "simplified": ["taiwanese chinese"], "_": "中國人 (傳統的)"},
-    "hr-HR": {"language": "Hrvatski", "simplified": ["croatian"]},
-    "cs-CS": {"language": "čeština", "simplified": ["czech"]},
-    "da-DA": {"language": "Dansk", "simplified": ["danish"]},
-    "nl-NL": {"language": "Nederlands", "simplified": ["dutch"]},
-    "fi-FI": {"language": "Suomalainen", "simplified": ["finnish"]},
-    "fr-FR": {"language": "Français", "simplified": ["french"]},
-    "de-DE": {
-        "language": "Deutsch",
-        "simplified": ["german"],
-        "_": "Deutsch (Deutschland)",
-    },
-    "el-EL": {"language": "Ελληνικά", "simplified": ["greek"]},
-    "hi-HI": {"language": "हिन्दी", "simplified": ["hindi"]},
-    "hu-HU": {"language": "Magyar", "simplified": ["hungarian"]},
-    "it-IT": {"language": "Italiano", "simplified": ["italian"]},
-    "ja-JA": {"language": "日本", "simplified": ["japanese"]},
-    "ko-KO": {"language": "한국어", "simplified": ["korean"]},
-    "lt-LT": {"language": "Lietuviškas", "simplified": ["lithuanian"]},
-    "no-NO": {"language": "Norsk", "simplified": ["norwegian"]},
-    "pl-PL": {"language": "Polska", "simplified": ["polish"]},
-    "pt-BR": {
-        "language": "portugues",
-        "simplified": ["portuguese"],
-        "_": "portugues (brasil)",
-    },
-    "ro-RO": {"language": "Română", "simplified": ["romanian"]},
-    "ru-RU": {"language": "Русский", "simplified": ["russian"]},
-    "es-ES": {"language": "Español", "simplified": ["spanish"]},
-    "sv-SE": {"language": "Svenska", "simplified": ["swedish"]},
-    "th-TH": {"language": "แบบไทย", "simplified": ["thai"]},
-    "tr-TR": {"language": "Türkçe", "simplified": ["turkish"]},
-    "uk-RK": {"language": "українська", "simplified": ["ukrainian"]},
-    "vi-VI": {"language": "Tiếng Việt", "simplified": ["vietnamese"]},
-}
-
 
 class Locale:
-    def __init__(self, bot: ShakeBot) -> None:
+    bot: ShakeBot
+    pool: DatabaseProtocol
+
+    def __init__(self, bot) -> None:
+        self.bot = bot
         self.cache: Dict = bot.cache
-        self.pool: DatabaseProtocol = bot.pool
+        self.pool = bot.pool
         pass
 
     async def set_user_locale(self, user_id: User.id, locale: str):

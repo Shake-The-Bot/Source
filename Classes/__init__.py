@@ -18,6 +18,7 @@ from .i18n import *
 from .logging import *
 from .necessary import *
 from .tomls import *
+from .types import *
 from .useful import *
 
 ############
@@ -51,4 +52,4 @@ __version__: VersionInfo = VersionInfo(
 
 #
 ############
-del NamedTuple, Literal, VersionInfo, Config, Emojis
+del NamedTuple, Literal, VersionInfo

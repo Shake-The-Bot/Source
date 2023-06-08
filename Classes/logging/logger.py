@@ -1,12 +1,10 @@
-from logging import (
-    DEBUG, INFO, WARNING, ERROR, CRITICAL, Filter,
-    Formatter as Logger, LogRecord, FileHandler, StreamHandler
-)
+from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING, FileHandler, Filter
+from logging import Formatter as Logger
+from logging import LogRecord, StreamHandler
 from typing import Optional, Tuple
 
-__all__ = (
-    'Formatter', 'handler'
-)
+__all__ = ("Formatter", "handler")
+
 
 class Formatter(Logger):
     """
@@ -38,58 +36,70 @@ class Formatter(Logger):
         self.filehandler: bool = filehandler
 
     def format(self, record: LogRecord):
-        
-        if 'root' in record.name:
-            record.name = 'source.shake'
-        elif record.name.startswith("Exts."):
-            packages = record.name.split('.')
-            record.name = packages[2] + '.' + packages[-2]
+        if "root" in record.name:
+            record.name = "source.shake"
+        elif record.name.startswith("Extensions."):
+            packages = record.name.split(".")
+            record.name = packages[2] + "." + packages[-2]
         formatter = (
             (
                 # logging.Formatter(
                 #     "[{asctime}] [{levelname:<8}] {name:<21}: {message}",
                 #     "%Y-%m-%d - %H:%M:%S",
                 #     style="{"
-                                
                 Logger(
                     "[{asctime}] [{levelname:<8}] {name:<21}: {message} [{filename}:{lineno}]",
                     "%Y-%m-%d - %H:%M:%S",
-                    style="{")
+                    style="{",
+                )
             )
-            
-            if self.filehandler else 
-                self.FORMATS.get(record.levelno) or self.FORMATS[DEBUG]
+            if self.filehandler
+            else self.FORMATS.get(record.levelno) or self.FORMATS[DEBUG]
         )
         if record.exc_info:
             text = formatter.formatException(record.exc_info)
             record.exc_text = f"\x1b[31m{text}\x1b[0m "
 
         output = formatter.format(record)
-        output = output.replace(
-            "\x1b[35msource.shake", "\x1b[33msource.shake"
-        )
+        output = output.replace("\x1b[35msource.shake", "\x1b[33msource.shake")
 
         if self.filehandler:
             for x in [
-                "\x1b[30;1m", "\033[1m", "\x1b[0m", "\x1b[40;1m", "\x1b[34;1m", 
-                "\x1b[33;1m", "\x1b[31m", "\x1b[41m", "\x1b[35m", "\x1b[33m",
+                "\x1b[30;1m",
+                "\033[1m",
+                "\x1b[0m",
+                "\x1b[40;1m",
+                "\x1b[34;1m",
+                "\x1b[33;1m",
+                "\x1b[31m",
+                "\x1b[41m",
+                "\x1b[35m",
+                "\x1b[33m",
             ]:
                 output = output.replace(x, "")
 
         record.exc_text = None
         return output
 
-def handler(file: Optional[bool] = False, stream: Optional[bool] = False, filepath: Optional[str] = '', filters: Optional[Tuple[Filter]] = None):
+
+def handler(
+    file: Optional[bool] = False,
+    stream: Optional[bool] = False,
+    filepath: Optional[str] = "",
+    filters: Optional[Tuple[Filter]] = None,
+):
     stream_handler = file_handler = None
     if file:
         if not filepath:
-            raise AttributeError('For a FileHandler the `filepath` argument needs to be passed')
+            raise AttributeError(
+                "For a FileHandler the `filepath` argument needs to be passed"
+            )
         file_handler = FileHandler(filename=filepath, encoding="utf-8", mode="w")
         file_handler.setFormatter(Formatter(filehandler=True))
         if filters:
             for filter in filters:
                 file_handler.addFilter(filter)
-    
+
     if stream:
         stream_handler = StreamHandler()
         stream_handler.setLevel(INFO)

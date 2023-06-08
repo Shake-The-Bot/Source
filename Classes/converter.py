@@ -1,31 +1,19 @@
-############
-#
 from __future__ import annotations
 
 import inspect
 from ast import literal_eval
 from datetime import datetime, timezone
 from difflib import get_close_matches
-from re import DOTALL, IGNORECASE, Pattern, compile, error, fullmatch, split
-from typing import TYPE_CHECKING, Any, List, Literal, Optional, Tuple, Union
+from re import *
+from typing import Any, List, Literal, Optional, Tuple
 
 from dateutil.relativedelta import relativedelta
-from discord import Guild, TextChannel
+from discord import TextChannel
 from discord.app_commands import AppCommand, AppCommandGroup, Command, CommandTree
-from discord.ext import commands
-from discord.ext.commands import (
-    BadArgument,
-    Context,
-    Converter,
-    TextChannelConverter,
-    errors,
-)
+from discord.ext.commands import *
 
-if TYPE_CHECKING:
-    from Classes import MISSING, _
-
-    from .helpful import ShakeBot, ShakeContext
-    from .useful import RTFM_PAGE_TYPES, Duration
+from .i18n import _
+from .types import Types
 
 __all__ = (
     "DurationDelta",
@@ -38,11 +26,14 @@ __all__ = (
     "Slash",
 )
 
+############
+#
+
 
 class ValidArg:
     """Tries to convert into a valid cog"""
 
-    async def convert(cls, ctx: ShakeContext, argument: Any) -> Tuple[str]:  # TODO
+    async def convert(cls, ctx: Context, argument: Any) -> Tuple[str]:  # TODO
         if "=" in argument:
             return None
         return argument
@@ -51,18 +42,14 @@ class ValidArg:
 class RtfmKey(Converter):
     """convert into a valid key"""
 
-    async def convert(
-        cls, ctx: ShakeContext, argument: Optional[str] = None
-    ) -> List[str]:
-        return (
-            argument if not argument is None and argument in RTFM_PAGE_TYPES else None
-        )
+    async def convert(cls, ctx: Context, argument: Optional[str] = None) -> List[str]:
+        return argument if not argument is None and argument in Types.RtfmPage else None
 
 
 class ValidKwarg(Converter):
     """Tries to convert into a valid cog"""
 
-    async def convert(cls, ctx: ShakeContext, argument: str) -> Tuple[Any]:  # TODO
+    async def convert(cls, ctx: Context, argument: str) -> Tuple[Any]:  # TODO
         args = ()
         kwargs = dict()
         for ix, arg in enumerate(argument.split()):
@@ -80,7 +67,7 @@ class CleanChannels(Converter):
 
     async def convert(
         self, ctx: Context, argument: str
-    ) -> Union[Literal["*"], list[TextChannel]]:
+    ) -> Literal["*"] | list[TextChannel]:
         if argument == "*":
             return "*"
         return [
@@ -92,11 +79,11 @@ class CleanChannels(Converter):
 class DurationDelta(Converter):
     """dateutil.relativedelta.relativedelta"""
 
-    async def convert(self, ctx: Context, duration: str) -> relativedelta:
-        if not (delta := Duration(duration)):
+    async def convert(self, ctx: Context, argument: str) -> relativedelta:
+        if not (delta := duration(argument)):
             raise errors.BadArgument(
                 _("`{duration}` is not a valid duration string.")
-            ).format(duration=duration)
+            ).format(duration=argument)
 
         return delta
 
@@ -132,17 +119,54 @@ class Regex(Converter):
             raise errors.BadArgument(_("Regex error: {e_msg}")).format(e_msg=e.msg)
 
 
+def duration(duration: str) -> Optional[relativedelta]:
+    """
+    Convert a `duration` string to a relativedelta object.
+    The following symbols are supported for each unit of time:
+
+    - years: `Y`, `y`, `year`, `years`
+    - months: `m`, `month`, `months`
+    - weeks: `w`, `W`, `week`, `weeks`
+    - days: `d`, `D`, `day`, `days`
+    - hours: `H`, `h`, `hour`, `hours`
+    - minutes: `M`, `minute`, `minutes`
+    - seconds: `S`, `s`, `second`, `seconds`
+
+    The units need to be provided in descending order of magnitude.
+    Return None if the `duration` string cannot be parsed according to the symbols above.
+    """
+    regex = compile(
+        r"((?P<years>\d+?) ?(years|year|Y|y) ?)?"
+        r"((?P<months>\d+?) ?(months|month|m) ?)?"
+        r"((?P<weeks>\d+?) ?(weeks|week|W|w) ?)?"
+        r"((?P<days>\d+?) ?(days|day|D|d) ?)?"
+        r"((?P<hours>\d+?) ?(hours|hour|H|h) ?)?"
+        r"((?P<minutes>\d+?) ?(minutes|minute|M) ?)?"
+        r"((?P<seconds>\d+?) ?(seconds|second|S|s))?"
+    )
+    match = regex.fullmatch(duration)
+    if not match:
+        return None
+
+    duration_dict = {
+        unit: int(amount) for unit, amount in match.groupdict(default=0).items()
+    }
+    delta = relativedelta(**duration_dict)
+
+    return delta
+
+
 class Slash:
-    bot: commands.Bot
+    bot: Bot
     tree: CommandTree
 
-    def __init__(self, bot: ShakeBot) -> None:
-        self.bot: ShakeBot = bot
+    def __init__(self, bot: Bot) -> None:
+        self.bot: Bot = bot
         self.tree = self.bot.tree
         self.app_command: AppCommand = None
         self.command: Command = None
 
-    async def __await__(self, command: Union[Command, str]) -> Slash:
+    async def __await__(self, command: Command | str) -> Slash:
         command = self.bot.get_command(command) if isinstance(command, str) else command
         if command == None:
             raise ValueError("Given Command is not found.")
@@ -195,8 +219,8 @@ class ValidCog(Converter):
     because they are excluded before this function
     """
 
-    # extension: str = (ext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Exts.Commands.Other.reload.__init__ -> reload
-    async def convert(self, ctx: ShakeContext, argument: str) -> str:
+    # extension: str = (ext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Extensions.Commands.Other.reload.__init__ -> reload
+    async def convert(self, ctx: Context, argument: str) -> str:
         def validation(final: str):
             if any(_ in str(final) for _ in ["load", "unload", "reload"]):
                 raise BadArgument(
@@ -207,8 +231,8 @@ class ValidCog(Converter):
         if command := ctx.bot.get_command(argument):
             file = inspect.getfile(command.cog.__class__).removesuffix(".py")
             path = file.split("/")
-            Exts = path.index("Exts")
-            build = path[Exts:]
+            Extensions = path.index("Extensions")
+            build = path[Extensions:]
             return validation(".".join(build))
 
         elif argument in ctx.bot.config.client.extensions:
@@ -218,7 +242,7 @@ class ValidCog(Converter):
             build = list(filter(lambda x: not x in ["__init__", "py"], parts))
 
             try:
-                Exts = build.index("Exts")
+                Extensions = build.index("Extensions")
             except ValueError:
                 fallback = ".".join(build)
                 if matches := (
@@ -228,7 +252,7 @@ class ValidCog(Converter):
                     return validation(matches[0])
                 raise BadArgument(message="Specified module has an incorrect structure")
 
-            extension = ".".join(build[Exts:]) + ".__init__"
+            extension = ".".join(build[Extensions:]) + ".__init__"
 
             if extension in ctx.bot.config.client.extensions:
                 return validation(extension)

@@ -1,22 +1,14 @@
-# from discord.ext.commands.errors import *
-from typing import Any, List, Optional
+from typing import Any, Optional
 
-from discord.ext.commands.errors import BotMissingPermissions
-from discord.ext.commands.errors import ChannelNotFound as _ChannelNotFound
 from discord.ext.commands.errors import CheckFailure, CommandError
-from discord.ext.commands.errors import GuildNotFound as _GuildNotFound
 
 __all__ = (
     "ShakeError",
-    "ShakeMissingPermissions",
     "CodeError",
-    "NothingHereYet",
+    "Testing",
+    "NotSFW",
     "CheckFailure",
     "NotVoted",
-    "GuildNotFound",
-    "NotSFW",
-    "Testing",
-    "ChannelNotFound",
     "NoDumpingSpots",
 )
 
@@ -27,6 +19,10 @@ class ShakeError(CommandError):
     def __init__(self, message: Optional[str] = None, *args: Any) -> None:
         super().__init__(message=message)
         self.message = message
+
+
+class CodeError(Exception):
+    """Something totaly went wrong"""
 
 
 class Testing(CommandError):
@@ -43,48 +39,6 @@ class NotSFW(CommandError):
         super().__init__(self.message, *args)
 
 
-class ShakeMissingPermissions(BotMissingPermissions):
-    def __init__(
-        self, missing_permissions: List[str], message: Optional[str] = None, *args: Any
-    ) -> None:
-        super().__init__(missing_permissions, *args)
-        self.message = message
-
-
-class CodeError(Exception):
-    """Something totaly went wrong"""
-
-
-class NothingHereYet(CommandError):
-    """Something not Implemented??"""
-
-
-class GuildNotFound(_GuildNotFound):
-    """Exception thrown when the Guild object could not be found
-    by converters such as GuildConverter because
-    the bot does not have access to it or it does not exist.
-    This inherits from :exc:`CommandError`."""
-
-    def __init__(self, argument: str, message: Optional[str] = None) -> None:
-        super().__init__(argument)
-        self.message = message
-
-    pass
-
-
-class ChannelNotFound(_ChannelNotFound):
-    """Exception thrown when the Channel object could not be found
-    by converters such as TextChannelConverter because
-    the bot does not have access to it or it does not exist.
-    This inherits from :exc:`CommandError`."""
-
-    def __init__(self, argument: str, message: Optional[str] = None) -> None:
-        super().__init__(argument)
-        self.message = message
-
-    pass
-
-
 class CheckFailure(CommandError):
     """Exception raised when the predicates in :attr:`.Command.checks` have failed.
     This inherits from :exc:`CommandError`"""
@@ -99,7 +53,7 @@ class NotVoted(CheckFailure):
         super().__init__(message, *args)
 
 
-class NoDumpingSpots(Exception):
+class NoDumpingSpots(CommandError):
     """Raised when all Dump Hosts returned nothing"""
 
     def __init__(self, message: Optional[str] = None, *args: Any) -> None:

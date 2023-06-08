@@ -2,14 +2,14 @@
 #
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from discord import ButtonStyle, File, Interaction, Message, PartialEmoji, ui
+from discord.ext.commands.errors import BotMissingPermissions
 from discord.ext.menus import PageSource
 from discord.utils import maybe_coroutine
 
-from Classes import _
-from Classes.exceptions import ShakeMissingPermissions
+from Classes.i18n import _
 
 if TYPE_CHECKING:
     from Classes import ShakeBot, ShakeContext, ShakeEmbed
@@ -18,11 +18,7 @@ else:
     from discord.ext.commands import Bot as ShakeBot
     from discord.ext.commands import Context as ShakeContext
 
-__all__ = ("Pages",)
-
-Sources = (
-    PageSource  # Union[PageSource, FrontPageSource, GroupPageSource, ItemPageSource]
-)
+__all__ = ("ShakePages",)
 
 firstemoji = PartialEmoji(name="topleft", id=1033551840744312832)
 previousemoji = PartialEmoji(name="left", id=1033551843210579988)
@@ -32,7 +28,7 @@ lastemoji = PartialEmoji(name="topright", id=1033551844703744041)
 
 ########
 #
-class Pages(ui.View):
+class ShakePages(ui.View):
     page: int = 0
     message: Optional[Message] = None
     """ The Base of all interactive ui.View of Shake"""
@@ -196,7 +192,7 @@ class Pages(ui.View):
         self, *, content: Optional[str] = None, page: Optional[int] = 0
     ) -> None:
         if not self.ctx.channel.permissions_for(self.ctx.me).embed_links:
-            raise ShakeMissingPermissions(
+            raise BotMissingPermissions(
                 ["embed_links"],
                 message="I do not have embed links permission in this channel.",
             )
@@ -218,7 +214,7 @@ class Pages(ui.View):
             if self.file
             else None
         )
-        self.message = await self.ctx.smart_reply(
+        self.message = await self.ctx.chat(
             files=files,
             view=self,
             **self.kwargs,
@@ -249,6 +245,5 @@ class Pages(ui.View):
         await self.show_page(interaction, self.source.get_max_pages() - 1)
 
 
-menus = Union[ui.View, Pages]
 #
 ############

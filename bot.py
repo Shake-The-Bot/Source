@@ -2,16 +2,12 @@ from logging import Logger, getLogger
 from types import ModuleType
 from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
-from asyncpg import Pool
 from discord import Message
 from discord.abc import Snowflake
 from discord.ext.commands import Cog
 
-from Classes.helpful import BotBase, DatabaseProtocol
-from Classes.i18n import _
-from Classes.reddit import Reddit
-from Classes.useful import MISSING
-from Classes.useful import dump as _dump
+from Classes.helpful import BotBase
+from Classes.useful import MISSING, dump
 
 if TYPE_CHECKING:
     from Classes import __version__
@@ -25,8 +21,6 @@ __all__ = ("ShakeBot",)
 
 
 class ShakeBot(BotBase):
-    pool: Pool
-    gpool: DatabaseProtocol
     logger: Logger
 
     def __init__(self, **options):
@@ -39,10 +33,6 @@ class ShakeBot(BotBase):
         self.config.reload()
         self.emojis.reload()
         return
-
-    async def setup_hook(self):
-        self.reddit: Reddit = Reddit()
-        return await super().setup_hook()
 
     async def testing_error(
         self, module: Dict[str, ModuleType], error: Exception
@@ -72,11 +62,10 @@ class ShakeBot(BotBase):
     async def close(self) -> None:
         print()
         self.log.info("Bot is shutting down")
-        await self.reddit.client.close()
         await super().close()
 
     async def dump(self, content: str, lang: Optional[str] = "txt") -> Optional[str]:
-        url = await _dump(content=content, session=self.session, lang=lang)
+        url = await dump(content=content, session=self.session, lang=lang)
         return url
 
 
