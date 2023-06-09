@@ -50,11 +50,7 @@ class aboveme_extension(Games):
     ):
         _(
             """Setup the whole AboveMe game in seconds
-            Get more information about the aboveme game with {command}"""
-        ).format(
-            command=await (
-                await Slash(ctx.bot).__await__(ctx.bot.get_command("aboveme"))
-            ).get_sub_command(ctx.bot.get_command("aboveme info"))[2]
+            Get more information about the aboveme game with /aboveme info"""
         )
 
         if ctx.testing:

@@ -1,21 +1,39 @@
 from asyncio import TaskGroup
-from typing import List, Literal, Optional, Tuple
+from collections import Counter
+from typing import Dict, List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, PartialEmoji, TextChannel
+from discord.ext.commands import BucketType, CooldownMapping
 
-from Classes import MISSING, ShakeBot, ShakeEmbed, TextFormat, _, current, tens
+from Classes import (
+    MISSING,
+    CountingBatch,
+    ShakeBot,
+    ShakeEmbed,
+    TextFormat,
+    _,
+    current,
+    human_join,
+    tens,
+)
 
 ############
 #
 
 
 class Event:
+    bot: ShakeBot
+    guild: Guild
+    channel: TextChannel
+    message: Message
+    spam_control: CooldownMapping
+
     def __init__(self, message: Message, bot: ShakeBot):
-        self.bot: ShakeBot = bot
-        self.author: Member = message.author
-        self.guild: Guild = message.guild
-        self.channel: TextChannel = message.channel
-        self.message: Message = message
+        self.bot = bot
+        self.author = message.author
+        self.guild = message.guild
+        self.channel = message.channel
+        self.message = message
 
     async def __await__(self):
         ctx = await self.bot.get_context(self.message)
@@ -99,34 +117,44 @@ class Event:
     #     return True
 
     async def aboveme(self):
-        system = aboveme(
+        system = AboveMe(
             bot=self.bot,
-            member=self.author,
             channel=self.channel,
             guild=self.guild,
-            content=self.message.content,
+            spam_control=CooldownMapping.from_cooldown(10, 12.0, BucketType.user),
         )
-        embed, delete, bad_reaction = await system.__await__()
+        embed, delete, bad_reaction = await system.__await__(
+            member=self.author, message=self.message
+        )
 
         if all([embed is None, delete is None, bad_reaction is None]):
             return
 
         await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
         if embed:
-            await self.channel.send(embed=embed, delete_after=10 if delete else None)
+            last = self.channel.last_message
+            if last:
+                descriptions = [embed.description[-22:] for embed in last.embeds]
+            else:
+                descriptions = []
+            if not embed.description[-22:] in descriptions:
+                await self.message.reply(
+                    embed=embed, delete_after=10 if delete else None
+                )
         if delete:
             await self.message.delete(delay=10)
         return True
 
     async def counting(self):
-        system = counting(
+        system = Counting(
             bot=self.bot,
-            member=self.author,
             channel=self.channel,
             guild=self.guild,
-            content=self.message.content,
+            spam_control=CooldownMapping.from_cooldown(10, 12.0, BucketType.user),
         )
-        embed, delete, bad_reaction = await system.__await__()
+        embed, delete, bad_reaction = await system.__await__(
+            member=self.author, message=self.message
+        )
 
         if all([embed is None, delete is None, bad_reaction is None]):
             return
@@ -135,29 +163,108 @@ class Event:
             ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
         )
         if embed:
-            await self.channel.send(embed=embed, delete_after=10 if delete else None)
+            last = self.channel.last_message
+            if last:
+                descriptions = [embed.description[-22:] for embed in last.embeds]
+            else:
+                descriptions = []
+            if not embed.description[-22:] in descriptions:
+                await self.message.reply(
+                    embed=embed, delete_after=10 if delete else None
+                )
         if delete:
             await self.message.delete(delay=10)
         return True
 
 
-class aboveme:
+class AboveMe:
+    channel: TextChannel
+    guild: Guild
+    cache: Dict[int, List]
+    trigger: str
+    spam_control: CooldownMapping
+
     def __init__(
         self,
         bot: ShakeBot,
-        member: Member,
-        channel: TextChannel,
         guild: Guild,
-        content: str,
+        channel: TextChannel,
+        spam_control: CooldownMapping,
     ):
-        self.bot: ShakeBot = bot
-        self.member: Member = member
-        self.content: str = content
-        self.channel: TextChannel = channel
-        self.guild: Guild = guild
-        self.testing = any(
-            x.id in set(self.bot.testing.keys()) for x in [channel, guild, member]
+        self.bot = bot
+        self.cache = self.bot.cache["AboveMe"]
+        self.channel = channel
+        self.trigger = _("the one above me")
+        self.guild = guild
+        self.spam_control = spam_control
+        self._auto_spam_count = Counter()
+
+    async def __await__(
+        self, member: Member, message: Message
+    ) -> Tuple[Optional[ShakeEmbed], bool, bool]:
+        content: str = message.clean_content
+        time = message.created_at
+        testing: bool = any(
+            _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
         )
+
+        if self.channel.id in self.cache:
+            record: dict = self.cache[self.channel.id]
+        else:
+            async with self.bot.gpool.acquire() as connection:
+                record: dict = await connection.fetchrow(
+                    "SELECT * FROM aboveme WHERE channel_id = $1",
+                    self.channel.id,
+                )
+
+        user_id: int = record["user_id"]
+        count: int = record["count"] or 0
+        phrases: List[str] = record["phrases"] or []
+
+        embed = ShakeEmbed(timestamp=None)
+
+        delete = bad_reaction = passed = False
+
+        if not await self.member_check(user_id, member, testing):
+            embed.description = TextFormat.bold(
+                _("""You are not allowed show off multiple numbers in a row.""")
+            )
+            delete = bad_reaction = True
+
+        elif not await self.syntax_check(content):
+            embed.description = TextFormat.bold(
+                _(
+                    "Your message should start with „{trigger}“ and should make sense."
+                ).format(
+                    trigger=self.trigger.capitalize(),
+                )
+            )
+            delete = bad_reaction = True
+
+        elif not await self.phrase_check(content, phrases):
+            embed.description = TextFormat.bold(
+                _("Your message should be something new")
+            )
+            delete = bad_reaction = True
+
+        else:
+            passed = True
+            embed = None
+
+            if len(phrases) >= 10:
+                for i in range(len(phrases[10:-1])):
+                    phrases.pop(i)
+            phrases.insert(0, content)
+
+        self.cache[self.channel.id]: CountingBatch = {
+            "channel_id": self.channel.id,
+            "user_id": member.id,
+            "used": time.isoformat(),
+            "phrases": phrases,
+            "count": count + 1 if passed else count,
+        }
+
+        return embed, delete, bad_reaction
 
     async def phrase_check(self, content: str, phrases: List[str]):
         if content.strip() in phrases:
@@ -172,138 +279,64 @@ class aboveme:
             return False
         return True
 
-    async def member_check(self, user_id: int):
-        if self.testing and await self.bot.is_owner(self.member):
+    async def member_check(
+        self,
+        user_id: int,
+        member: Member,
+        testing: bool,
+    ):
+        if testing and await self.bot.is_owner(member):
             return True
-        elif user_id == self.member.id:
+        elif user_id == member.id:
             return False
         return True
 
-    async def __await__(self) -> Tuple[Optional[ShakeEmbed], bool, bool]:
-        async with self.bot.gpool.acquire() as connection:
-            record = await connection.fetchrow(
-                "SELECT * FROM aboveme WHERE channel_id = $1",
-                self.channel.id,
-            )
 
-        user_id: int = record["user_id"]
-        count: int = record["count"] or 0
-        phrases: List[str] = record["phrases"] or []
-        hardcore: bool = record["hardcore"]
+class Counting:
+    channel: TextChannel
+    guild: Guild
+    cache: Dict[int, List]
+    spam_control: CooldownMapping
 
-        current.set(
-            await self.bot.locale.get_guild_locale(self.guild.id, default="en-US")
-        )
-
-        self.trigger: str = _("the one above me")
-
-        embed = ShakeEmbed(timestamp=None)
-
-        delete = bad_reaction = xyz = False
-
-        if not await self.member_check(user_id):
-            embed.description = _(
-                """{user} ruined it {facepalm} **You can't show off several times in a row**.
-                Someone should still go on."""
-            ).format(
-                user=self.member.mention,
-                facepalm=str(PartialEmoji(name="facepalm", id=1038177759983304784)),
-            )
-
-            if hardcore:
-                embed.description = _(
-                    """{user} you are not allowed show off multiple numbers in a row."""
-                ).format(user=self.member.mention)
-                delete = bad_reaction = True
-
-        elif not await self.syntax_check(self.content):
-            embed.description = _(
-                "{emoji} Your message should start with „{trigger}“ and should make sense."
-            ).format(
-                emoji="<a:nananaa:1038185829631266981>",
-                trigger=TextFormat.bold(self.trigger.capitalize()),
-            )
-            delete = bad_reaction = True
-
-        elif not await self.phrase_check(self.content, phrases):
-            embed.description = _(
-                "{emoji} Your message should be something new"
-            ).format(
-                emoji="<a:nananaa:1038185829631266981>",
-            )
-            delete = bad_reaction = True
-
-        else:
-            xyz = True
-            embed = None
-
-        async with self.bot.gpool.acquire() as connection:
-            p = phrases.copy()
-            if len(p) >= 10:
-                for i in range(len(p[10:-1])):
-                    p.pop(i)
-            p.insert(0, self.content)
-
-            await connection.execute(
-                "UPDATE aboveme SET user_id = $2, phrases = $3, count = $4 WHERE channel_id = $1;",
-                self.channel.id,
-                self.member.id,
-                phrases,
-                count + 1 if xyz else count,
-            )
-        return embed, delete, bad_reaction
-
-
-class counting:
     def __init__(
         self,
         bot: ShakeBot,
-        member: Member,
-        channel: TextChannel,
         guild: Guild,
-        content: str,
+        channel: TextChannel,
+        spam_control: CooldownMapping,
     ):
-        self.bot: ShakeBot = bot
-        self.member: Member = member
-        self.content: str = content
-        self.channel: TextChannel = channel
-        self.guild: Guild = guild
-        self.testing = any(
-            x.id in set(self.bot.testing.keys()) for x in [channel, guild, member]
+        self.bot = bot
+        self.cache = self.bot.cache["Counting"]
+        self.channel = channel
+        self.guild = guild
+        self.spam_control = spam_control
+        self._auto_spam_count = Counter()
+
+    async def __await__(
+        self, member: Member, message: Message
+    ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
+        content: str = message.clean_content
+        time = message.created_at
+        testing: bool = any(
+            _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
         )
 
-    async def syntax_check(self, content: str):
-        if not content.isdigit():
-            return False
-        return True
-
-    async def check_number(self, content: str, count: int):
-        if not int(content) == count + 1:
-            return False
-        return True
-
-    async def member_check(self, user_id: int):
-        if self.testing and await self.bot.is_owner(self.member):
-            return True
-        elif user_id == self.member.id:
-            return False
-        return True
-
-    async def __await__(self):
-        async with self.bot.gpool.acquire() as connection:
-            record = await connection.fetchrow(
-                "SELECT * FROM counting WHERE channel_id = $1",
-                self.channel.id,
-            )
+        if self.channel.id in self.cache:
+            record: dict = self.cache[self.channel.id]
+        else:
+            async with self.bot.gpool.acquire() as connection:
+                record: dict = await connection.fetchrow(
+                    "SELECT * FROM counting WHERE channel_id = $1",
+                    self.channel.id,
+                )
 
         streak: int = record["streak"] or 0
         best: int = record["best"] or 0
         user_id: int = record["user_id"]
-        hardcore: bool = record["hardcore"]
         goal: int = record["goal"]
         count: int = record["count"] or 0
+        used: str = record["used"]
         numbers: bool = record["numbers"]
-
         backup: int = tens(count, True) - 1
         reached: bool = False
 
@@ -312,62 +345,77 @@ class counting:
         )
 
         embed = ShakeEmbed(timestamp=None)
-        delete = xyz = False
+        delete = passed = False
         bad_reaction = 0
 
-        if not await self.syntax_check(self.content):
+        if not await self.syntax_check(content):
             if numbers:
-                embed.description = _(
-                    "{emoji} You're not allowed to use anything except numbers here"
-                ).format(emoji="<a:nananaa:1038185829631266981>")
+                embed.description = TextFormat.bold(
+                    _("You're not allowed to use anything except numbers here")
+                )
                 delete = True
                 bad_reaction = 1
             else:
                 return None, None, None
 
-        elif not await self.member_check(user_id):
-            embed.description = _(
-                "{user} you are not allowed to count multiple numbers in a row."
-            ).format(user=self.member.mention)
+        elif not await self.member_check(
+            testing=testing, user_id=user_id, member=member
+        ):
+            embed.description = TextFormat.bold(
+                _("You are not allowed to count multiple numbers in a row.")
+            )
             bad_reaction = 1
             delete = True
 
-        elif not await self.check_number(self.content, count):
-            if int(count) == backup:
+        elif not await self.check_number(content, count):
+            bucket = self.spam_control.get_bucket(message)
+            retry_after = bucket and bucket.update_rate_limit(time.timestamp())
+            if retry_after:  # member.id != self.owner_id:
+                self._auto_spam_count[member.id] += 1
+
+            if self._auto_spam_count[member.id] >= 5:
                 embed.description = TextFormat.bold(
-                    _(
-                        "Incorrect number! The next number remains {backup} and the streak of {streak} was  broken!"
-                    ).format(
-                        backup=TextFormat.codeblock(f" {backup + 1} "),
-                        streak=streak,
-                    )
+                    _("You failed to often. No stats have been changed!!")
                 )
+                del self._auto_spam_count[member.id]
                 bad_reaction = 2
             else:
-                if streak > 0:
+                self._auto_spam_count.pop(member.id, None)
+                if streak != 0:
                     s = _("The streak of {streak} was broken!")
                     if streak > best:
                         s = _("You've topped your best streak with {streak} numbers 🔥")
+                    s = s.format(streak=TextFormat.codeblock(f" {streak} "))
                 else:
-                    streak = ""
+                    s = ""
 
-                embed.description = TextFormat.bold(
-                    _(
-                        "{user} ruined it at {count} {facepalm}. The next number is {backup}. {streak}"
-                    ).format(
-                        user=self.member.mention,
-                        count=TextFormat.underline(record["count"]),
-                        facepalm="<:facepalm:1038177759983304784>",
-                        streak=s.format(streak),
-                        backup=TextFormat.codeblock(f" {backup + 1} "),
+                if int(count) == backup:
+                    embed.description = TextFormat.bold(
+                        _(
+                            "Incorrect number! The next number remains {backup}. {streak}"
+                        ).format(
+                            backup=TextFormat.codeblock(f" {backup + 1} "),
+                            streak=s,
+                        )
                     )
-                )
-                bad_reaction = 1
-            count = backup
-            streak = 0
+                    bad_reaction = 2
+                else:
+                    embed.description = TextFormat.bold(
+                        _(
+                            "You ruined it at {count} {facepalm}. The next number is {backup}. {streak}"
+                        ).format(
+                            count=TextFormat.underline(record["count"]),
+                            facepalm="<:facepalm:1038177759983304784>",
+                            streak=s,
+                            backup=TextFormat.codeblock(f" {backup + 1} "),
+                        )
+                    )
+                    bad_reaction = 1
+                count = backup
+                streak = 0
 
         else:
-            xyz = True
+            passed = True
 
             if goal and count + 1 >= goal:
                 reached = True
@@ -379,18 +427,36 @@ class counting:
             else:
                 embed = None
 
-        async with self.bot.gpool.acquire() as connection:
-            s = streak + 1 if xyz else streak
-            await connection.execute(
-                "UPDATE counting SET user_id = $2, count = $3, streak = $4, best = $5, goal = $6 WHERE channel_id = $1;",
-                self.channel.id,
-                self.member.id,
-                count + 1 if xyz else count,
-                s,
-                s if s > best else best,
-                None if reached else goal,
-            )
+        s = streak + 1 if passed else streak
+        self.cache[self.channel.id]: CountingBatch = {
+            "channel_id": self.channel.id,
+            "user_id": member.id,
+            "used": time.isoformat(),
+            "streak": s,
+            "best": s if s > best else best,
+            "count": count + 1 if passed else count,
+            "goal": None if reached else goal,
+            "numbers": numbers,
+        }
+
         return embed, delete, bad_reaction
+
+    async def syntax_check(self, content: str):
+        if not content.isdigit():
+            return False
+        return True
+
+    async def check_number(self, content: str, count: int):
+        if not int(content) == count + 1:
+            return False
+        return True
+
+    async def member_check(self, testing: bool, user_id: int, member: Member):
+        if testing and await self.bot.is_owner(member):
+            return True
+        elif user_id == member.id:
+            return False
+        return True
 
 
 #

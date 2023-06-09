@@ -6,15 +6,17 @@ from discord.ext.commands.converter import (
     TextChannelConverter,
     UserConverter,
 )
-from discord.ext.commands.errors import ChannelNotFound, GuildNotFound, UserNotFound
+from discord.ext.commands.errors import (
+    BadArgument,
+    ChannelNotFound,
+    GuildNotFound,
+    UserNotFound,
+)
 
 from Classes import MISSING, ShakeBot, ShakeContext, ShakeEmbed, _
 
-
 ########
-#
-class EveryNone(Exception):
-    """Example of Exception"""
+# "
 
 
 class command:
@@ -41,17 +43,16 @@ class command:
                 guild = MISSING
 
             if all([not guild, not user, not channel]):
-                raise EveryNone
+                raise BadArgument("Given ID is not from a discord object.")
 
-        except EveryNone:
+        except BadArgument:
             embed = ShakeEmbed.to_error(
                 self.ctx,
                 description=_(
                     "Your input does not match any server/channel/user I can find"
                 ),
             )
-            await self.ctx.chat(embed=embed)
-            return
+            return await self.ctx.chat(embed=embed)
 
         else:
             current = guild or channel or user

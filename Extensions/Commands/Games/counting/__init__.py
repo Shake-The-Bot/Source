@@ -46,7 +46,6 @@ class counting_extension(Games):
         /,
         channel: Optional[TextChannel] = None,
         goal: Optional[int] = None,
-        hardcore: Optional[bool] = False,
         only_numbers: Optional[bool] = True,
     ):
         _(
@@ -67,7 +66,6 @@ class counting_extension(Games):
             await do.command(ctx=ctx).setup(
                 channel=channel,
                 goal=goal,
-                hardcore=hardcore,
                 numbers=only_numbers,
             )
 

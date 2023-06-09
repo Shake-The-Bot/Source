@@ -31,7 +31,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from Classes.i18n import Locale, _, mo
 from Classes.tomls import Config, Emojis, config, emojis
-from Classes.types import Regex, TracebackType
+from Classes.types import Regex, TextFormat, TracebackType
 from Classes.useful import MISSING, source_lines
 from Extensions.Functions.Debug.error import error
 
@@ -63,7 +63,7 @@ __all__ = (
 #
 
 
-"""     A Class representing the custom Context (Inherits from discord.ext.commands.Context)
+""" A Class representing the custom Context (Inherits from discord.ext.commands.Context)
 """
 
 
@@ -351,7 +351,7 @@ class ShakeContext(Context):
         return self.messages.pop(message_id, None)
 
 
-"""     A Class representing the Base of the ShakeBot (Inherits from discord.ext.commands.AutoSharedBot)
+""" A Class representing the Base of the ShakeBot (Inherits from discord.ext.commands.AutoSharedBot)
 yeah.. lazy rn"""
 
 
@@ -553,7 +553,7 @@ class BotBase(AutoShardedBot):
             self.log.error(error)
 
 
-"""     Embed Helper
+""" Embed Helper
 yeah.. lazy rn"""
 
 
@@ -609,9 +609,9 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs[
-                "description"
-            ] = f"{bot.emojis.hook} {bot.emojis.prefix} **{description}**"
+            kwargs["description"] = TextFormat.bold(
+                f"{bot.emojis.hook} {bot.emojis.prefix} {description}"
+            )
         instance = cls(colour=colour or 0x00CC88, **kwargs)
         instance.timestamp = None
         return instance
@@ -630,15 +630,15 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs[
-                "description"
-            ] = f"{bot.emojis.cross} {bot.emojis.prefix} **{description}**"
+            kwargs["description"] = TextFormat.bold(
+                f"{bot.emojis.cross} {bot.emojis.prefix} {description}"
+            )
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
         return instance
 
 
-"""     Database Handler
+""" Database Handler
 yeah.. lazy rn"""
 
 

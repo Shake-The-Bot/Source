@@ -104,4 +104,7 @@ if __name__ == "__main__":
         "\u200b"
     )
     with setup():
-        run(main())
+        try:
+            run(main())
+        except:
+            exit()

@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from functools import partial
 from sys import exc_info
-from typing import Callable, Literal
+from typing import Callable, Literal, TypedDict
 
 from discord import PartialEmoji, Thread
 from discord.channel import *
@@ -17,6 +17,8 @@ __all__ = (
     "Categorys",
     "CATEGORYS",
     "Locale",
+    "AboveMeBatch",
+    "CountingBatch",
     "tick",
     "TracebackType",
     "ExtensionMethods",
@@ -174,3 +176,22 @@ class ExtensionMethods(Enum):
     load = partial(Bot.load_extension)
     unload = partial(Bot.unload_extension)
     reload = partial(Bot.reload_extension)
+
+
+class CountingBatch(TypedDict):
+    channel_id: int
+    count: int
+    user_id: int
+    streak: int
+    best: int
+    goal: int
+    used: str
+    numbers: bool
+
+
+class AboveMeBatch(TypedDict):
+    channel_id: int
+    user_id: int
+    count: int
+    phrases: list
+    used: str

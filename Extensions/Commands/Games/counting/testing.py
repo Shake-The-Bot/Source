@@ -17,7 +17,6 @@ class command:
         self,
         channel: Optional[TextChannel],
         goal: Optional[int],
-        hardcore: bool,
         numbers: bool,
     ):
         if not channel:
@@ -43,7 +42,7 @@ class command:
                 channel.id,
                 self.ctx.guild.id,
                 goal,
-                hardcore,
+                False,
                 numbers,
             )
 

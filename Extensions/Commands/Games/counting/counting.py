@@ -17,7 +17,6 @@ class command:
         self,
         channel: Optional[TextChannel],
         goal: Optional[int],
-        hardcore: bool,
         numbers: bool,
     ):
         if not channel:
@@ -43,13 +42,13 @@ class command:
                 channel.id,
                 self.ctx.guild.id,
                 goal,
-                hardcore,
+                False,
                 numbers,
             )
 
         await self.ctx.chat(
             _("The Counting-Game is succsessfully setup in {channel}").format(
-                channel=self.channel.mention
+                channel=channel.mention
             )
         )
 
