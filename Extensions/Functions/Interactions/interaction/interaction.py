@@ -3,9 +3,9 @@
 from importlib import reload
 
 from discord import Interaction, InteractionType
-from Extensions.Functions.Voice.voice_state_update.utils import system
 
 from Classes import ShakeBot, _
+from Extensions.Functions.Voice.voice_state_update.utils import system
 
 
 ########
@@ -24,7 +24,7 @@ class Event:
         ):
             ctx = await self.bot.get_context(self.interaction)
             ctx.command_failed = self.interaction.command_failed or ctx.command_failed
-            await self.register_command(ctx)
+            await self.bot.register_command(ctx)
         reload(system)
         custom_id = self.interaction.data.get("custom_id", None)
         if not custom_id:

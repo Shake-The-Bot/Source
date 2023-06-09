@@ -43,7 +43,11 @@ class RtfmKey(Converter):
     """convert into a valid key"""
 
     async def convert(cls, ctx: Context, argument: Optional[str] = None) -> List[str]:
-        return argument if not argument is None and argument in Types.RtfmPage else None
+        return (
+            argument
+            if not argument is None and argument in Types.RtfmPage.value
+            else None
+        )
 
 
 class ValidKwarg(Converter):

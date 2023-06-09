@@ -202,9 +202,9 @@ class AssetsSource(ListPageSource):
         listed = []
         formattypes = list(
             get_args(
-                Types.ValidAssetFormatTypes
+                Types.ValidAssetFormatTypes.value
                 if items.is_animated()
-                else Types.ValidStaticFormatTypes
+                else Types.ValidStaticFormatTypes.value
             )
         )
         for formattype in formattypes:

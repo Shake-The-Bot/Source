@@ -21,7 +21,7 @@ class userinfo_extension(Information):
     def __init__(self, bot) -> None:
         super().__init__(bot=bot)
         self.menu = ContextMenu(
-            name="userinfo",
+            name="shake userinfo",
             callback=self.context_menu,
         )
         self.bot.tree.add_command(self.menu)
@@ -41,7 +41,9 @@ class userinfo_extension(Information):
     @setlocale()
     @locale_doc
     async def context_menu(self, interaction: Interaction, message: Message) -> None:
-        await interaction.response.send_message("hello...")
+        ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
+        user: Optional[User | Member] = message.author
+        await self.ui(ctx, user)
 
     @hybrid_command(name="userinfo", aliases=["ui"])
     @guild_only()
@@ -56,6 +58,9 @@ class userinfo_extension(Information):
             user: Optional[Member | User]
                 @mention, ID or name of the user you want to get information about."""
         )
+        await self.ui(ctx, user)
+
+    async def ui(self, ctx: ShakeBot, user: Optional[User | Member] = None):
         if ctx.testing:
             try:
                 reload(testing)

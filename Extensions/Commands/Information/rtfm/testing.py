@@ -51,7 +51,7 @@ class SphinxObjectFileReader:
 
 async def build_rtfm_lookup_table(bot):
     cache = dict()
-    for key, page in Types.RtfmPage.items():
+    for key, page in Types.RtfmPage.value.items():
         cache[key] = dict()
         async with bot.session.get(page + "/objects.inv") as resp:
             if resp.status != 200:
@@ -126,7 +126,7 @@ class command:
     async def __await__(self):
         await self.ctx.defer()
         if self.obj is None:
-            return await self.ctx.chat(Types.RtfmPage[self.key])
+            return await self.ctx.chat(Types.RtfmPage.value[self.key])
         if not hasattr(self.bot, "_rtfm_cache"):
             await self.bot.build_rtfm_lookup_table()
         obj = sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", self.obj)

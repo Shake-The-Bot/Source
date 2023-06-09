@@ -299,7 +299,7 @@ class ChannelsSource(ListPageSource):
 
     def __init__(self, ctx: ShakeContext | Interaction, guild: Guild, *args, **kwargs):
         self.guild: Guild = guild
-        channels: List[Types.GuildChannel] = sorted(
+        channels: List[Types.GuildChannel.value] = sorted(
             filter(
                 lambda channel: not isinstance(channel, CategoryChannel),
                 [channel for channel in guild.channels],
@@ -322,7 +322,7 @@ class ChannelsSource(ListPageSource):
         )
 
     def format_page(
-        self, menu: Menu, items: List[Types.GuildChannel], **kwargs: Any
+        self, menu: Menu, items: List[Types.GuildChannel.value], **kwargs: Any
     ) -> ShakeEmbed:
         categories, voices, stages, texts, forums, threads = (
             len(self.guild.categories),

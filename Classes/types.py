@@ -106,7 +106,7 @@ class TextFormat(Enum):
     strikethrough: Callable[[str], str] = lambda t: string(t, "~~")
     codeblock: Callable[[str], str] = lambda t: string(t, "`")
     multicodeblock: Callable[[str], str] = lambda t, f=None: string(
-        t, front="```" + (f if f else ""), end="```", iterate=False
+        t, front="```" + (f + "\n" if f else ""), end="```", iterate=False
     )
     blockquotes: Callable[[str], str] = lambda t: string(t, "> ", end=False)
     hyperlink: Callable[[str, str], str] = (

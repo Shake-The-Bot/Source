@@ -75,7 +75,6 @@ class ItemPageSource(menus.PageSource):
         return 1
 
     async def get_page(self, page: int) -> Any:
-        self.item = page
         return self
 
     def format_page(self, menu: page.menus, item: Any) -> Tuple[ShakeEmbed, File]:
