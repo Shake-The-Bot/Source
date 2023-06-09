@@ -5,6 +5,7 @@ from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT
 from base64 import b64encode
 from hmac import new
 from inspect import isawaitable
+from math import ceil
 from os import getcwd, listdir
 from os import urandom as _urandom
 from os.path import isdir, isfile
@@ -45,6 +46,7 @@ __all__ = (
     "safe_output",
     "async_compile",
     "cleanup",
+    "tens",
     "maybe_await",
     "get_syntax_error",
 )
@@ -484,3 +486,18 @@ def get_syntax_error(e):
     if e.text is None:
         return "{0.__class__.__name__}: {0}".format(e)
     return "{0.text}{1:>{0.offset}}\n{2}: {0}".format(e, "^", type(e).__name__)
+
+
+def tens(count: int, higher_when_same: bool = False):
+    __len = len(str(count))
+    __digits: List[str] = [int(_) for _ in str(count)]
+    __saves = max(1, ceil(__len / 2))
+    __saved = __digits[0:__saves]
+    __zeros = list("0" for _ in range(len(__digits[__saves:__len])))
+
+    final = int("".join(str(x) for x in __saved + __zeros))
+
+    if final == count and higher_when_same:
+        final += 1
+
+    return max(1, final)

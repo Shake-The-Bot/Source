@@ -3,7 +3,7 @@ from typing import List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, PartialEmoji, TextChannel
 
-from Classes import MISSING, ShakeBot, ShakeEmbed, TextFormat, _, current
+from Classes import MISSING, ShakeBot, ShakeEmbed, TextFormat, _, current, tens
 
 ############
 #
@@ -272,17 +272,6 @@ class counting:
             x.id in set(self.bot.testing.keys()) for x in [channel, guild, member]
         )
 
-    def tens(self, count: int, last: int = 1):
-        if 0 <= count <= 10:
-            return 1
-        if len(str(count)) <= last:
-            last = len(str(count)) - 1
-        digits = [int(_) for _ in str(count)]
-        for zahl in range(last):
-            zahl = zahl + 1
-            digits[-zahl] = 0
-        return int("".join(str(x) for x in digits))
-
     async def syntax_check(self, content: str):
         if not content.isdigit():
             return False
@@ -315,7 +304,7 @@ class counting:
         count: int = record["count"] or 0
         numbers: bool = record["numbers"]
 
-        backup: int = self.tens(count)
+        backup: int = tens(count, True) - 1
         reached: bool = False
 
         current.set(
@@ -340,55 +329,42 @@ class counting:
             embed.description = _(
                 "{user} you are not allowed to count multiple numbers in a row."
             ).format(user=self.member.mention)
-
+            bad_reaction = 1
             delete = True
-            if hardcore:
-                pass
-                # embed.description = _(
-                #     """{user} ruined it at **{count}** {facepalm} **You can't count multiple numbers in a row**. The __next__ number {verb} ` {last} `. {streak}""").format(
-                #             user=self.member.mention, count=record['count'], facepalm='<:facepalm:1038177759983304784>',
-                #             streak=_("**You've topped your best streak with {} 🔥**".format(self.streak)) if self.streak > self.best_streak else '',
-                #             verb=(_("is") if not last_ten == record['count'] else _("remains")), last=last_ten)
-                # async with db.acquire():
-                #     await db.execute(
-                #         'UPDATE counting SET user_id = $2, count = $3, streak = 0, best_streak = $4 WHERE channel_id = $1;',
-                #         record['channel_id'], self.member.id, last_ten, self.streak if self.streak>self.best_streak else self.best_streak
-                #     )
-                # delete = bad_reaction = True
 
         elif not await self.check_number(self.content, count):
-            if int(count) in [0, 1]:
-                embed.description = _(
-                    (
-                        "Incorrect number! The __next__ number is ` {last} `. "
-                        "**No stats have been changed since the current number was {count}.**"
-                        ""
+            if int(count) == backup:
+                embed.description = TextFormat.bold(
+                    _(
+                        "Incorrect number! The next number remains {backup} and the streak of {streak} was  broken!"
+                    ).format(
+                        backup=TextFormat.codeblock(f" {backup + 1} "),
+                        streak=streak,
                     )
-                ).format(last=backup, count=int(record["count"]) - 1)
+                )
                 bad_reaction = 2
             else:
-                s = ""
-                if streak > best:
-                    s = TextFormat.bold(
-                        _("You've topped your best streak with {} numbers 🔥").format(
-                            self.streak
-                        )
-                    )
+                if streak > 0:
+                    s = _("The streak of {streak} was broken!")
+                    if streak > best:
+                        s = _("You've topped your best streak with {streak} numbers 🔥")
+                else:
+                    streak = ""
 
-                embed.description = _(
-                    (
-                        "{user} ruined it at **{count}** {facepalm}. "
-                        "**You apparently can't count properly**. "
-                        "The __next__ number is ` {last} `. {streak}"
+                embed.description = TextFormat.bold(
+                    _(
+                        "{user} ruined it at {count} {facepalm}. The next number is {backup}. {streak}"
+                    ).format(
+                        user=self.member.mention,
+                        count=TextFormat.underline(record["count"]),
+                        facepalm="<:facepalm:1038177759983304784>",
+                        streak=s.format(streak),
+                        backup=TextFormat.codeblock(f" {backup + 1} "),
                     )
-                ).format(
-                    user=self.member.mention,
-                    count=record["count"],
-                    facepalm="<:facepalm:1038177759983304784>",
-                    streak=s,
-                    last=backup,
                 )
                 bad_reaction = 1
+            count = backup
+            streak = 0
 
         else:
             xyz = True

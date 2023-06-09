@@ -105,6 +105,7 @@ class TextFormat(Enum):
     underlinebolditalics: Callable[[str], str] = lambda t: string(t, "__", "***")
     strikethrough: Callable[[str], str] = lambda t: string(t, "~~")
     codeblock: Callable[[str], str] = lambda t: string(t, "`")
+    codeunderline: Callable[[str], str] = lambda t: string(t, "__", "`")
     multicodeblock: Callable[[str], str] = lambda t, f=None: string(
         t, front="```" + (f + "\n" if f else ""), end="```", iterate=False
     )
