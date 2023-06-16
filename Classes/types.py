@@ -16,6 +16,7 @@ __all__ = (
     "Regex",
     "Categorys",
     "CATEGORYS",
+    "OneWordBatch",
     "Locale",
     "AboveMeBatch",
     "CountingBatch",
@@ -39,7 +40,7 @@ tick: Callable[[Bot], PartialEmoji] = lambda bot: (
 )
 
 
-class Locale(Enum):
+class Locale:
     available = {
         "en-US": {
             "language": "English",
@@ -99,6 +100,7 @@ class Locale(Enum):
 
 
 class TextFormat(Enum):
+    quote: Callable[[str], str] = lambda t: string(t, front="„", end="“", iterate=False)
     italics: Callable[[str], str] = lambda t: string(t, "_")
     bold: Callable[[str], str] = lambda t: string(t, "**")
     bolditalics: Callable[[str], str] = lambda t: string(t, "***")
@@ -115,13 +117,14 @@ class TextFormat(Enum):
     hyperlink: Callable[[str, str], str] = (
         lambda t, l: "[" + str(t) + "]" + "(" + str(l) + ")"
     )
+    filler: Callable[[str], str] = lambda t, spaces=0: str(t).ljust(spaces)
     multiblockquotes: Callable[[str], str] = lambda t: string(t, ">>> ", end=False)
     biggest: Callable[[str], str] = lambda t: string(t, "# ", end=False)
     bigger: Callable[[str], str] = lambda t: string(t, "## ", end=False)
     big: Callable[[str], str] = lambda t: string(t, "### ", end=False)
     spoiler: Callable[[str], str] = lambda t: string(t, "||")
-    list: Callable[[str, int], str] = lambda t, indent=1: string(
-        t, (" " * indent * 2) + "-", end=False
+    list: Callable[[str, int], str] = lambda t, indent=0: string(
+        t, (" " * indent * 2) + "- ", end=False
     )
 
 
@@ -185,8 +188,19 @@ class CountingBatch(TypedDict):
     streak: int
     best: int
     goal: int
+    react: bool
     used: str
     numbers: bool
+
+
+class OneWordBatch(TypedDict):
+    channel_id: int
+    user_id: int
+    count: int
+    words: list
+    phrase: str
+    react: bool
+    used: str
 
 
 class AboveMeBatch(TypedDict):
@@ -194,4 +208,5 @@ class AboveMeBatch(TypedDict):
     user_id: int
     count: int
     phrases: list
+    react: bool
     used: str

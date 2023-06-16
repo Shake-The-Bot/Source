@@ -2,26 +2,15 @@ from typing import Optional
 
 from discord import Forbidden, HTTPException, TextChannel
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeCommand, _
 
 ############
 #
 
 
-class command:
-    def __init__(
-        self,
-        ctx: ShakeContext,
-        channel: Optional[TextChannel],
-        hardcore: bool,
-    ):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
-        self.channel: Optional[TextChannel] = channel
-        self.hardcore: bool = hardcore
-
-    async def __await__(self):
-        if not self.channel:
+class command(ShakeCommand):
+    async def setup(self, channel: Optional[TextChannel], react: bool):
+        if not channel:
             try:
                 channel = await self.ctx.guild.create_text_channel(
                     name="aboveme", slowmode_delay=5
@@ -36,17 +25,15 @@ class command:
                     )
                 )
                 return False
-            self.channel = channel
+            channel = channel
 
         async with self.ctx.db.acquire() as connection:
-            query = """INSERT INTO aboveme (channel_id, guild_id, hardcore) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"""
-            await connection.execute(
-                query, self.channel.id, self.ctx.guild.id, self.hardcore
-            )
+            query = """INSERT INTO aboveme (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"""
+            await connection.execute(query, channel.id, self.ctx.guild.id, react)
 
         await self.ctx.chat(
             _("The Aboveme-Game is succsessfully setup in {channel}").format(
-                channel=self.channel.mention
+                channel=channel.mention
             )
         )
 

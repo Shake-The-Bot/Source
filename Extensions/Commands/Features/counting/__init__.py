@@ -8,13 +8,13 @@ from discord.ext.commands import guild_only, has_permissions, hybrid_group
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..games import Games
+from ..features import Features
 from . import counting, testing
 
 
 ########
 #
-class counting_extension(Games):
+class counting_extension(Features):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot, cog=self)
         try:
@@ -38,6 +38,8 @@ class counting_extension(Games):
 
     @counting.command(name="setup")
     @guild_only()
+    @has_permissions(administrator=True)
+    @extras(permissions=True)
     @setlocale()
     @locale_doc
     async def setup(
@@ -47,6 +49,7 @@ class counting_extension(Games):
         channel: Optional[TextChannel] = None,
         goal: Optional[int] = None,
         only_numbers: Optional[bool] = True,
+        react: Optional[bool] = True,
     ):
         _(
             """Setup the whole Counting game in seconds
@@ -64,9 +67,7 @@ class counting_extension(Games):
 
         try:
             await do.command(ctx=ctx).setup(
-                channel=channel,
-                goal=goal,
-                numbers=only_numbers,
+                channel=channel, goal=goal, numbers=only_numbers, react=react
             )
 
         except:
@@ -104,7 +105,13 @@ class counting_extension(Games):
     @has_permissions(administrator=True)
     @setlocale()
     @locale_doc
-    async def configure(self, ctx: ShakeContext):
+    async def configure(
+        self,
+        ctx: ShakeContext,
+        channel: TextChannel,
+        count: Optional[int] = None,
+        react: Optional[bool] = None,
+    ):
         _("""Change some properties about the Counting game""")
 
         if ctx.testing:
@@ -117,7 +124,9 @@ class counting_extension(Games):
         do = testing if ctx.testing else counting
 
         try:
-            await do.command(ctx=ctx).configure()
+            await do.command(ctx=ctx).configure(
+                channel=channel, count=count, react=react
+            )
 
         except:
             if ctx.testing:

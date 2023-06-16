@@ -8,9 +8,8 @@ from zlib import decompressobj
 
 from discord import Member
 from discord.abc import Messageable
-from discord.ext import commands
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, Types, _
+from Classes import ShakeCommand, ShakeEmbed, Types, _
 
 T = TypeVar("T")
 ########
@@ -113,17 +112,10 @@ def finder(
         return [z for _, _, z in sorted(suggestions, key=sort_key)]
 
 
-class command:
-    def __init__(
-        self, ctx: commands.Context, key, obj: str = None, member: List[Member] = None
-    ):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
-        self.member: List[Member] = member
+class command(ShakeCommand):
+    async def __await__(self, key, obj: str = None):
         self.key = key
         self.obj: str = obj
-
-    async def __await__(self):
         await self.ctx.defer()
         if self.obj is None:
             return await self.ctx.chat(Types.RtfmPage.value[self.key])
@@ -152,8 +144,9 @@ class command:
         )
         return
 
-    async def do_sub(self):
+    async def stats(self, member: List[Member] = None):
         """Tells you stats about the ?rtfm command."""
+        self.member: List[Member] = member
         query = "SELECT SUM(count) AS total_uses FROM rtfm;"
         record = await self.bot.pool.fetchrow(query)
         total_uses: int = record["total_uses"]
@@ -199,10 +192,6 @@ class command:
                     output.append(f"\N{KEYCAP TEN} {user}: {count}")
 
         await self.ctx.chat("\n".join(output))
-
-
-########
-#
 
 
 #

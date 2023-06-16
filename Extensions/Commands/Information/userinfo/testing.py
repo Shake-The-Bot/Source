@@ -19,14 +19,14 @@ from discord.activity import ActivityTypes
 from discord.ext import menus
 from discord.utils import format_dt
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeContext, ShakeEmbed, _
 from Classes.pages import (
-    AnyPageSource,
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,
     ItemPageSource,
     ListPageSource,
+    SourceSource,
 )
 from Classes.types import TextFormat, Types
 from Classes.useful import MISSING
@@ -41,22 +41,21 @@ tick = (
 #
 
 
-class command:
+class command(ShakeCommand):
     def __init__(
         self,
-        ctx: ShakeContext,
+        ctx,
         user: User,
         member: Optional[Member] = None,
         fallback: Optional[Member] = None,
     ):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+        super().__init__(ctx)
         self.user: User = user
         self.member: Optional[Member] = member
         self.fallback: Optional[Member] = fallback
 
     async def __await__(self):
-        select = CategoricalSelect(self.ctx, source=UserItems)
+        select = CategoricalSelect(self.ctx, source=SourceSource)
         menu = Menu(
             ctx=self.ctx,
             source=Front(),
@@ -88,7 +87,7 @@ class command:
 
         menu.add_categories(categories=categories)
         if await menu.setup():
-            await menu.send()
+            await menu.send(ephemeral=True)
 
 
 class Menu(CategoricalMenu):
@@ -163,7 +162,7 @@ class RolesSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.items)
             )
         )
-        return embed
+        return embed, None
 
 
 class AssetsSource(ListPageSource):
@@ -225,7 +224,7 @@ class AssetsSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum
             )
         )
-        return embed
+        return embed, None
 
 
 class PositionSource(ItemPageSource):
@@ -314,7 +313,7 @@ class PositionSource(ItemPageSource):
         embed.set_footer(
             text=_("Total of {items} Members").format(items=len(self.guild.members))
         )
-        return embed
+        return embed, None
 
 
 class BadgesSource(ItemPageSource):
@@ -348,31 +347,10 @@ class BadgesSource(ItemPageSource):
             )
             embed.add_field(name=str(badge) + " " + name, value="\u200b")
 
-        return embed
+        return embed, None, None
 
 
 features = RolesSource | BadgesSource | AssetsSource | PositionSource
-
-
-class UserItems(AnyPageSource):
-    def __init__(self, ctx: ShakeContext, group: features, **kwargs) -> None:
-        super().__init__()
-        self.ctx = ctx
-        self.group: features = group
-
-    def is_paginating(self) -> bool:
-        return True
-
-    def get_max_pages(self) -> Optional[int]:
-        return self.group.get_max_pages()
-
-    async def get_page(self, page: int) -> Any:
-        source = await self.group.get_page(page)
-        return source
-
-    def format_page(self, *args: Any, **kwargs: Any) -> Tuple[ShakeEmbed, File]:
-        embed = self.group.format_page(*args, **kwargs)
-        return embed, None
 
 
 class Front(FrontPageSource):
@@ -467,11 +445,7 @@ class Front(FrontPageSource):
         if banner := getattr(user, "banner", None):
             embed.set_image(url=banner.url)
         else:
-            embed.add_field(
-                name="\u200b",
-                value=TextFormat.blockquotes(menu.bot.config.embed.footer),
-                inline=False,
-            )
+            embed.advertise(self.bot)
         return embed, None
 
 
@@ -526,7 +500,7 @@ class ActivitieSource(ItemPageSource):
                 page=menu.page + 1, pages=self.maximum
             )
         )
-        return embed
+        return embed, None
 
 
 class PremiumSource(ListPageSource):
@@ -563,4 +537,4 @@ class PremiumSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.entries)
             )
         )
-        return embed
+        return embed, None

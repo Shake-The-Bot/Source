@@ -1,22 +1,26 @@
 from asyncio import TaskGroup
 from collections import Counter
+from datetime import datetime
 from typing import Dict, List, Literal, Optional, Tuple
 
-from discord import Guild, Member, Message, PartialEmoji, TextChannel
+from discord import Guild, Member, Message, TextChannel
 from discord.ext.commands import BucketType, CooldownMapping
 
 from Classes import (
     MISSING,
+    AboveMeBatch,
     CountingBatch,
+    OneWordBatch,
     ShakeBot,
     ShakeEmbed,
     TextFormat,
     _,
     current,
-    human_join,
     tens,
 )
 
+Literals = Literal["aboveme", "counting", "oneword"]
+SystemType = Tuple[Optional[ShakeEmbed], bool, bool]
 ############
 #
 
@@ -43,9 +47,10 @@ class Event:
         async with TaskGroup() as tg:
             tg.create_task(self.check(game="counting"))
             tg.create_task(self.check(game="aboveme"))
+            tg.create_task(self.check(game="oneword"))
         return
 
-    async def check(self, game: Literal["aboveme", "counting"]):
+    async def check(self, game: Literals):
         cache = self.bot.cache.get(game, list())
         r = False
         if self.channel.id in cache:
@@ -66,55 +71,68 @@ class Event:
             if self.channel.id in records:
                 self.bot.cache.setdefault(game, list())
                 self.bot.cache[game].append(self.channel.id)
-                func = getattr(self, game, MISSING)
-                if func:
-                    r = await func()
+                if (not self.message.content) or bool(self.message.attachments):
+                    embed = ShakeEmbed(timestamp=None)
+                    embed.description = TextFormat.bold(
+                        _(
+                            "You should not write anything other than messages with text content!"
+                        )
+                    )
+                    await self.message.reply(embed=embed, delete_after=10)
+                    await self.message.delete(delay=10)
+                else:
+                    func = getattr(self, game, MISSING)
+                    if func:
+                        r = await func()
 
         await self.unvalidate(game=game)
         return r
 
-    async def unvalidate(self, game: Literal["aboveme", "counting"]) -> None:
+    async def unvalidate(self, game: Literals) -> None:
         async with self.bot.gpool.acquire() as connection:
-            records = [
-                r[0]
+            unvalids = [
+                str(r[0])
                 for r in await connection.fetch(
                     f"SELECT channel_id FROM {game} WHERE guild_id = $1",
                     self.guild.id,
                 )
+                if not self.bot.get_channel(r[0])
             ]
 
-            unvalids = [
-                str(channel_id)
-                for channel_id in records
-                if not self.bot.get_channel(channel_id)
-            ]
             if unvalids:
                 await connection.execute(
                     f"DELETE FROM {game} WHERE channel_id IN {'('+', '.join(unvalids)+')'};",
                 )
 
-    # async def await_oneword(self):
-    #     oneword = systems.oneword(
-    #         member=self.author, message=self.message, bot=self.bot
-    #     )
-    #     if await oneword.__await__() is False:
-    #         return False
-    #     delete_message = oneword.do.get("delete_message", False)
-    #     add_reaction = oneword.do.get("add_reaction", False)
-    #     add_bad = oneword.do.get("add_bad_reaction", False)
-    #     with suppress(Forbidden, HTTPException):
-    #         if add_bad or add_reaction:
-    #             await self.message.add_reaction(
-    #                 "☑️" if add_reaction else self.bot.emojis.cross
-    #             )
-    #         if getattr(oneword, "kwargs", None):
-    #             await self.message.channel.send(
-    #                 **getattr(oneword, "kwargs"),
-    #                 delete_after=10 if delete_message else None
-    #             )
-    #         if delete_message:
-    #             await self.message.delete(delay=10)
-    #     return True
+    async def oneword(self):
+        system = OneWord(
+            bot=self.bot,
+            channel=self.channel,
+            guild=self.guild,
+            spam_control=CooldownMapping.from_cooldown(10, 12.0, BucketType.user),
+        )
+        embed, delete, bad_reaction = await system.__await__(
+            member=self.author, message=self.message
+        )
+
+        if all([embed is None, delete is None, bad_reaction is None]):
+            return
+
+        if not bad_reaction is False:
+            await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
+        if embed:
+            last = self.channel.last_message
+            if last:
+                descriptions = [embed.description[-22:] for embed in last.embeds]
+            else:
+                descriptions = []
+            if not embed.description[-22:] in descriptions:
+                await self.message.reply(
+                    embed=embed, delete_after=10 if delete else None
+                )
+        if delete:
+            await self.message.delete(delay=10)
+        return True
 
     async def aboveme(self):
         system = AboveMe(
@@ -130,7 +148,8 @@ class Event:
         if all([embed is None, delete is None, bad_reaction is None]):
             return
 
-        await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
+        if not bad_reaction is False:
+            await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
         if embed:
             last = self.channel.last_message
             if last:
@@ -159,9 +178,10 @@ class Event:
         if all([embed is None, delete is None, bad_reaction is None]):
             return
 
-        await self.message.add_reaction(
-            ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
-        )
+        if not bad_reaction is False:
+            await self.message.add_reaction(
+                ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
+            )
         if embed:
             last = self.channel.last_message
             if last:
@@ -174,6 +194,144 @@ class Event:
                 )
         if delete:
             await self.message.delete(delay=10)
+        return True
+
+
+class OneWord:
+    channel: TextChannel
+    guild: Guild
+    cache: Dict[int, List]
+    trigger: str
+    spam_control: CooldownMapping
+
+    def __init__(
+        self,
+        bot: ShakeBot,
+        guild: Guild,
+        channel: TextChannel,
+        spam_control: CooldownMapping,
+    ):
+        self.bot = bot
+        self.cache = self.bot.cache["OneWord"]
+        self.channel = channel
+        self.guild = guild
+        self.spam_control = spam_control
+        self._auto_spam_count = Counter()
+
+    async def __await__(self, member: Member, message: Message) -> SystemType:
+        content: str = message.clean_content.strip()
+        time = message.created_at
+        testing: bool = any(
+            _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
+        )
+
+        if self.channel.id in self.cache:
+            record: dict = self.cache[self.channel.id]
+        else:
+            async with self.bot.gpool.acquire() as connection:
+                record: dict = await connection.fetchrow(
+                    "SELECT * FROM oneword WHERE channel_id = $1",
+                    self.channel.id,
+                )
+
+        user_id: int = record["user_id"]
+        count: int = record["count"] or 0
+        words: List[str] = record["words"] or []
+        used: datetime = record["used"]
+        react: bool = record["react"] or True
+        phrase: str = record["phrase"] or ""
+
+        embed = ShakeEmbed(timestamp=None)
+
+        delete = bad_reaction = passed = False
+
+        if not await self.member_check(user_id, member, testing):
+            embed.description = TextFormat.bold(
+                _("""You are not allowed show off multiple words in a row.""")
+            )
+            delete = bad_reaction = True
+
+        elif not await self.syntax_check(content):
+            embed.description = TextFormat.bold(
+                _("your message should contain only one word or punctuation marks.")
+            )
+            delete = bad_reaction = True
+
+        elif not await self.words_check(content, words):
+            embed.description = TextFormat.bold(
+                _("Your word should not already be in the sentance.")
+            )
+            delete = bad_reaction = True
+
+        else:
+            passed = True
+            if await self.finisher_check(content):
+                embed.description = TextFormat.bold(
+                    _("You've finally finished the sentence")
+                )
+                phrase = " ".join(words)
+            else:
+                embed = None
+                words.append(content)
+
+        self.cache[self.channel.id]: OneWordBatch = {
+            "channel_id": self.channel.id,
+            "user_id": member.id if passed else user_id,
+            "used": time.isoformat() if passed else used,
+            "phrase": phrase,
+            "words": [] if passed else words,
+            "react": react,
+            "count": count + 1 if passed else count,
+        }
+
+        return embed, delete, bad_reaction if react else False
+
+    async def words_check(self, content: str, words: List[str]):
+        if content in words:
+            return False
+        return True
+
+    async def finisher_check(self, content: str):
+        finisher = (".", "!", "?")
+
+        if content.startswith(finisher) and content.endswith(finisher):
+            return True
+
+        return False
+
+    async def syntax_check(self, content: str):
+        digit = content.isdigit()
+        if digit:
+            return False
+
+        finisher = (".", "!", "?")
+
+        if content.startswith(finisher) and content.endswith(finisher):
+            return True
+
+        if any(_ in content for _ in finisher):
+            return False
+
+        if len(content.split()) > 1:
+            return False
+
+        checks = ["_", "/", "-"]
+        for check in checks:
+            if len(content.split(check)) > 1:
+                return False
+
+        return True
+
+    async def member_check(
+        self,
+        user_id: int,
+        member: Member,
+        testing: bool,
+    ):
+        if testing and await self.bot.is_owner(member):
+            return True
+        elif user_id == member.id:
+            return False
         return True
 
 
@@ -202,7 +360,7 @@ class AboveMe:
     async def __await__(
         self, member: Member, message: Message
     ) -> Tuple[Optional[ShakeEmbed], bool, bool]:
-        content: str = message.clean_content
+        content: str = message.clean_content.strip()
         time = message.created_at
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
@@ -219,6 +377,8 @@ class AboveMe:
 
         user_id: int = record["user_id"]
         count: int = record["count"] or 0
+        used: datetime = record["used"]
+        react: bool = record["react"] or True
         phrases: List[str] = record["phrases"] or []
 
         embed = ShakeEmbed(timestamp=None)
@@ -251,23 +411,23 @@ class AboveMe:
             passed = True
             embed = None
 
-            if len(phrases) >= 10:
-                for i in range(len(phrases[10:-1])):
-                    phrases.pop(i)
+            while len(phrases) > 9:
+                phrases.pop()
             phrases.insert(0, content)
 
-        self.cache[self.channel.id]: CountingBatch = {
+        self.cache[self.channel.id]: AboveMeBatch = {
             "channel_id": self.channel.id,
-            "user_id": member.id,
-            "used": time.isoformat(),
+            "user_id": member.id if passed else user_id,
+            "used": time.isoformat() if passed else used,
             "phrases": phrases,
+            "react": react,
             "count": count + 1 if passed else count,
         }
 
-        return embed, delete, bad_reaction
+        return embed, delete, bad_reaction if react else False
 
     async def phrase_check(self, content: str, phrases: List[str]):
-        if content.strip() in phrases:
+        if content in phrases:
             return False
         return True
 
@@ -275,7 +435,7 @@ class AboveMe:
         if not content.lower().startswith(self.trigger.lower()):
             return False
 
-        if not content.lower().removeprefix(self.trigger.lower()).strip():
+        if not content.lower().removeprefix(self.trigger.lower()):
             return False
         return True
 
@@ -315,7 +475,7 @@ class Counting:
     async def __await__(
         self, member: Member, message: Message
     ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
-        content: str = message.clean_content
+        content: str = message.clean_content.strip()
         time = message.created_at
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
@@ -335,7 +495,8 @@ class Counting:
         user_id: int = record["user_id"]
         goal: int = record["goal"]
         count: int = record["count"] or 0
-        used: str = record["used"]
+        used: datetime = record["used"]
+        react: bool = record["react"] or True
         numbers: bool = record["numbers"]
         backup: int = tens(count, True) - 1
         reached: bool = False
@@ -430,16 +591,17 @@ class Counting:
         s = streak + 1 if passed else streak
         self.cache[self.channel.id]: CountingBatch = {
             "channel_id": self.channel.id,
-            "user_id": member.id,
-            "used": time.isoformat(),
+            "user_id": member.id if passed else user_id,
+            "used": time.isoformat() if passed else used,
             "streak": s,
+            "react": react,
             "best": s if s > best else best,
             "count": count + 1 if passed else count,
             "goal": None if reached else goal,
             "numbers": numbers,
         }
 
-        return embed, delete, bad_reaction
+        return embed, delete, bad_reaction if react else False
 
     async def syntax_check(self, content: str):
         if not content.isdigit():

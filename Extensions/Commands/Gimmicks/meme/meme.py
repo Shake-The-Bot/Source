@@ -2,16 +2,15 @@
 #
 from discord import PartialEmoji
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 from Classes.helpful import Submission
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext, subreddit: str):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, subreddit: str):
+        super().__init__(ctx)
         self.subreddit = subreddit
 
     def format(self, post: Submission):

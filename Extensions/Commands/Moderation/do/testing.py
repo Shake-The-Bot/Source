@@ -1,16 +1,18 @@
 ############
 #
 from copy import copy
-from Classes import ShakeContext
+
+from Classes import ShakeCommand
+
+
 ########
 #
-class command():
-    def __init__(self, ctx: ShakeContext, times: int, command: str):
-        self.ctx = ctx
-        self.bot = ctx.bot
+class command(ShakeCommand):
+    def __init__(self, ctx, times: int, command: str):
+        super().__init__(ctx)
         self.times = times
         self.command = command
-        
+
     async def __await__(self):
         msg = copy(self.ctx.message)
         msg.content = self.ctx.prefix + self.command

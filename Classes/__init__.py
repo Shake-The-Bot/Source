@@ -33,9 +33,7 @@ class VersionInfo(NamedTuple):
     serial: int
 
     def __str__(self) -> str:
-        return "{}.{}.{}@{}.{}".format(
-            self.major, self.minor, self.micro, self.releaselevel, self.serial
-        )
+        return "{}.{}.{}".format(self.major, self.minor, self.micro)
 
 
 __title__ = "Shake"

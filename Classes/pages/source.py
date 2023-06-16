@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from Classes.helpful import ShakeBot, ShakeContext
 
 __all__ = (
-    "AnyPageSource",
+    "SourceSource",
     "FrontPageSource",
     "ItemPageSource",
     "ListPageSource",
@@ -24,19 +24,25 @@ __all__ = (
 #
 
 
-class AnyPageSource(menus.PageSource):
+class SourceSource(menus.PageSource):
+    group: SourceTypes
+
+    def __init__(self, ctx: ShakeContext, group, **kwargs) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.group = group
+
     def is_paginating(self) -> bool:
-        raise NotImplemented
+        return self.group.is_paginating()
 
     def get_max_pages(self) -> Optional[int]:
-        raise NotImplemented
+        return self.group.get_max_pages()
 
     async def get_page(self, page: int) -> Any:
-        self.page = page
-        return self
+        return await self.group.get_page(page)
 
-    def format_page(self, menu: page.menus, items: Any) -> Tuple[ShakeEmbed, File]:
-        raise NotImplemented
+    def format_page(self, *args: Any, **kwargs: Any) -> Tuple[ShakeEmbed, File]:
+        return self.group.format_page(*args, **kwargs)
 
 
 class ItemPageSource(menus.PageSource):
@@ -65,7 +71,7 @@ class ItemPageSource(menus.PageSource):
         return self.__label
 
     @property
-    def display_emoji(self) -> PartialEmoji:
+    def emoji(self) -> PartialEmoji:
         return PartialEmoji(name="dot", id=1093146860182568961)
 
     def is_paginating(self) -> bool:
@@ -117,7 +123,7 @@ class ListPageSource(menus.ListPageSource):
         raise NotImplemented
 
     @property
-    def display_emoji(self) -> PartialEmoji:
+    def emoji(self) -> PartialEmoji:
         return PartialEmoji(name="dot", id=1093146860182568961)
 
     @property

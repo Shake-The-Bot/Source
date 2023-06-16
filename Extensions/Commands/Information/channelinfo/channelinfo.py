@@ -1,12 +1,11 @@
 from typing import Optional
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, channeltypes
+from Classes import ShakeCommand, ShakeEmbed, channeltypes
 
 
-class command:
-    def __init__(self, ctx: ShakeContext, channel: Optional[channeltypes]) -> None:
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+class command(ShakeCommand):
+    def __init__(self, ctx, channel: Optional[channeltypes]) -> None:
+        super().__init__(ctx)
         self.channel: channeltypes = (
             channel or getattr(ctx.author.voice, "channel", None) or ctx.channel
         )

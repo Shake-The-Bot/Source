@@ -87,12 +87,9 @@ def setlocale(guild: Optional[bool] = False) -> Check[Any]:
     async def predicate(
         ctx: Optional[Context] = None, interaction: Optional[Interaction] = None
     ) -> bool:
-        if not ctx is None:
-            bot: ShakeBot = ctx.bot
-        elif not interaction is None:
-            bot: ShakeBot = interaction.client
-        else:
-            return False
+        if isinstance(interaction, Interaction):
+            ctx = Context.from_interaction(ctx)
+        bot: ShakeBot = ctx.bot
 
         locale = (
             await bot.locale.get_guild_locale(ctx.guild.id, default="en-US")

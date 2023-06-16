@@ -2,16 +2,12 @@
 #
 from discord import ButtonStyle, Interaction, ui
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeCommand, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
-
+class command(ShakeCommand):
     async def __await__(self):
         await self.ctx.chat(_("Start?"), view=EphemeralCounter())
 

@@ -4,17 +4,17 @@ from importlib import reload
 from typing import Optional
 
 from discord import PartialEmoji, TextChannel
-from discord.ext.commands import guild_only, hybrid_group
+from discord.ext.commands import guild_only, has_permissions, hybrid_group
 
-from Classes import ShakeBot, ShakeContext, Slash, Testing, _, locale_doc, setlocale
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..games import Games
+from ..features import Features
 from . import aboveme, testing
 
 
 ########
 #
-class aboveme_extension(Games):
+class aboveme_extension(Features):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:
@@ -40,13 +40,15 @@ class aboveme_extension(Games):
     @aboveme.command(name="setup")
     @guild_only()
     @setlocale()
+    @has_permissions(administrator=True)
+    @extras(permissions=True)
     @locale_doc
     async def setup(
         self,
         ctx: ShakeContext,
         /,
         channel: Optional[TextChannel] = None,
-        hardcore: Optional[bool] = False,
+        react: Optional[bool] = None,
     ):
         _(
             """Setup the whole AboveMe game in seconds
@@ -63,7 +65,7 @@ class aboveme_extension(Games):
         do = testing if ctx.testing else aboveme
 
         try:
-            await do.command(ctx=ctx, channel=channel, hardcore=hardcore).__await__()
+            await do.command(ctx=ctx).setup(channel=channel, react=react)
 
         except:
             if ctx.testing:

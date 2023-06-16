@@ -18,7 +18,7 @@ from typing import Optional
 from discord import Message, Reaction, User
 from discord.ext import commands
 
-from Classes import ShakeBot, ShakeContext
+from Classes import ShakeCommand, ShakeContext
 
 
 ########
@@ -155,10 +155,9 @@ class TextPaginator:
             await self.update()
 
 
-class command:
+class command(ShakeCommand):
     def __init__(self, ctx, command: str):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.command = command
 
     async def __await__(self):
@@ -173,7 +172,11 @@ class command:
         buf = []
         time_since_last_update = perf_counter()
         written = False
-        while process.returncode is None or not process.stdout.at_eof():
+        while (
+            process.returncode is None
+            or not process.stdout.at_eof()
+            or not process.stderr.at_eof()
+        ):
             done, pending = await wait(tasks, return_when=FIRST_COMPLETED)
             assert done
             for future in done:

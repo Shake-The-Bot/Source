@@ -3,19 +3,16 @@
 from typing import Optional
 
 from discord import Member
-from discord.ext.commands import Greedy, errors
+from discord.ext.commands import Greedy
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 
 
 ########
 #
-class command:
-    def __init__(
-        self, ctx: ShakeContext, member: Greedy[Member], reason: Optional[str]
-    ):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, member: Greedy[Member], reason: Optional[str]):
+        super().__init__(ctx)
         self.member: Greedy[Member] = member
         self.reason: Optional[str] = reason or _("No reason provided")
 

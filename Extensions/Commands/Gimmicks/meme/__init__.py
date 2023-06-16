@@ -4,7 +4,7 @@ from importlib import reload
 from typing import Optional
 
 from discord import PartialEmoji
-from discord.ext.commands import guild_only, hybrid_command
+from discord.ext.commands import guild_only, hybrid_command, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
@@ -27,9 +27,10 @@ class meme_extension(Gimmicks):
         return PartialEmoji(name="\N{INPUT SYMBOL FOR NUMBERS}")
 
     @hybrid_command(name="meme")
-    @extras(beta=True)
+    @extras(beta=True, owner=True)
     @guild_only()
     @setlocale()
+    @is_owner()
     @locale_doc
     async def meme(self, ctx: ShakeContext, subreddit: Optional[str] = None):
         _(

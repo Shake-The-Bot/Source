@@ -1,106 +1,308 @@
 ############
 #
-from inspect import cleandoc
+import platform
+from datetime import timedelta
 from platform import python_version
+from time import time
+from typing import Any, Dict, List, Tuple
 
-from discord import __version__ as dpyversion
+import cpuinfo
+from discord import __version__ as discord_version
+from discord.ext.commands import Command
+from discord.utils import format_dt
 from humanize import naturalsize
-from psutil import cpu_percent, virtual_memory
+from psutil import Process, cpu_percent, virtual_memory
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import (
+    MISSING,
+    ShakeBot,
+    ShakeCommand,
+    ShakeContext,
+    ShakeEmbed,
+    TextFormat,
+    _,
+    __version__,
+)
+from Classes.pages import (
+    CategoricalMenu,
+    CategoricalSelect,
+    FrontPageSource,
+    ItemPageSource,
+    ListPageSource,
+    SourceSource,
+)
 from Classes.useful import human_join
-
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+
+
+class command(ShakeCommand):
+    commands: List[Tuple[str, int]]
+    bot: ShakeBot
+    ctx: ShakeContext
+
+    def __init__(self, ctx, commands):
+        super().__init__(ctx)
+        self.commands = commands
 
     async def __await__(self):
-        owner_ids = (
-            self.bot.owner_ids if bool(self.bot.owner_ids) else self.bot.owner_id or []
-        )
-        owners = human_join(
-            seq=[
-                (await self.bot.get_user_global(owner_id)).mention
-                for owner_id in owner_ids
-                if await self.bot.get_user_global(owner_id)
-            ]
+        select = CategoricalSelect(self.ctx, source=SourceSource)
+        menu = CategoricalMenu(ctx=self.ctx, source=Front(), select=select)
+        categories = {
+            CommandsSource(ctx=self.ctx, commands=self.commands): self.bot.commands,
+            SystemSource(ctx=self.ctx): self,
+            BotSource(ctx=self.ctx): self.bot,
+        }
+
+        menu.add_categories(categories=categories)
+        if await menu.setup():
+            await menu.send(ephemeral=True)
+
+
+class BotSource(ItemPageSource):
+    item: ShakeBot
+
+    def __init__(self, ctx: ShakeContext, *args, **kwargs):
+        super().__init__(
+            ctx,
+            item=ctx.bot,
+            title=MISSING,
+            label=_("Bot"),
+            *args,
+            **kwargs,
         )
 
-        embed = ShakeEmbed.default(
-            self.ctx,
-            title=_("Shake Statistics"),
-        )
-        embed.description = cleandoc(
-            f"""
-            > [**{_("Support Server Invite")}**]({self.bot.config.other.server})
-            > ➥ {_("Official server")}
+    async def format_page(
+        self, menu: CategoricalMenu, args: Any, **kwargs: Any
+    ) -> ShakeEmbed:
+        embed = ShakeEmbed()
+        embed.title = _("Bot Info")
 
-            > [**{_('Invite bot to the server')}**]({self.bot.config.other.authentication})
-            > ➥ {_('Invite Shake Bot')}
-            """
-        )
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        uptime = format_dt(menu.bot.started, "R")
+        embed.add_field(name=_("Started"), value=TextFormat.blockquotes(uptime))
         embed.add_field(
-            name=_("host"),
-            inline=True,
-            value=cleandoc(
-                """```py
-                {cpu}: %(cpu)-6s
-                {ram}: %(ram)-6s
-                ```"""
-                % {
-                    "cpu": str(cpu_percent()).split(".")[0] + "%",
-                    "ram": str(naturalsize(virtual_memory().total)),
-                }
-            ).format(cpu=_("cpu"), ram=_("ram")),
-        )
-        embed.add_field(
-            name=_("bot"),
-            inline=True,
-            value=cleandoc(
-                """```py
-                {server}: %(guild_count)s 
-                {user}: %(user)-9s 
-                ```"""
-                % {
-                    "guild_count": len(self.bot.guilds),
-                    "user": sum(len(guild.members) for guild in self.bot.guilds),
-                }
-            ).format(server=_("server"), user=_("user")),
-        )
-        embed.add_field(
-            name=_("utils"),
-            inline=True,
-            value=cleandoc(
-                """```py
-                python: %(python)-5s
-                dpy: %(dpy)-5s
-                ```"""
-                % {"python": python_version(), "dpy": dpyversion}
+            name=_("Ping"),
+            value=TextFormat.bold(
+                TextFormat.blockquotes(round(menu.bot.latency * 1000)) + "ms"
             ),
         )
-        query = "SELECT used_commands FROM commands WHERE id = $1;"
         embed.add_field(
-            name=_("commands"),
-            inline=True,
-            value=cleandoc(
-                """```py
-                {amount}: %(amout_commands)s
-                {used}: %(used_commands)s
-                ```"""
-                % {
-                    "amout_commands": len(self.bot.commands),
-                    "used_commands": f"{await self.bot.pool.fetchval(query, self.bot.user.id):,}".replace(
-                        ",", "."
-                    ),
-                }
-            ).format(amount=_("amout"), used=_("used")),
+            name=_("Lines of Code"),
+            value=TextFormat.bold(TextFormat.blockquotes(menu.bot.lines)),
         )
-        await self.ctx.chat(embed=embed)
+
+        embed.add_field(
+            name=_("Servers"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(len(menu.bot.guilds), "css")
+            ),
+        )
+
+        embed.add_field(
+            name=_("Users"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(len(menu.bot.users), "css")
+            ),
+        )
+
+        embed.add_field(
+            name=_("Commands"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(len(menu.bot.commands), "css")
+            ),
+        )
+
+        return embed, None
+
+
+class SystemSource(ItemPageSource):
+    item: Process
+
+    def __init__(self, ctx: ShakeContext, *args, **kwargs):
+        super().__init__(
+            ctx,
+            item=Process(),
+            title=MISSING,
+            label=_("System"),
+            *args,
+            **kwargs,
+        )
+
+    async def format_page(
+        self, menu: CategoricalMenu, args: Any, **kwargs: Any
+    ) -> ShakeEmbed:
+        embed = ShakeEmbed()
+        embed.title = _("System Info")
+
+        embed.add_field(
+            name=_("Bot"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock("Shake v " + str(__version__), "css")
+            ),
+        )
+
+        embed.add_field(
+            name=_("Python version"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(python_version(), "css")
+            ),
+        )
+
+        embed.add_field(
+            name=_("Library version"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock("discord.py " + discord_version, "css")
+            ),
+        )
+
+        with self.item.oneshot():
+            uptime = timedelta(seconds=time() - self.item.create_time())
+            uptime = uptime - timedelta(microseconds=uptime.microseconds)
+
+            cpu = self.item.cpu_times()
+            cpu_time = timedelta(seconds=cpu.system + cpu.user)
+            cpu_time = cpu_time - timedelta(microseconds=cpu_time.microseconds)
+
+            mem_total = virtual_memory().total / (1024**2)
+            mem_of_total = self.item.memory_percent()
+            mem_usage = mem_total * (mem_of_total / 100)
+
+        cpu_usage = str(cpu_percent()).split(".")[0] + "%"
+        memory_usage = f"{mem_usage:,.0f} / {mem_total:,.0f} MiB ({mem_of_total:.0f}%)"
+
+        embed.add_field(
+            name=_("Memory Usage"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(memory_usage, "css")
+            ),
+        )
+        cpu = " | ".join([str(_) for _ in (cpu_usage, cpu_time)])
+        embed.add_field(
+            name=_("CPU Usage"),
+            value=TextFormat.multiblockquotes(TextFormat.multicodeblock(cpu, "css")),
+        )
+
+        embed.add_field(
+            name=_("Plattform"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(platform.system(), "css")
+            ),
+            inline=False,
+        )
+
+        return embed, None
+
+
+class CommandsSource(ListPageSource):
+    commands: Dict[str, int]
+    ctx: ShakeContext
+
+    def __init__(self, ctx, commands: List[Tuple[str, int]], *args, **kwargs):
+        self.commands = dict(
+            [(command, uses) for command, uses in commands if uses > 1]
+        )
+        super().__init__(
+            ctx,
+            items=list(self.commands.keys()),
+            title=MISSING,
+            label=_("Commands"),
+            paginating=True,
+            per_page=30,
+            *args,
+            **kwargs,
+        )
+
+    def format_page(
+        self, menu: CategoricalMenu, items: List[Command], **kwargs: Any
+    ) -> ShakeEmbed:
+        n = len(items) // 2
+        first_half, sec_half = (items[:n], items[n:])
+
+        embed = ShakeEmbed()
+        embed.add_field(
+            name=_("Most used commands"),
+            value="\n".join(
+                [
+                    "` {}. ` {} - {}".format(
+                        list(self.commands.keys()).index(command) + 1,
+                        TextFormat.bold(self.commands[command]),
+                        command,
+                    )
+                    for command in first_half
+                ]
+            ),
+        )
+        embed.add_field(
+            name="\u200b",
+            value="\n".join(
+                [
+                    "` {}. ` {} - {}".format(
+                        list(self.commands.keys()).index(command) + 1,
+                        TextFormat.bold(self.commands[command]),
+                        command,
+                    )
+                    for command in sec_half
+                ]
+            ),
+        )
+        return embed, None
+
+
+class Front(FrontPageSource):
+    async def format_page(self, menu: CategoricalMenu, items: Any):
+        owners = [
+            str(await menu.bot.get_user_global(user_id))
+            for user_id in menu.bot.owner_ids
+        ]
+
+        embed = ShakeEmbed.default(menu.ctx)
+        embed.title = _("Shake Statistics Overview")
+
+        links = [
+            TextFormat.hyperlink(
+                _("Support Server Link"), menu.bot.config.other.server
+            ),
+            TextFormat.hyperlink(
+                _("Shake Invition Link"), menu.bot.config.other.authentication
+            ),
+        ]
+
+        embed.description = "\n".join(
+            [TextFormat.list(TextFormat.bold(_)) for _ in links]
+        )
+
+        if bool(owners):
+            embed.add_field(
+                name=_("Developer"),
+                value=TextFormat.multiblockquotes(
+                    TextFormat.multicodeblock(" - ".join(owners), "css")
+                ),
+                inline=False,
+            )
+
+        embed.add_field(
+            name=_("Bot name"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(menu.bot.user, "css")
+            ),
+        )
+        embed.add_field(
+            name=_("Bot ID"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(menu.bot.user.id, "css")
+            ),
+        )
+
+        created_at = format_dt(menu.bot.user.created_at, "F")
+        embed.add_field(
+            name=_("Bot creation"),
+            value=TextFormat.blockquotes(created_at),
+            inline=False,
+        )
+
+        embed.advertise(menu.bot)
+        return embed, None
 
 
 #

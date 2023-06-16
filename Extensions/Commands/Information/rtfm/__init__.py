@@ -76,7 +76,7 @@ class rtfm_extension(Information):
         do = testing if ctx.testing else rtfm
 
         try:
-            await do.command(ctx, key.value, entity).__await__()
+            await do.command(ctx).__await__(key.value, entity)
 
         except:
             if ctx.testing:
@@ -104,7 +104,7 @@ class rtfm_extension(Information):
         do = testing if ctx.testing else rtfm
 
         try:
-            await do.command(ctx=ctx, member=member).do_sub()
+            await do.command(ctx=ctx).stats(member=member)
 
         except:
             if ctx.testing:

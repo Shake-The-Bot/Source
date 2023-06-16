@@ -13,7 +13,7 @@ from typing import Any
 
 from discord import Forbidden, HTTPException
 
-from Classes import MISSING, ShakeBot, ShakeContext
+from Classes import MISSING, ShakeCommand
 
 
 ########
@@ -56,10 +56,9 @@ def cleanup(content: str) -> str:
     return content
 
 
-class command:
+class command(ShakeCommand):
     def __init__(self, ctx, code: str, env, last):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.code = code
         self.last: Any = last
         self.env = env

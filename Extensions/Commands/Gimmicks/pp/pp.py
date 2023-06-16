@@ -5,16 +5,15 @@ from typing import List
 
 from discord import Member
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeBot, ShakeCommand, ShakeEmbed, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext, member: List[Member]):
+class command(ShakeCommand):
+    def __init__(self, ctx, member: List[Member]):
+        super().__init__(ctx)
         self.member: List[Member] = member
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
 
     async def __await__(self):
         embed = ShakeEmbed.default(

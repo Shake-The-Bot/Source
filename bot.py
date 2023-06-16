@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import Logger, getLogger
 from types import ModuleType
 from typing import TYPE_CHECKING, Dict, Optional, Sequence
@@ -24,6 +25,7 @@ class ShakeBot(BotBase):
     logger: Logger
 
     def __init__(self, **options):
+        self.started = datetime.now()
         self.log: Logger = getLogger()
         super().__init__(**options)
         self.__version__ = __version__

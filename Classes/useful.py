@@ -99,13 +99,17 @@ def human_join(
     _("or")
     _("and")  # „Just in case gettext gets this“
 
-    sizes = {
-        0: "",
-        1: seq[0],
-        2: " ".join([seq[0], final, seq[1]]),
-    }
+    if len(seq) == 0:
+        return ""
 
-    return sizes.get(len(seq), delimiter.join(seq[:-1]) + f" {final} {seq[-1]}")
+    elif len(seq) == 1:
+        return seq[0]
+
+    elif len(seq) == 2:
+        return " ".join([seq[0], final, seq[1]])
+
+    else:
+        return delimiter.join(seq[:-1]) + f" {final} {seq[-1]}"
 
 
 """     Text     """
@@ -114,8 +118,8 @@ def human_join(
 def string(
     text: str,
     *format: str,
-    front: Optional[str | bool] = None,
-    end: Optional[str | bool] = None,
+    front: Optional[List[str] | bool] = None,
+    end: Optional[List[str] | bool] = None,
     iterate: bool = True,
 ):
     front = (
@@ -246,9 +250,7 @@ async def cogshandler(ctx: Context, extensions: list[str], method: Enum) -> None
 
         return None
 
-    return dict(
-        (extension, await handle(method, extension)) for extension in extensions
-    )
+    return {extension: await handle(method, extension) for extension in extensions}
 
 
 async def dump(

@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, get_args
 
 from discord import (
     Asset,
@@ -18,14 +18,14 @@ from discord.enums import Status
 from discord.ext import menus
 from discord.utils import format_dt
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeContext, ShakeEmbed, _
 from Classes.pages import (
-    AnyPageSource,
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,
     ItemPageSource,
     ListPageSource,
+    SourceSource,
 )
 from Classes.types import TextFormat, Types, tick
 from Classes.useful import MISSING, human_join
@@ -34,10 +34,9 @@ from Classes.useful import MISSING, human_join
 #
 
 
-class command:
-    def __init__(self, ctx: ShakeContext, guild: Guild):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, guild: Guild):
+        super().__init__(ctx)
         self.guild: Guild = guild
 
     def channelinfo(
@@ -80,33 +79,40 @@ class command:
         return information
 
     async def __await__(self):
-        select = CategoricalSelect(self.ctx, source=ServerItems)
+        select = CategoricalSelect(self.ctx, source=SourceSource)
         menu = Menu(ctx=self.ctx, source=Front(), guild=self.guild, select=select)
 
-        menu.add_categories(
-            categories={
-                RolesSource(ctx=self.ctx, guild=self.guild): set(self.guild.roles),
-                AssetsSource(ctx=self.ctx, guild=self.guild): set(self.guild.emojis),
-                EmojisSource(ctx=self.ctx, guild=self.guild): [
-                    self.guild.icon,
-                    self.guild.banner,
-                    self.guild.splash,
-                    self.guild.discovery_splash,
-                ],
-                ChannelsSource(ctx=self.ctx, guild=self.guild): set(
-                    self.guild.channels
-                ),
-                MembersSource(ctx=self.ctx, guild=self.guild): set(self.guild.members),
-                ActivitiesSource(ctx=self.ctx, guild=self.guild): set(
-                    m.activities for m in self.guild.members
-                ),
-                PremiumSource(ctx=self.ctx, guild=self.guild): set(
-                    self.guild.premium_subscribers
-                ),
-            }
-        )
+        categoies = {
+            RolesSource(ctx=self.ctx, guild=self.guild): set(self.guild.roles),
+            EmojisSource(ctx=self.ctx, guild=self.guild): [
+                self.guild.icon,
+                self.guild.banner,
+                self.guild.splash,
+                self.guild.discovery_splash,
+            ],
+            ChannelsSource(ctx=self.ctx, guild=self.guild): set(self.guild.channels),
+            MembersSource(ctx=self.ctx, guild=self.guild): set(self.guild.members),
+            ActivitiesSource(ctx=self.ctx, guild=self.guild): set(
+                m.activities for m in self.guild.members
+            ),
+            PremiumSource(ctx=self.ctx, guild=self.guild): set(
+                self.guild.premium_subscribers
+            ),
+        }
+        assets: Dict[Asset, str] = {
+            self.guild.icon: _("Servers's icon"),
+            self.guild.splash: _("Servers's splash"),
+            self.guild.discovery_splash: _("Server's discovery splash"),
+            self.guild.banner: _("Servers's banner"),
+        }
+        if any(bool(_) for _ in assets):
+            categoies[AssetsSource(ctx=self.ctx, guild=self.guild)] = set(
+                self.guild.emojis
+            )
+
+        menu.add_categories(categories=categoies)
         if await menu.setup():
-            await menu.send()
+            await menu.send(ephemeral=True)
 
 
 class Menu(CategoricalMenu):
@@ -174,22 +180,26 @@ class RolesSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.items)
             )
         )
-        return embed
+        return embed, None
 
 
 class AssetsSource(ListPageSource):
     guild: Guild
 
-    def __init__(self, ctx: ShakeContext | Interaction, guild: Guild, *args, **kwargs):
+    def __init__(
+        self,
+        ctx: ShakeContext,
+        items: Dict[Optional[Asset], str],
+        guild: Guild,
+        *args,
+        **kwargs,
+    ):
         self.guild: Guild = guild
-        assets = list(
-            x
-            for x in [guild.icon, guild.banner, guild.splash, guild.discovery_splash]
-            if x
-        )
+        self.from_dict = items
+
         super().__init__(
             ctx,
-            items=assets,
+            items=list(x for x in items if x),
             title=MISSING,
             label=_("Avatar/Banner"),
             paginating=True,
@@ -199,14 +209,32 @@ class AssetsSource(ListPageSource):
         )
 
     def format_page(self, menu: Menu, items: Asset, **kwargs: Any) -> ShakeEmbed:
-        embed = ShakeEmbed(title=_("Server Asset"))
+        listed = []
+        formattypes = list(
+            get_args(
+                Types.ValidAssetFormatTypes.value
+                if items.is_animated()
+                else Types.ValidStaticFormatTypes.value
+            )
+        )
+        for formattype in formattypes:
+            listed.append(
+                TextFormat.hyperlink(
+                    str(formattype).upper(),
+                    items.replace(size=1024, format=f"{formattype}").url,
+                )
+            )
+        avatars = _("Open link: {links}").format(links=", ".join(listed))
+        embed = ShakeEmbed(
+            title=self.from_dict[items], description=avatars if bool(avatars) else None
+        )
         embed.set_image(url=items.url)
         embed.set_footer(
             text=_("Page {page} of {pages}").format(
                 page=menu.page + 1, pages=self.maximum
             )
         )
-        return embed
+        return embed, None
 
 
 class EmojisSource(ListPageSource):
@@ -254,7 +282,7 @@ class EmojisSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.items)
             )
         )
-        return embed
+        return embed, None
 
 
 class PremiumSource(ListPageSource):
@@ -291,7 +319,7 @@ class PremiumSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.entries)
             )
         )
-        return embed
+        return embed, None
 
 
 class ChannelsSource(ListPageSource):
@@ -371,7 +399,7 @@ class ChannelsSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum, items=len(self.entries)
             )
         )
-        return embed
+        return embed, None
 
 
 class MembersSource(ItemPageSource):
@@ -400,81 +428,81 @@ class MembersSource(ItemPageSource):
         infos = {
             str(member)
             + " "
-            + _("Total Members"): TextFormat.multiTextFormat.codeblock(len(members)),
+            + _("Total Members"): TextFormat.multicodeblock(len(members)),
             str(human)
             + " "
-            + _("Total Humans"): TextFormat.multiTextFormat.codeblock(
+            + _("Total Humans"): TextFormat.multicodeblock(
                 len([m for m in members if not m.bot])
             ),
             str(bot)
             + " "
-            + _("Total Bots"): TextFormat.multiTextFormat.codeblock(
+            + _("Total Bots"): TextFormat.multicodeblock(
                 len([m for m in members if m.bot])
             ),
             str(emojis.online)
             + " "
-            + _("Total Online"): TextFormat.multiTextFormat.codeblock(
+            + _("Total Online"): TextFormat.multicodeblock(
                 len([m for m in members if m.status == Status.online])
             ),
             str(emojis.online)
             + " "
-            + _("Humans Online"): TextFormat.multiTextFormat.codeblock(
+            + _("Humans Online"): TextFormat.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.online])
             ),
             str(emojis.online)
             + " "
-            + _("Bots Online"): TextFormat.multiTextFormat.codeblock(
+            + _("Bots Online"): TextFormat.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.online])
             ),
             str(emojis.idle)
             + " "
-            + _("Total Idle"): TextFormat.multiTextFormat.codeblock(
+            + _("Total Idle"): TextFormat.multicodeblock(
                 len([m for m in members if m.status == Status.idle])
             ),
             str(emojis.idle)
             + " "
-            + _("Humans Idle"): TextFormat.multiTextFormat.codeblock(
+            + _("Humans Idle"): TextFormat.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.idle])
             ),
             str(emojis.idle)
             + " "
-            + _("Bots Idle"): TextFormat.multiTextFormat.codeblock(
+            + _("Bots Idle"): TextFormat.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.idle])
             ),
             str(emojis.dnd)
             + " "
-            + _("Total DND"): TextFormat.multiTextFormat.codeblock(
+            + _("Total DND"): TextFormat.multicodeblock(
                 len([m for m in members if m.status == Status.dnd])
             ),
             str(emojis.dnd)
             + " "
-            + _("Humans DND"): TextFormat.multiTextFormat.codeblock(
+            + _("Humans DND"): TextFormat.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.dnd])
             ),
             str(emojis.dnd)
             + " "
-            + _("Bots DND"): TextFormat.multiTextFormat.codeblock(
+            + _("Bots DND"): TextFormat.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.dnd])
             ),
             str(emojis.offline)
             + " "
-            + _("Total Offline"): TextFormat.multiTextFormat.codeblock(
+            + _("Total Offline"): TextFormat.multicodeblock(
                 len([m for m in members if m.status == Status.offline])
             ),
             str(emojis.offline)
             + " "
-            + _("Humans Offline"): TextFormat.multiTextFormat.codeblock(
+            + _("Humans Offline"): TextFormat.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.offline])
             ),
             str(emojis.offline)
             + " "
-            + _("Bots Offline"): TextFormat.multiTextFormat.codeblock(
+            + _("Bots Offline"): TextFormat.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.offline])
             ),
         }
         for name, value in infos.items():
             embed.add_field(name=name, value=value)
-        return embed
+        return embed, None
 
 
 translator = {
@@ -546,7 +574,7 @@ class ActivitiesSource(ListPageSource):
                 page=menu.page + 1, pages=self.maximum
             )
         )
-        return embed
+        return embed, None
 
 
 features = (
@@ -558,27 +586,6 @@ features = (
     | ActivitiesSource
     | PremiumSource
 )
-
-
-class ServerItems(AnyPageSource):
-    def __init__(self, ctx: ShakeContext, group: features, **kwargs) -> None:
-        super().__init__()
-        self.ctx = ctx
-        self.group: features = group
-
-    def is_paginating(self) -> bool:
-        return True
-
-    def get_max_pages(self) -> Optional[int]:
-        return self.group.get_max_pages()
-
-    async def get_page(self, page: int) -> Any:
-        source = await self.group.get_page(page)
-        return source
-
-    def format_page(self, *args: Any, **kwargs: Any) -> Tuple[ShakeEmbed, File]:
-        embed = self.group.format_page(*args, **kwargs)
-        return embed, None
 
 
 class Front(FrontPageSource):
@@ -605,8 +612,6 @@ class Front(FrontPageSource):
         result = region[0][0] if bool(region) else "en-US"
         embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
 
-        embed.add_field(name="\u200b", value="\u200b")
-
         bots = len([member for member in guild.members if member.bot])
         status = Counter(str(member.status) for member in guild.members)
         emojis = menu.bot.emojis.status
@@ -620,7 +625,7 @@ class Front(FrontPageSource):
         )
         embed.add_field(
             name=_("Members"),
-            value=TextFormat.mul(
+            value=TextFormat.multiblockquotes(
                 f'__**{len(set(m for m in guild.members if not m.bot))}**__ (+{bots} {_("Bots")})\n{statuses}'
             ),
             inline=False,
@@ -639,7 +644,7 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.mul(
+            value=TextFormat.multiblockquotes(
                 "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
             ),
             inline=False,

@@ -5,22 +5,21 @@ from typing import Any, Optional, Union
 
 from discord import Member, TextChannel, User
 
-from Classes import ShakeBot, ShakeContext
+from Classes import ShakeCommand
 
 
 ########
 #
-class command:
+class command(ShakeCommand):
     def __init__(
         self,
-        ctx: ShakeContext,
+        ctx,
         channel: Optional[TextChannel],
         user: Member | User,
         command: str,
         args: Any = None,
     ):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.channel: TextChannel = channel
         self.user: User = user
         self.command: str = command

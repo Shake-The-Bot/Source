@@ -2,16 +2,12 @@
 #
 from discord import File, PartialEmoji, ui
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
-
+class command(ShakeCommand):
     async def __await__(self):
         embed = ShakeEmbed.default(
             self.ctx,

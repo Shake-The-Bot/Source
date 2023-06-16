@@ -2,19 +2,15 @@
 #
 from asyncio import sleep
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeCommand, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
-
+class command(ShakeCommand):
     async def __await__(self):
         countdown = [_("five"), "four", "three", _("two"), _("one")]
-        msg = await self.ctx.chat("**" + _("Lets start this") + "**")
+        msg = await self.ctx.chat(_("{__} Lets start this {__}"))
         for num in countdown:
             await msg.edit(content="**:{0}:**".format(num))
             await sleep(1)

@@ -5,19 +5,18 @@ from typing import Literal, Optional
 
 from discord import ButtonStyle, Colour, Interaction, PartialEmoji, ui
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, TextFormat
+from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, TextFormat
 
 from .utils.wouldyous import useful, useless
 
 
 ########
 #
-class command:
+class command(ShakeCommand):
     def __init__(
         self, ctx, utility: Literal["useful", "useless"], voting: bool, rather: bool
     ):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.utility: Literal["useful", "useless"] = utility
         self.voting: bool = voting
         self.rather: bool = rather
@@ -49,9 +48,7 @@ class command:
                 inline=False,
             )
 
-        embed.add_field(
-            name="\u200b", value=self.ctx.bot.config.embed.footer, inline=False
-        )
+        embed.advertise(self.bot)
 
         if self.rather:
             view = RatherView(self.ctx, self.voting, key)

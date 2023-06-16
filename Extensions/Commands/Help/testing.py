@@ -26,6 +26,7 @@ from Classes import (
     MISSING,
     Category,
     ShakeBot,
+    ShakeCommand,
     ShakeContext,
     ShakeEmbed,
     TextFormat,
@@ -67,12 +68,9 @@ configurations: Callable[
 }
 
 
-class command:
-    def __init__(
-        self, ctx: ShakeContext, command: Optional[str], category: Optional[Category]
-    ):
-        self.bot = ctx.bot
-        self.ctx = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, command: Optional[str], category: Optional[Category]):
+        super().__init__(ctx)
         self.command: str = command
         self.category: Optional[Category] = category
 
@@ -229,7 +227,7 @@ class HelpPaginatedCommand:
 
         if not await menu.setup():
             raise
-        await menu.send()
+        await menu.send(ephemeral=True)
 
     async def cog_help(self, cog):
         locale = (
@@ -244,7 +242,7 @@ class HelpPaginatedCommand:
         menu.add_categories(categories=commands)
         if not await menu.setup():
             raise
-        await menu.send()
+        await menu.send(ephemeral=True)
 
     async def group_help(self, command: Command):
         if command.name == "help":
@@ -259,7 +257,7 @@ class HelpPaginatedCommand:
         if not await menu.setup():
             raise
 
-        await menu.send()
+        await menu.send(ephemeral=True)
 
     async def command_help(self, command: Command):
         if command.name == "help":
@@ -274,7 +272,7 @@ class HelpPaginatedCommand:
         if not await menu.setup():
             raise
 
-        await menu.send()
+        await menu.send(ephemeral=True)
 
 
 class HelpSelect(CategoricalSelect):
@@ -581,7 +579,7 @@ class CategorySource(ListPageSource):
             for key in self.suffixes
         ]
         if bool(last_embed):
-            embed.add_field(name="\u200b", value="\n".join(last_embed))
+            embed.advertise(self.bot)
 
         return embed, None
 
@@ -674,9 +672,8 @@ class CommandSource(ItemPageSource):
                     )
                 ),
             )
-        embed.add_field(
-            name="\u200b", value=menu.ctx.bot.config.embed.footer, inline=False
-        )
+
+        embed.advertise(self.bot)
         return embed, None
 
 

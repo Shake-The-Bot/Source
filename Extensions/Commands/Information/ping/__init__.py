@@ -39,7 +39,7 @@ class ping_extension(Information):
                 await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
 
-        do = testing if ctx.testing else list
+        do = testing if ctx.testing else ping
 
         try:
             await do.command(ctx=ctx).__await__()

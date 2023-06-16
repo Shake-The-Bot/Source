@@ -88,9 +88,9 @@ def extras(
             f.extras.update(kwargs)
         else:
             try:
-                f.extras.update(kwargs)  # type: ignore # Runtime attribute access
+                f.extras.update(kwargs)
             except AttributeError:
-                f.extras = kwargs  # type: ignore # Runtime attribute assignment
+                f.extras = kwargs
         return f
 
     if func is None:

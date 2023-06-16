@@ -15,7 +15,10 @@ from Classes.exceptions import *
 #
 class Event:
     def __init__(self, ctx: ShakeContext | Interaction, error):
-        self.bot: ShakeBot = ctx.bot if isinstance(ctx, ShakeContext) else ctx.client
+        if isinstance(ctx, Interaction):
+            ctx = ShakeContext.from_interaction(ctx)
+
+        self.bot: ShakeBot = ctx.bot
         self.ctx: ShakeContext | Interaction = ctx
         self.error: errors.CommandError = error
 
@@ -83,7 +86,7 @@ class Event:
         elif isinstance(original, errors.NotOwner):
             description = _(
                 "Only the bot owner can run the command `{command}`."
-            ).format(command=self.ctx.command)
+            ).format(command=self.ctx.command.name)
 
         elif isinstance(original, errors.MissingPermissions):
             description = _(

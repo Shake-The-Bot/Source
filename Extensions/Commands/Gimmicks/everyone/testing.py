@@ -6,17 +6,16 @@ from random import choice
 from discord import File, Member
 from discord.ext import commands
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 from Classes.useful import human_join
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext, member: commands.Greedy[Member] = None):
+class command(ShakeCommand):
+    def __init__(self, ctx, member: commands.Greedy[Member] = None):
+        super().__init__(ctx)
         self.member: commands.Greedy[Member] = member
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
 
     async def __await__(self):
         description = _(

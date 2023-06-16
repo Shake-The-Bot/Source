@@ -12,9 +12,9 @@ from polib import pofile
 from Classes import (
     MISSING,
     Locale,
-    ShakeBot,
-    ShakeContext,
+    ShakeCommand,
     ShakeEmbed,
+    TextFormat,
     _,
     gettext_translations,
     localedir,
@@ -83,13 +83,9 @@ class L:
         return self.locale
 
 
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
-
+class command(ShakeCommand):
     def get_locale_by_name(self, name: str) -> str:
-        for locale in Locale.available.keys():
+        for locale in Locale.available:
             language = Locale.available[locale]["language"]
             simplified = Locale.available[locale]["simplified"]
             if name.lower() in [x.lower() for x in [language, locale] + simplified]:
@@ -105,7 +101,7 @@ class command:
             embed.description += "\n" + _(
                 "Use {command} to get a list of all available languages"
             ).format(command="</language list>")
-        elif not name in locales:
+        elif not locale in locales:
             embed = ShakeEmbed.to_error(
                 self.ctx,
                 description=_(
@@ -120,7 +116,9 @@ class command:
             embed = ShakeEmbed.to_success(
                 self.ctx,
                 description=_("{name} was successfully set as language!").format(
-                    name=Locale.available[locale]["simplified"][-1].capitalize()
+                    name=TextFormat.quote(
+                        Locale.available[locale]["language"].capitalize()
+                    )
                 ),
             )
             locale = name
@@ -157,7 +155,7 @@ class command:
             ),
         )
         await menu.setup()
-        await menu.send()
+        await menu.send(ephemeral=True)
 
     async def user_locale(self, locale):
         await self.ctx.defer()

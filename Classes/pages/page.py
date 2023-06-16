@@ -136,8 +136,7 @@ class ShakePages(ui.View):
 
         if timeouted:
             for item in self._children:
-                if isinstance(item, (ui.Select, ui.Button)):
-                    item.disabled = True
+                item.disabled = True
                 if isinstance(item, ui.Button):
                     item.style = ButtonStyle.grey
 
@@ -194,7 +193,7 @@ class ShakePages(ui.View):
         if not self.ctx.channel.permissions_for(self.ctx.me).embed_links:
             raise BotMissingPermissions(
                 ["embed_links"],
-                message="I do not have embed links permission in this channel.",
+                "I do not have embed links permission in this channel.",
             )
 
         await self.source._prepare_once()

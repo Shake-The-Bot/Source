@@ -1,55 +1,67 @@
 ############
 #
-from contextlib import redirect_stderr, redirect_stdout
+import hashlib
+from base64 import b64encode
+from contextlib import redirect_stderr, redirect_stdout, suppress
+from hmac import new
 from io import BytesIO, StringIO
+from os import urandom as _urandom
 from textwrap import indent
 from time import time
 from traceback import format_exc
-from types import FunctionType
 from typing import Any
 
-from discord import HTTPException, Message
+from discord import Forbidden, HTTPException
 
-from Classes import (
-    ShakeBot,
-    ShakeContext,
-    TextFormat,
-    async_compile,
-    cleanup,
-    get_syntax_error,
-    maybe_await,
-    safe_output,
-)
+from Classes import MISSING, ShakeCommand
+
 
 ########
 #
+def getrandbits(k):
+    if k < 0:
+        raise ValueError("number of bits must be non-negative")
+    numbytes = (k + 7) // 8  # bits / 8 and rounded up
+    x = int.from_bytes(_urandom(numbytes), "big")
+    return x >> (numbytes * 8 - k)
 
 
-class command:
+def random_token(id_):
+    id_ = b64encode(str(id_).encode()).decode()
+    time_ = b64encode(int.to_bytes(int(time()), 6, byteorder="big")).decode()
+    randbytes = bytearray(getrandbits(8) for _ in range(10))
+    hmac_ = new(randbytes, randbytes, hashlib.md5).hexdigest()
+    return f"{id_}.{time_}.{hmac_}"
+
+
+def stdoutable(code: str, output: bool = False):
+    content = code.split("\n")
+    s = ""
+    for i, line in enumerate(content):
+        s += ("..." if output else ">>>") + " "
+        s += line + "\n"
+    return s
+
+
+def cleanup(content: str) -> str:
+    """Automatically removes code blocks from the code."""
+    starts = ("py", "js")
+    for start in starts:
+        i = len(start)
+        if content.startswith(f"```{start}"):
+            content = content[3 + i :]
+    if content.startswith(f"```"):
+        content = content[3]
+    content = content.strip("`").strip()
+    return content
+
+
+class command(ShakeCommand):
     def __init__(self, ctx, code: str, env, last):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.code = code
         self.last: Any = last
-        ref = self.ctx.message.reference
-
-        self.env: dict[str, Any] = env
-        self.env.update(
-            {
-                "self": self,
-                "bot": self.bot,
-                "ctx": self.ctx,
-                "guild": self.ctx.guild,
-                "message": self.ctx.message,
-                "channel": self.ctx.channel,
-                "author": self.ctx.message.author,
-                "__last__": self.env,
-                "__ref": ref.resolved
-                if ref and isinstance(ref.resolved, Message)
-                else None,
-                "__": self.last,
-            }
-        )
+        self.env = env
 
     async def __await__(self):
         if not self.code:
@@ -64,83 +76,91 @@ class command:
             await atch.save(buf, seek_begin=True, use_cached=False)
             self.code = buf.read().decode()
 
-        stdout = StringIO()
-        stderr = StringIO()
-        cleaned = cleanup(self.code)
-
-        if cleaned in ["exit()", "quit", "exit"]:
+        if self.code == "exit()":
             self.env.clear()
             return await self.ctx.chat("eval geleert")
 
-        executor = None
-        if cleaned.count("\n") == 0:
-            with redirect_stdout(stdout):
-                with redirect_stderr(stderr):
-                    try:
-                        code = async_compile(cleaned, "<repl session>", "eval")
-                    except SyntaxError:
-                        raise
-                    else:
-                        executor = eval
+        self.env.update(
+            {
+                "self": self,
+                "bot": self.bot,
+                "ctx": self.ctx,
+                "guild": self.ctx.guild,
+                "message": self.ctx.message,
+                "channel": self.ctx.message.channel,
+                "guild": self.ctx.message.guild,
+                "author": self.ctx.message.author,
+                "__last__": self.env,
+                "_": self.last,
+            }
+        )
 
-        formed = """
+        content = cleanup(self.code)
+        code = """
 async def func():
     try:
 {}
     finally:
         self.env.update(locals())
 """.format(
-            indent(cleaned, " " * 8)
+            indent(content, " " * 8)
         ).strip()
-
-        if executor is None:
-            try:
-                code = async_compile(formed, "<repl session>", "exec")
-            except SyntaxError as e:
-                await self.ctx.send(TextFormat.multicodeblock(get_syntax_error(e)))
-                return
-
-        # self.env["_"] =
-
-        # stdouted = stdoutable(cleaned)
-        msg = ""
-
-        start = time() * 1000
-
+        formatted = stdoutable(content)
+        stdout = StringIO()
+        stderr = StringIO()
         try:
             with redirect_stdout(stdout):
                 with redirect_stderr(stderr):
-                    if executor is None:
-                        result = FunctionType(code, self.env)()
-                    else:
-                        result = executor(code, self.env)
-                    result = await maybe_await(result)
-        except:
-            stdouted = stdout.getvalue()
-            stderred = stderr.getvalue()
+                    exec(code, self.env)
+        except Exception as e:
+            await self.ctx.chat(f"```py\n{e.__class__.__name__}: {e}\n```")
+            return
 
-            msg = "{}{}{}".format(stdouted, stderred, format_exc())
-        else:
-            stdouted = stdout.getvalue()
-            stderred = stderr.getvalue()
-            if result is not None:
-                msg = "{}\n{}\n{}".format(
-                    result,
-                    stdouted,
-                    stderred,
-                )
-                self.env["__"] = result
-            elif stdouted or stderred:
-                msg = "{}\n{}".format(stdouted, stderred)
+        token = random_token(self.bot.user.id)
+
+        start = time() * 1000
+        try:
+            with redirect_stdout(stdout):
+                with redirect_stderr(stderr):
+                    func = self.env["func"]
+                    ret = await func()
+        except Exception as err:
+            with suppress(Forbidden, HTTPException):
+                await self.ctx.message.add_reaction(self.bot.emojis.cross)
+            await self.ctx.chat(
+                f"```py\n{formatted}\n{err.__class__.__name__}: {err}\n```"
+            )  # format_exc()
+            return
         finally:
             end = time() * 1000
             completed = end - start
 
-        final = safe_output(self.ctx, str(msg))
-        final += f"\n\n# {completed:.3f}ms"
+            stdouted = stdout.getvalue().replace(self.bot.http.token, token)
+            stderred = stderr.getvalue().replace(self.bot.http.token, token)
+
+        if ret is not None:
+            if not isinstance(ret, str):
+                ret = str(repr(ret))
+            ret = stdoutable(ret, True)
+            ret = "\n" + ret + "\n".replace(self.bot.http.token, token)
+
+        with suppress(Forbidden, HTTPException):
+            await self.ctx.message.add_reaction(self.bot.emojis.hook)
+
+        final = (
+            f"{formatted}\n{stdouted}\n{stderred}{ret if ret else ''}\n# {completed:.3f}ms".replace(
+                "`", "′"
+            )
+            .replace(self.bot.http.token, token)
+            .replace("@everyone", "@\u200beveryone")
+            .replace("@here", "@\u200bhere")
+        )
 
         try:
-            await self.ctx.chat(f"```py\n{final}```", reference=None)
+            await self.ctx.chat(f"```py\n{final}```")
         except HTTPException:
             paste = await self.bot.dump(final)
-            await self.ctx.chat(f"Repl Ergebnisse: <{paste}>", reference=None)
+            await self.ctx.chat(f"Repl Ergebnisse: <{paste}>")
+
+        if ret:
+            return ret

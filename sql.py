@@ -2,9 +2,12 @@ from asyncio import run
 from traceback import print_exc
 from typing import Literal
 
+from asyncpg import Connection, connect
 from click import Choice, echo, group, option, pass_context, secho, style
 
 from Classes import Migration, config
+
+choice = Choice(["guild", "bot"])
 
 
 @group(invoke_without_command=False, options_metavar="[options]")
@@ -20,15 +23,9 @@ def db():
 
 
 @db.command()
+@option("--type", "-t", help="type of revision", default="bot", type=choice)
 @option(
-    "-t",
-    "--type",
-    help="type of revision",
-    default="bot",
-    type=Choice(["guild", "bot"]),
-)
-@option(
-    "--reason", "-r", help="The reason for this revision.", default="Initial migration"
+    "--reason", "-r", help="The reason for this revision", default="Initial migration"
 )
 def init(reason, type: Literal["guild", "bot"]):
     """Initializes the database and creates the initial revision."""
@@ -38,28 +35,18 @@ def init(reason, type: Literal["guild", "bot"]):
     migration = Migration(type=type)
     revision = migration.create_revision(reason)
     echo(f"created revision V{revision.version!r}")
-    secho(f"use the `upgrade` command to apply", fg="yellow", italic=True)
+    secho("use the `upgrade` command to apply", fg="yellow")
 
 
 @db.command()
-@option(
-    "--type",
-    "-t",
-    default="bot",
-    help="type of revision",
-    type=Choice(["guild", "bot"]),
-)
-@option("--reason", "-r", help="The reason for this revision.", required=True)
+@option("--type", "-t", default="bot", help="type of revision", type=choice)
+@option("--reason", "-r", help="The reason for this revision", required=True)
 def migrate(reason, type: Literal["guild", "bot"] = "bot"):
     """Creates a new revision for you to edit."""
     migration = Migration(type=type)
     if migration.is_next_revision_taken():
         echo("an unapplied migration already exists for the next version, exiting")
-        secho(
-            "apply pending migration with the `upgrade` command",
-            fg="yellow",
-            italic=True,
-        )
+        secho("use the `upgrade` command to apply pending migrations", fg="yellow")
         return
 
     revision = migration.create_revision(reason)

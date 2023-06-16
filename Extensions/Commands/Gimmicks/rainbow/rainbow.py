@@ -6,15 +6,14 @@ from random import choice
 from discord import File, Member
 from PIL import Image, ImageFilter
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext, member: Member):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+class command(ShakeCommand):
+    def __init__(self, ctx, member: Member):
+        super().__init__(ctx)
         self.member: Member = member
 
     async def __await__(self):

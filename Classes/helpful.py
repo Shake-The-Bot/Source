@@ -54,6 +54,7 @@ __all__ = (
     "DatabaseProtocol",
     "Record",
     "Reddit",
+    "ShakeCommand",
     "Category",
     "Migration",
 )
@@ -95,12 +96,6 @@ class ShakeContext(Context):
         self.reinvoked: bool = False
         self.done: bool = False
 
-    def reference(self) -> Optional[MessageReference]:
-        ref = self.message.reference
-        if ref and isinstance(ref.resolved, Message):
-            return ref.resolved.to_reference()
-        return None
-
     @property
     def created_at(self) -> datetime:
         return self.message.created_at
@@ -120,6 +115,12 @@ class ShakeContext(Context):
     @property
     def session(self) -> ClientSession:
         return self.bot.session
+
+    def reference(self) -> Optional[MessageReference]:
+        ref = self.message.reference
+        if ref and isinstance(ref.resolved, Message):
+            return ref.resolved.to_reference()
+        return None
 
     async def __await__(
         self,
@@ -176,7 +177,7 @@ class ShakeContext(Context):
         mention_author: Optional[bool] = False,
         view: Optional[View] = None,
         suppress_embeds: bool = False,
-        ephemeral: bool = False,
+        ephemeral: bool = True,
         silent: bool = False,
         forced: Optional[bool] = False,
     ) -> Message:
@@ -222,7 +223,7 @@ class ShakeContext(Context):
         mention_author: Optional[bool] = False,
         suppress_embeds: bool = False,
         view: Optional[View] = None,
-        ephemeral: bool = False,
+        ephemeral: bool = True,
         forced: Optional[bool] = False,
     ) -> Message:
         try:
@@ -265,7 +266,7 @@ class ShakeContext(Context):
         suppress_embeds: bool = False,
         reference: Optional[Message | MessageReference | PartialMessage] = MISSING,
         view: Optional[View] = None,
-        ephemeral: bool = False,
+        ephemeral: bool = True,
         forced: Optional[bool] = False,
     ) -> Message:
         kwargs = {
@@ -349,6 +350,18 @@ class ShakeContext(Context):
 
     def pop(self, message_id: int) -> Optional[Message]:
         return self.messages.pop(message_id, None)
+
+
+""""""
+
+
+class ShakeCommand:
+    ctx: ShakeContext
+    bot: ShakeBot
+
+    def __init__(self, ctx: ShakeContext) -> None:
+        self.ctx = ctx
+        self.bot = ctx.bot
 
 
 """ A Class representing the Base of the ShakeBot (Inherits from discord.ext.commands.AutoSharedBot)
@@ -576,6 +589,14 @@ class ShakeEmbed(Embed):
         for n, v in fields:
             self.add_field(name=n, value=v, inline=field_inline)
 
+    def advertise(self, bot: ShakeBot) -> ShakeEmbed:
+        self.add_field(
+            name="\u200b",
+            value=TextFormat.blockquotes(bot.config.embed.footer),
+            inline=False,
+        )
+        return self
+
     @classmethod
     def default(cls, ctx: ShakeContext | Interaction, **kwargs: Any) -> ShakeEmbed:
         instance = cls(**kwargs)
@@ -674,7 +695,7 @@ class Migration:
         type: Literal["guild", "bot"],
         base_url: str = config.database.postgresql,
         *,
-        filename: str = "Schmemas/revisions.json",
+        filename: str = "Schemas/revisions.json",
     ):
         self.filename: str = filename
         self.base_url = base_url
@@ -699,7 +720,7 @@ class Migration:
     def get_revisions(self) -> dict[int, Revision]:
         result: dict[int, Revision] = {}
         for file in self.root.glob("*.sql"):
-            match = Regex.revision.match(file.name)
+            match = Regex.revision.value.match(file.name)
             if match is not None:
                 rev = Revision.from_match(match, file)
                 result[rev.version] = rev

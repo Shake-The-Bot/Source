@@ -2,15 +2,14 @@
 #
 from discord import Object
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, _
 
 
 ########
 #
-class command:
-    def __init__(self, ctx: ShakeContext, guild: Object):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, guild: Object):
+        super().__init__(ctx)
         self.guild: Object = guild
 
     async def __await__(self):

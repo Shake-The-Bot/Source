@@ -1,17 +1,13 @@
 from discord import Member
 
-from Classes import ShakeBot, ShakeContext, ShakeEmbed, TextFormat, _
+from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
 from Classes.pages import ListMenu, ListPageSource
 
 ############
 #
 
 
-class command:
-    def __init__(self, ctx: ShakeContext):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
-
+class command(ShakeCommand):
     async def __await__(self):
         members = list(
             sorted(
@@ -34,7 +30,7 @@ class command:
 
         if not await menu.setup():
             raise
-        await menu.send()
+        await menu.send(ephemeral=True)
 
 
 class List(ListPageSource):

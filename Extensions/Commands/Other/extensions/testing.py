@@ -4,18 +4,15 @@ from typing import Any, Dict, Optional
 
 from discord.ext.commands.errors import ExtensionError
 
-from Classes import ExtensionMethods, ShakeBot, ShakeContext, ShakeEmbed, cogshandler
+from Classes import ExtensionMethods, ShakeCommand, ShakeEmbed, TextFormat, cogshandler
 from Classes.converter import ValidCog
 
 
 ########
 #
-class command:
-    def __init__(
-        self, ctx: ShakeContext, method: ExtensionMethods, extension: ValidCog
-    ):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, method: ExtensionMethods, extension: ValidCog):
+        super().__init__(ctx)
         self.method: ExtensionMethods = method
         self.extension: str = extension
 
@@ -27,7 +24,8 @@ class command:
         embed = ShakeEmbed()
 
         failures: int = 0
-        for i, (extension, handle) in enumerate(handling, 1):
+        successes = list()
+        for i, (extension, handle) in enumerate(handling.items(), 1):
             error: Optional[ExtensionError] = (
                 getattr(handle, "original", handle) if handle else None
             )
@@ -36,12 +34,21 @@ class command:
             name = f"` {i}. ` {ext}"
             if error:
                 failures += 1
-                value = "> ❌ {}".format(str(error).replace(extension, ext))
+                value = "{}".format(str(error).replace(extension, ext))
+                embed.add_field(name="❌ " + name, value=value)
             else:
-                value = f"> ☑️ {self.method.name.lower().capitalize()}ed"
-            embed.add_field(name=name, value=value)
+                successes.append(name)
 
-        embed.description = f"**{len(handling.keys()) - failures} / {len(handling.keys())} extensions successfully {self.method.name.lower()}ed.**"
+        if bool(successes):
+            embed.insert_field_at(
+                index=0,
+                name=f"{self.method.name.lower().capitalize()}ed",
+                value="\n".join(successes),
+            )
+        emoji = "☑️" if failures < len(handling) / 2 else "❌"
+        embed.description = TextFormat.bold(
+            f"{emoji} {len(handling.keys()) - failures} / {len(handling.keys())} extensions successfully {self.method.name.lower()}ed."
+        )
         return await self.ctx.chat(embed=embed)
 
 

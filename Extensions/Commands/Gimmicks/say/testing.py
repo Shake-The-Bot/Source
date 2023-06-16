@@ -1,6 +1,6 @@
 from re import findall
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeCommand, _
 
 url_patterns = [
     "^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$",
@@ -12,10 +12,9 @@ url_patterns = [
 #
 
 
-class command:
-    def __init__(self, ctx: ShakeContext, text: str, reply: bool):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, text: str, reply: bool):
+        super().__init__(ctx)
         self.text: str = text
         self.reply: bool = reply
 

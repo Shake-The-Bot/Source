@@ -1,6 +1,6 @@
 from random import randint
 
-from Classes import MISSING, ShakeBot, ShakeContext, _
+from Classes import MISSING, ShakeCommand, _
 
 ############
 #
@@ -18,10 +18,9 @@ numbers = {
 }
 
 
-class command:
-    def __init__(self, ctx: ShakeContext, start: int = 1, end: int = 6):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, start: int = 1, end: int = 6):
+        super().__init__(ctx)
         self.end: int = end
         self.start: int = start
 

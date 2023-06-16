@@ -3,15 +3,14 @@
 from typing import Literal, Optional
 
 from discord import HTTPException, Object
-from discord.ext import commands
 from discord.ext.commands import Greedy
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeCommand, _
 
 
 ########
 #
-class command:
+class command(ShakeCommand):
     def __init__(
         self,
         ctx,
@@ -19,11 +18,10 @@ class command:
         spec: Optional[Literal["~", "*", "^"]] = None,
         dump: Optional[bool] = False,
     ) -> None:
-        self.bot: ShakeBot = ctx.bot
+        super().__init__(ctx)
         self.guilds: Greedy[Object] = guilds
         self.spec: Optional[Literal["~", "*", "^"]] = spec
         self.dump = dump
-        self.ctx: ShakeContext = ctx
 
     async def __await__(self):
         await self.ctx.defer(ephemeral=True)

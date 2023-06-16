@@ -13,16 +13,15 @@ from discord.ext.commands.errors import (
     UserNotFound,
 )
 
-from Classes import MISSING, ShakeBot, ShakeContext, ShakeEmbed, _
+from Classes import MISSING, ShakeCommand, ShakeEmbed, _
 
 ########
 # "
 
 
-class command:
-    def __init__(self, ctx: ShakeContext, id: int):
-        self.bot: ShakeBot = ctx.bot
-        self.ctx: ShakeContext = ctx
+class command(ShakeCommand):
+    def __init__(self, ctx, id: int):
+        super().__init__(ctx)
         self.id: int = id
 
     async def __await__(self):
