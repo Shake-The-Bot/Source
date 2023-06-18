@@ -1,7 +1,7 @@
 from discord import Member
 
 from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
-from Classes.pages import ListMenu, ListPageSource
+from Classes.accessoires import ListMenu, ListPageSource
 
 ############
 #
@@ -37,5 +37,6 @@ class List(ListPageSource):
     def add_field(self, embed: ShakeEmbed, item: Member):
         embed.add_field(
             name=f'{TextFormat.codeblock(" " + str(self.items.index(item) + 1) + ". ")} {TextFormat.codeblock(item)} [{TextFormat.italics(str(item.id))}]',
-            value=f'{TextFormat.bold("➜")} {TextFormat.codeblock(item.nick)}',
+            value=f'{TextFormat.bold("➜")} {TextFormat.codeblock(item.nick)} {item.mention}',
+            inline=False,
         )

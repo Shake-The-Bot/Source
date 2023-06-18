@@ -10,7 +10,7 @@ from Classes import ShakeCommand, _
 
 class command(ShakeCommand):
     async def setup(self, channel: Optional[TextChannel], react: bool):
-        if not channel:
+        if not channel or not channel in self.ctx.guild.text_channels:
             try:
                 channel = await self.ctx.guild.create_text_channel(
                     name="aboveme", slowmode_delay=5
@@ -28,7 +28,7 @@ class command(ShakeCommand):
             channel = channel
 
         async with self.ctx.db.acquire() as connection:
-            query = """INSERT INTO aboveme (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"""
+            query = 'INSERT INTO aboveme (channel_id, guild_id, "react") VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
             await connection.execute(query, channel.id, self.ctx.guild.id, react)
 
         await self.ctx.chat(

@@ -26,7 +26,7 @@ class Event:
                 content = _(
                     "{_}Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or **share** me to your friends!{_}"
                 ).format(votelink=self.bot.config.other.vote, _="*")
-                await self.ctx.send(content=content, forced=True)
+                await self.ctx.chat(content=content, forced=True)
 
 
 #

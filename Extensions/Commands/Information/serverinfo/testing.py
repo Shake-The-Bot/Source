@@ -19,7 +19,7 @@ from discord.ext import menus
 from discord.utils import format_dt
 
 from Classes import ShakeCommand, ShakeContext, ShakeEmbed, _
-from Classes.pages import (
+from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,
@@ -106,8 +106,8 @@ class command(ShakeCommand):
             self.guild.banner: _("Servers's banner"),
         }
         if any(bool(_) for _ in assets):
-            categoies[AssetsSource(ctx=self.ctx, guild=self.guild)] = set(
-                self.guild.emojis
+            categoies[AssetsSource(ctx=self.ctx, guild=self.guild, items=assets)] = set(
+                assets
             )
 
         menu.add_categories(categories=categoies)

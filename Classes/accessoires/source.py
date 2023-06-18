@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 from discord import File, Interaction, PartialEmoji
 from discord.ext import menus
 
+from Classes.accessoires import page
 from Classes.helpful import ShakeEmbed
 from Classes.i18n import _
-from Classes.pages import page
 from Classes.useful import MISSING
 
 if TYPE_CHECKING:

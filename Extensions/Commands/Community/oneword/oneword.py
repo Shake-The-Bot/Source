@@ -10,7 +10,7 @@ from Classes import ShakeCommand, ShakeEmbed, Slash, TextFormat, _
 
 class command(ShakeCommand):
     async def setup(self, channel: Optional[TextChannel], react: bool):
-        if not channel:
+        if not channel or not channel in self.ctx.guild.text_channels:
             try:
                 channel = await self.ctx.guild.create_text_channel(
                     name="oneword", slowmode_delay=5
@@ -37,7 +37,7 @@ class command(ShakeCommand):
                 )
                 return False
 
-            query = "INSERT INTO oneword (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"
+            query = 'INSERT INTO oneword (channel_id, guild_id, "react") VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
             await connection.execute(query, channel.id, self.ctx.guild.id, react)
 
         await self.ctx.chat(
@@ -94,7 +94,7 @@ class command(ShakeCommand):
         embed.set_image(
             url="https://cdn.discordapp.com/attachments/946862628179939338/1060213944981143692/banner.png"
         )
-        await self.ctx.send(embed=embed, ephemeral=True)
+        await self.ctx.chat(embed=embed, ephemeral=True)
 
 
 #

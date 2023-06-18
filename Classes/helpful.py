@@ -116,10 +116,18 @@ class ShakeContext(Context):
     def session(self) -> ClientSession:
         return self.bot.session
 
-    def reference(self) -> Optional[MessageReference]:
+    @utils.cached_property
+    def replied_reference(self) -> Optional[MessageReference]:
         ref = self.message.reference
         if ref and isinstance(ref.resolved, Message):
             return ref.resolved.to_reference()
+        return None
+
+    @utils.cached_property
+    def replied_message(self) -> Optional[Message]:
+        ref = self.message.reference
+        if ref and isinstance(ref.resolved, Message):
+            return ref.resolved
         return None
 
     async def __await__(
@@ -196,7 +204,7 @@ class ShakeContext(Context):
                 ephemeral=ephemeral,
                 nonce=nonce,
                 allowed_mentions=allowed_mentions,
-                reference=self.reference() if reference is MISSING else reference,
+                reference=self.replied_reference if reference is MISSING else reference,
                 mention_author=mention_author,
                 suppress_embeds=suppress_embeds,
                 view=view,
@@ -264,7 +272,6 @@ class ShakeContext(Context):
         allowed_mentions: Optional[AllowedMentions] = None,
         mention_author: Optional[bool] = False,
         suppress_embeds: bool = False,
-        reference: Optional[Message | MessageReference | PartialMessage] = MISSING,
         view: Optional[View] = None,
         ephemeral: bool = True,
         forced: Optional[bool] = False,
@@ -282,28 +289,26 @@ class ShakeContext(Context):
             "files": files,
             "allowed_mentions": allowed_mentions,
             "view": view,
-            "reference": self.reference() if reference is MISSING else reference,
             "mention_author": mention_author,
             "tts": tts,
             "forced": forced,
         }
-        ref = kwargs["reference"]
-        if not ref is None:
-            if not mention_author:
-                author = ref.cached_message.author
-                kwargs["mention_author"] = (
-                    author in self.message.mentions
-                    and author.id not in self.message.raw_mentions
-                )
+        if self.message.reference:
+            if author := getattr(self.replied_message, "author", None):
+                # author = ref.cached_message.author
+                if not mention_author:
+                    mention_author = (
+                        author in self.message.mentions
+                        and author.id not in self.message.raw_mentions
+                    )
+                    kwargs["mention_author"] = mention_author
             return await self.send(**kwargs)
+
         last_message = getattr(self.channel, "last_message", MISSING)
-        if last_message not in [
-            self.message,
-            MISSING,
-        ]:
-            kwargs.pop("reference")
+        if last_message not in [self.message, MISSING]:
             return await self.reply(**kwargs)
-        return await self.send(**kwargs)
+        else:
+            return await self.send(**kwargs)
 
     async def reinvoke(
         self, *, message: Optional[Message] = None, **kwargs: Any

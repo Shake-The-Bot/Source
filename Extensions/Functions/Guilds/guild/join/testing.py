@@ -117,8 +117,9 @@ class Event:
             """.format(
             point=point, invite=self.bot.config.other.server, emoji=heart
         )
-
-        await introdoucing().send(embed=embed)
+        channel = introdoucing()
+        if channel:
+            await channel.send(embed=embed)
 
         # # „Database stuff“
         # with suppress(Exception):

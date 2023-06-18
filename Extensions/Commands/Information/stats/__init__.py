@@ -41,10 +41,11 @@ class stats_extension(Information):
         self.commands: List[Tuple[str, int]] = [
             (command, uses)
             for command, uses in await self.bot.pool.fetch(query)
-            if not self.bot.get_command(command).extras.get("owner", False)
+            if hasattr(self.bot.get_command(command), "extras")
+            and not self.bot.get_command(command).extras.get("owner", False)
         ]
 
-    @hybrid_command(name="stats", aliases=["s"])
+    @hybrid_command(name="stats", aliases=["about", "info"])
     @guild_only()
     @setlocale()
     @locale_doc

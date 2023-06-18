@@ -20,7 +20,7 @@ from discord.ext import menus
 from discord.utils import format_dt
 
 from Classes import ShakeCommand, ShakeContext, ShakeEmbed, _
-from Classes.pages import (
+from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,
@@ -445,7 +445,7 @@ class Front(FrontPageSource):
         if banner := getattr(user, "banner", None):
             embed.set_image(url=banner.url)
         else:
-            embed.advertise(self.bot)
+            embed.advertise(menu.bot)
         return embed, None
 
 

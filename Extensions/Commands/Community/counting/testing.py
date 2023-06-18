@@ -16,7 +16,7 @@ class command(ShakeCommand):
         numbers: bool,
         react: bool,
     ):
-        if not channel:
+        if not channel or not channel in self.ctx.guild.text_channels:
             try:
                 channel = await self.ctx.guild.create_text_channel(
                     name="counting", slowmode_delay=5
@@ -43,7 +43,7 @@ class command(ShakeCommand):
                 )
                 return False
 
-            query = "INSERT INTO counting (channel_id, guild_id, goal, hardcore, numbers, react) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING"
+            query = 'INSERT INTO "counting" (channel_id, guild_id, goal, hardcore, numbers, "react") VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING'
             await connection.execute(
                 query, channel.id, self.ctx.guild.id, goal, False, numbers, react
             )
@@ -108,7 +108,7 @@ class command(ShakeCommand):
         embed.set_image(
             url="https://cdn.discordapp.com/attachments/946862628179939338/1060213944981143692/banner.png"
         )
-        await self.ctx.send(embed=embed, ephemeral=True)
+        await self.ctx.chat(embed=embed, ephemeral=True)
 
     async def configure(
         self, channel: TextChannel, count: Optional[int], react: Optional[bool]
@@ -126,7 +126,7 @@ class command(ShakeCommand):
 
             count = (count - 1) if count else record["count"]
             react = react if not react is None else record["react"]
-            query = "UPDATE counting SET count = $2, react = $3 WHERE channel_id = $1"
+            query = 'UPDATE counting SET count = $2, "react" = $3 WHERE channel_id = $1'
             await connection.execute(query, channel.id, count, react)
 
         if count is not None:

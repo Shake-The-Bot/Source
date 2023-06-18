@@ -40,7 +40,7 @@ class on_message(Cog):
     @loop(seconds=60.0)
     async def counting(self):
         query = """UPDATE counting set user_id = x.user_id, count = x.count, streak = x.streak, used = x.used, best = x.best, goal = x.goal 
-                   FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, count BIGINT, user_id BIGINT, streak BIGINT, best BIGINT, goal BIGINT, react BOOLEAN, used TIMESTAMP, number BOOLEAN) 
+                   FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, count BIGINT, user_id BIGINT, streak BIGINT, best BIGINT, goal BIGINT, "react" BOOLEAN, used TIMESTAMP, numbers BOOLEAN) 
                    WHERE counting.channel_id = x.channel_id;
                 """
         CountingBatches: Dict[int, CountingBatch] = self.bot.cache["Counting"]
@@ -51,7 +51,7 @@ class on_message(Cog):
     @loop(seconds=60.0)
     async def aboveme(self):
         query = """UPDATE aboveme set user_id = x.user_id, count = x.count, phrases = x.phrases, used = x.used
-                   FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, phrases TEXT[], react BOOLEAN, used TIMESTAMP) 
+                   FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, phrases TEXT[], "react" BOOLEAN, used TIMESTAMP) 
                    WHERE aboveme.channel_id = x.channel_id;
                 """
         AboveMeBatches: Dict[int, AboveMeBatch] = self.bot.cache["AboveMe"]

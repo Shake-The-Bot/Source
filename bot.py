@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Sequence
 from discord import Message
 from discord.abc import Snowflake
 from discord.ext.commands import Cog
+from discord.ext.tasks import loop
 
 from Classes.helpful import BotBase
 from Classes.useful import MISSING, dump
@@ -29,6 +30,12 @@ class ShakeBot(BotBase):
         self.log: Logger = getLogger()
         super().__init__(**options)
         self.__version__ = __version__
+        self.reload.start()
+
+    @loop(seconds=60.0)
+    async def reload(self):
+        self.config.reload()
+        self.emojis.reload()
 
     async def process_commands(self, message: Message) -> None:
         await super().process_commands(message)

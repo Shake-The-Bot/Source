@@ -134,7 +134,7 @@ class VoteView(ui.View):
         if not self.voting:
             self.remove_item(self.send_yes)
             self.remove_item(self.send_no)
-        self.message = await self.ctx.send(embed=self.embed, view=self)
+        self.message = await self.ctx.chat(embed=self.embed, view=self)
 
     @ui.button(
         emoji=PartialEmoji(name="hook", id=1092840629047922688),
@@ -235,7 +235,7 @@ class RatherView(ui.View):
         if not self.voting:
             self.remove_item(self.send_yes)
             self.remove_item(self.send_no)
-        self.message = await self.ctx.send(embed=self.embed, view=self)
+        self.message = await self.ctx.chat(embed=self.embed, view=self)
 
     @ui.button(emoji="1️⃣", style=ButtonStyle.blurple, row=1)
     async def send_yes(self, interaction: Interaction, button: ui.Button):

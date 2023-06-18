@@ -8,13 +8,13 @@ from discord.ext.commands import guild_only, has_permissions, hybrid_group
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..features import Features
+from ..community import Community
 from . import oneword, testing
 
 
 ########
 #
-class oneword_extension(Features):
+class oneword_extension(Community):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot, cog=self)
         try:

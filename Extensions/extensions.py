@@ -1,9 +1,16 @@
+from enum import Enum
+from functools import partial
+from typing import Literal
+
+from discord.ext.commands import Bot
+
 extensions = [
     "Extensions.Commands.Help.__init__",
-    "Extensions.Commands.Features.features",
-    "Extensions.Commands.Features.aboveme.__init__",
-    "Extensions.Commands.Features.counting.__init__",
-    "Extensions.Commands.Features.oneword.__init__",
+    "Extensions.Commands.Community.community",
+    "Extensions.Commands.Community.aboveme.__init__",
+    "Extensions.Commands.Community.counting.__init__",
+    "Extensions.Commands.Community.oneword.__init__",
+    "Extensions.Commands.Community.schedule.__init__",
     # "Extensions.Commands.Functions.freegames.__init__",
     # "Extensions.Commands.Functions.tempvoice.__init__",
     "Extensions.Commands.Gimmicks.gimmicks",
@@ -65,4 +72,21 @@ extensions = [
     "Extensions.Functions.Reactions.raw.reaction.remove.__init__",
     "Extensions.Functions.Scheduled.freegames.__init__",
     # "Extensions.Functions.Voice.voice_state_update.__init__",
+]
+
+
+class Categorys(Enum):
+    community = "Community"
+    gimmicks = "Gimmicks"
+    information = "Information"
+    moderation = "Moderation"
+    other = "Other"
+
+
+CATEGORYS = Literal[
+    "Community",
+    "Gimmicks",
+    "Information",
+    "Moderation",
+    "Other",
 ]

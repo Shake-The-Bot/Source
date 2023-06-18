@@ -1,6 +1,7 @@
 from importlib import reload
 from inspect import getfile
 from os import path
+from re import findall
 from sys import modules
 from time import time
 from typing import List, Tuple, Union
@@ -113,16 +114,26 @@ class Handler(FileSystemEventHandler):
             if all([ctx is None, reloadable is None]):
                 return
 
-            message = f"`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`"
+            last = [message async for message in ctx.channel.history(limit=1)][0]
+            last_content = None
+            if last:
+                number = 0
+                if numbers := findall(r"\d+", last.content):
+                    number = int("".join(map(str, numbers)))
+                    last_content = last.content.removesuffix(f" ({number}x)")
+                else:
+                    last_content = last.content
 
-            sent = await ctx.channel.send(content=message)
+            # message = f"`[Watchdog]` <a:processing:1108969075041894460> :: Auto-reloading `{reloadable}`"
+            # sent = await ctx.channel.send(content=message)
 
             content = None
             try:
                 try:
                     await self.bot.reload_extension(reloadable)
                 except ExtensionNotLoaded:
-                    await self.bot.load_extension(reloadable)
+                    return
+                    # await self.bot.load_extension(reloadable)
                 except:
                     content = f"`[Watchdog]` Unknown extension {reloadable}"
 
@@ -131,8 +142,14 @@ class Handler(FileSystemEventHandler):
             else:
                 content = f"`[Watchdog]` `{reloadable}` reloaded."
 
-            if not content is None:
-                await sent.edit(content=content)
+            if (
+                last_content
+                and content == last_content
+                and last.author == self.bot.user
+            ):
+                await last.edit(content=content + f" ({number+1}x)")
+            else:
+                await ctx.channel.send(content=content + f" ({number+1}x)")
 
         elif self.utils(event.src_path):
             parts = str(event.src_path).split("/")[1:]

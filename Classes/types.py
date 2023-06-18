@@ -9,15 +9,16 @@ from discord.channel import *
 from discord.ext.commands import Bot
 
 from Classes.useful import string
+from Extensions.extensions import CATEGORYS, Categorys
 
 __all__ = (
     "Types",
     "TextFormat",
     "Regex",
-    "Categorys",
-    "CATEGORYS",
     "OneWordBatch",
     "Locale",
+    "CATEGORYS",
+    "Categorys",
     "AboveMeBatch",
     "CountingBatch",
     "tick",
@@ -156,23 +157,6 @@ class Regex(Enum):
     revision = re.compile(
         r"(?P<kind>V|U)(?P<version>[0-9]+)_(?P<type>bot|guild)_(?P<description>.+).sql"
     )
-
-
-class Categorys(Enum):
-    games = partial(Bot.get_cog, "Games")
-    gimmicks = partial(Bot.get_cog, "Gimmicks")
-    information = partial(Bot.get_cog, "Information")
-    moderation = partial(Bot.get_cog, "Moderation")
-    other = partial(Bot.get_cog, "Other")
-
-
-CATEGORYS = Literal[
-    "Games",
-    "Gimmicks",
-    "Information",
-    "Moderation",
-    "Other",
-]
 
 
 class ExtensionMethods(Enum):

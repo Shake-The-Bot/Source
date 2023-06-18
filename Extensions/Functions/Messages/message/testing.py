@@ -115,10 +115,10 @@ class Event:
             member=self.author, message=self.message
         )
 
-        if all([embed is None, delete is None, bad_reaction is None]):
+        if all([_ is None for _ in (embed, delete, bad_reaction)]):
             return
 
-        if not bad_reaction is False:
+        if not bad_reaction is MISSING:
             await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
         if embed:
             last = self.channel.last_message
@@ -145,10 +145,10 @@ class Event:
             member=self.author, message=self.message
         )
 
-        if all([embed is None, delete is None, bad_reaction is None]):
+        if all([_ is None for _ in (embed, delete, bad_reaction)]):
             return
 
-        if not bad_reaction is False:
+        if not bad_reaction is MISSING:
             await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
         if embed:
             last = self.channel.last_message
@@ -175,10 +175,10 @@ class Event:
             member=self.author, message=self.message
         )
 
-        if all([embed is None, delete is None, bad_reaction is None]):
+        if all([_ is None for _ in (embed, delete, bad_reaction)]):
             return
 
-        if not bad_reaction is False:
+        if not bad_reaction is MISSING:
             await self.message.add_reaction(
                 ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
             )
@@ -238,7 +238,7 @@ class OneWord:
         count: int = record["count"] or 0
         words: List[str] = record["words"] or []
         used: datetime = record["used"]
-        react: bool = record["react"] or True
+        react: bool = record.get("react", None) or True
         phrase: str = record["phrase"] or ""
 
         embed = ShakeEmbed(timestamp=None)
@@ -277,14 +277,14 @@ class OneWord:
         self.cache[self.channel.id]: OneWordBatch = {
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "used": time.isoformat() if passed else used,
+            "used": str(time.isoformat()) if passed else used,
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,
             "count": count + 1 if passed else count,
         }
 
-        return embed, delete, bad_reaction if react else False
+        return embed, delete, bad_reaction if react == True else MISSING
 
     async def words_check(self, content: str, words: List[str]):
         if content in words:
@@ -376,20 +376,19 @@ class AboveMe:
                 )
 
         user_id: int = record["user_id"]
-        count: int = record["count"] or 0
-        used: datetime = record["used"]
-        react: bool = record["react"] or True
-        phrases: List[str] = record["phrases"] or []
+        count: int = record.get("count", 0)
+        used: str = record["used"]
+        react: bool = record.get("react", True)
+        phrases: List[str] = record.get("phrases", [])
 
         embed = ShakeEmbed(timestamp=None)
 
-        delete = bad_reaction = passed = False
+        passed = False
 
         if not await self.member_check(user_id, member, testing):
             embed.description = TextFormat.bold(
                 _("""You are not allowed show off multiple numbers in a row.""")
             )
-            delete = bad_reaction = True
 
         elif not await self.syntax_check(content):
             embed.description = TextFormat.bold(
@@ -399,13 +398,11 @@ class AboveMe:
                     trigger=self.trigger.capitalize(),
                 )
             )
-            delete = bad_reaction = True
 
         elif not await self.phrase_check(content, phrases):
             embed.description = TextFormat.bold(
                 _("Your message should be something new")
             )
-            delete = bad_reaction = True
 
         else:
             passed = True
@@ -416,15 +413,15 @@ class AboveMe:
             phrases.insert(0, content)
 
         self.cache[self.channel.id]: AboveMeBatch = {
-            "channel_id": self.channel.id,
+            "used": str(time.isoformat()) if passed else used,
             "user_id": member.id if passed else user_id,
-            "used": time.isoformat() if passed else used,
+            "channel_id": self.channel.id,
             "phrases": phrases,
             "react": react,
             "count": count + 1 if passed else count,
         }
 
-        return embed, delete, bad_reaction if react else False
+        return embed, not passed, not passed if react == True else MISSING
 
     async def phrase_check(self, content: str, phrases: List[str]):
         if content in phrases:
@@ -490,14 +487,14 @@ class Counting:
                     self.channel.id,
                 )
 
-        streak: int = record["streak"] or 0
-        best: int = record["best"] or 0
-        user_id: int = record["user_id"]
-        goal: int = record["goal"]
-        count: int = record["count"] or 0
-        used: datetime = record["used"]
-        react: bool = record["react"] or True
-        numbers: bool = record["numbers"]
+        streak: int = record.get("streak", 0) or 0
+        best: int = record.get("best", 0) or 0
+        user_id: int = record.get("user_id")
+        goal: int = record.get("goal")
+        count: int = record.get("count", 0) or 0
+        used: datetime = record.get("used")
+        react: bool = record.get("react", True)
+        numbers: bool = record.get("numbers")
         backup: int = tens(count, True) - 1
         reached: bool = False
 
@@ -590,9 +587,9 @@ class Counting:
 
         s = streak + 1 if passed else streak
         self.cache[self.channel.id]: CountingBatch = {
+            "used": str(time.isoformat()) if passed else used,
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "used": time.isoformat() if passed else used,
             "streak": s,
             "react": react,
             "best": s if s > best else best,
@@ -600,8 +597,7 @@ class Counting:
             "goal": None if reached else goal,
             "numbers": numbers,
         }
-
-        return embed, delete, bad_reaction if react else False
+        return embed, delete, bad_reaction if react == True else MISSING
 
     async def syntax_check(self, content: str):
         if not content.isdigit():

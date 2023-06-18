@@ -88,7 +88,7 @@ def setlocale(guild: Optional[bool] = False) -> Check[Any]:
         ctx: Optional[Context] = None, interaction: Optional[Interaction] = None
     ) -> bool:
         if isinstance(interaction, Interaction):
-            ctx = Context.from_interaction(ctx)
+            ctx = await Context.from_interaction(ctx)
         bot: ShakeBot = ctx.bot
 
         locale = (

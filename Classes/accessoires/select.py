@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from discord import Interaction, PartialEmoji, ui, utils
 
+from Classes.accessoires.page import ShakePages
+from Classes.accessoires.source import FrontPageSource, ListPageSource
 from Classes.i18n import _
-from Classes.pages.page import ShakePages
-from Classes.pages.source import FrontPageSource, ListPageSource
 from Classes.useful import MISSING
 
 Group = Item = Any

@@ -23,7 +23,7 @@ from Classes import (
     _,
     __version__,
 )
-from Classes.pages import (
+from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,

@@ -3,7 +3,7 @@
 from discord import PartialEmoji
 
 from Classes import MISSING, ShakeCommand, _
-from Classes.pages import ListMenu, ListPageSource
+from Classes.accessoires import ListMenu, ListPageSource
 
 
 ########

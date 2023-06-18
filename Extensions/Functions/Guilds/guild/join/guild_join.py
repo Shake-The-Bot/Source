@@ -117,8 +117,17 @@ class Event:
             """.format(
             point=point, invite=self.bot.config.other.server, emoji=heart
         )
+        channel = introdoucing()
+        if channel:
+            await channel.send(embed=embed)
 
-        await introdoucing().send(embed=embed)
+        # # „Database stuff“
+        # with suppress(Exception):
+        #     if self.bot.cache["pools"].get(self.guild.id, None):
+        #         await db.delete_database(
+        #             self.guild.id,
+        #         )
+        #     create db
 
 
 #

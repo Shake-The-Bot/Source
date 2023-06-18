@@ -6,7 +6,7 @@ from typing import Optional
 from discord.ext.commands import Cog, guild_only, hybrid_command
 
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
-from Classes.types import CATEGORYS, Categorys
+from Classes.types import CATEGORYS
 
 from . import help, testing
 
@@ -55,9 +55,6 @@ class help_extension(Cog):
         do = testing if ctx.testing else help
 
         try:
-            if category is not None:
-                func = Categorys[category.lower()].value
-                category = func(ctx.bot)
             await do.command(
                 ctx=ctx,
                 category=category,

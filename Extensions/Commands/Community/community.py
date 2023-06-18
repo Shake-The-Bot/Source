@@ -7,10 +7,10 @@ from Classes import Category, ShakeBot, _
 
 ########
 #
-class Features(Category):
+class Community(Category):
     @property
     def description(self) -> str:
-        return _("""Commands for the the Features I offer""")
+        return _("""Commands for the the Community features I offer""")
 
     @property
     def emoji(self) -> PartialEmoji:
@@ -30,7 +30,7 @@ class Features(Category):
 
 
 async def setup(bot: ShakeBot):
-    await bot.add_cog(Features(bot))
+    await bot.add_cog(Community(bot))
 
 
 #

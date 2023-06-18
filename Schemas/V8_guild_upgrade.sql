@@ -1,6 +1,6 @@
--- Revises: V6
--- Creation Date: 2023-06-16 09:49:52.557428 UTC
--- Reason: upgrate
+-- Revises: V8
+-- Creation Date: 2023-06-18 07:38:56.576025 UTC
+-- Reason: upgrade
 
 
 CREATE TABLE IF NOT EXISTS aboveme (
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS aboveme (
     user_id BIGINT,
     used TIMESTAMP,
     phrases TEXT[],
-    react BOOLEAN DEFAULT TRUE,
+    "react" BOOLEAN DEFAULT TRUE,
     hardcore BOOLEAN DEFAULT FALSE
 );
 
@@ -26,11 +26,11 @@ CREATE TABLE IF NOT EXISTS counting (
     guild_id BIGINT,
     count BIGINT DEFAULT 0,
     user_id BIGINT,
-    streak BIGINT,
-    best BIGINT,
+    streak BIGINT DEFAULT 0,
+    best BIGINT DEFAULT 0,
     goal BIGINT,
     used TIMESTAMP,
-    react BOOLEAN DEFAULT TRUE,
+    "react" BOOLEAN DEFAULT TRUE,
     numbers BOOLEAN DEFAULT FALSE,
     hardcore BOOLEAN DEFAULT FALSE
 );
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS oneword (
     words TEXT[],
     phrase TEXT,
     used TIMESTAMP,
-    react BOOLEAN DEFAULT TRUE,
+    "react" BOOLEAN DEFAULT TRUE,
     hardcore BOOLEAN DEFAULT FALSE
 );
 

@@ -20,7 +20,7 @@ from Classes import (
     localedir,
     locales,
 )
-from Classes.pages import ListMenu, ListPageSource
+from Classes.accessoires import ListMenu, ListPageSource
 
 ########
 #

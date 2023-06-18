@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from discord import ButtonStyle, Interaction, ui
 from discord.ext import menus
 
-from Classes.pages import source as _source
-from Classes.pages.page import ShakePages
-from Classes.pages.select import CategoricalSelect
-from Classes.pages.source import FrontPageSource, ItemPageSource, ListPageSource
+from Classes.accessoires import source as _source
+from Classes.accessoires.page import ShakePages
+from Classes.accessoires.select import CategoricalSelect
+from Classes.accessoires.source import FrontPageSource, ItemPageSource, ListPageSource
 
 __all__ = ("ListMenu", "CategoricalMenu", "LinkingSource")
 

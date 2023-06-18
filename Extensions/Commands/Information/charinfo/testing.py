@@ -3,7 +3,7 @@
 from unicodedata import name
 
 from Classes import ShakeCommand, _
-from Classes.pages import ListMenu, ListPageSource
+from Classes.accessoires import ListMenu, ListPageSource
 
 
 ########

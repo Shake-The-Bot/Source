@@ -15,14 +15,14 @@ from Classes.exceptions import *
 #
 class Event:
     def __init__(self, ctx: ShakeContext | Interaction, error):
-        if isinstance(ctx, Interaction):
-            ctx = ShakeContext.from_interaction(ctx)
-
         self.bot: ShakeBot = ctx.bot
         self.ctx: ShakeContext | Interaction = ctx
         self.error: errors.CommandError = error
 
     async def __await__(self):
+        if isinstance(self.ctx, Interaction):
+            self.ctx: ShakeContext = ShakeContext.from_interaction(self.ctx)
+
         await self.bot.register_command(self.ctx)
         if not self.ctx in self.bot.cache["context"]:
             self.bot.cache["context"].append(self.ctx)
@@ -168,7 +168,7 @@ class Event:
             else:
                 await self.ctx.response.send_message(embed=embed, ephemeral=True)
         else:
-            await self.ctx.send(embed=embed, ephemeral=True)
+            await self.ctx.chat(embed=embed, ephemeral=True)
 
         if raisable and not self.testing:
             embed = ShakeEmbed.to_success(
@@ -185,7 +185,7 @@ class Event:
             if isinstance(self.ctx, Interaction):
                 await self.ctx.followup.send(embed=embed, ephemeral=True)
             else:
-                await self.ctx.send(embed=embed, ephemeral=True)
+                await self.ctx.chat(embed=embed, ephemeral=True)
 
 
 #

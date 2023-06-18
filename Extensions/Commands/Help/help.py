@@ -33,7 +33,7 @@ from Classes import (
     _,
     get_signature,
 )
-from Classes.pages import (
+from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
     FrontPageSource,
@@ -41,6 +41,7 @@ from Classes.pages import (
     ListPageSource,
     ShakePages,
 )
+from Classes.types import CATEGORYS, Categorys
 
 ########
 #
@@ -72,9 +73,13 @@ class command(ShakeCommand):
     def __init__(self, ctx, command: Optional[str], category: Optional[Category]):
         super().__init__(ctx)
         self.command: str = command
-        self.category: Optional[Category] = category
+        self.category: Optional[CATEGORYS] = category
 
     async def __await__(self: command):
+        if self.category is not None:
+            name: Categorys = Categorys[self.category.lower()].value
+            self.category = self.ctx.bot.get_cog(name)
+
         cat_or_cmd = self.command or self.category
 
         if cat_or_cmd is None:
@@ -82,8 +87,7 @@ class command(ShakeCommand):
             return
 
         if isinstance(cat_or_cmd, Category):
-            cog = await self.bot.get_cog(self.category.value)
-            await HelpPaginatedCommand(self.ctx).cog_help(cog)
+            await HelpPaginatedCommand(self.ctx).cog_help(cat_or_cmd)
             return
 
         keys = cat_or_cmd.split(" ")
@@ -234,11 +238,18 @@ class HelpPaginatedCommand:
             await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
         )
         await self.ctx.bot.locale.set_user_locale(self.ctx.author.id, locale)
+
         commands = await self.commands()
+
         source = CategorySource(
-            self.ctx, cog, commands, prefix=self.ctx.clean_prefix, paginating=True
+            self.ctx,
+            group=cog,
+            items=commands.get(cog, []),
+            prefix=self.ctx.clean_prefix,
+            paginating=True,
         )
         menu = HelpMenu(ctx=self.ctx, source=source, front=Front(), help=self)
+
         menu.add_categories(categories=commands)
         if not await menu.setup():
             raise
@@ -579,6 +590,8 @@ class CategorySource(ListPageSource):
             for key in self.suffixes
         ]
         if bool(last_embed):
+            embed.add_field(name="\u200b", value="\n".join(last_embed))
+        else:
             embed.advertise(self.bot)
 
         return embed, None
@@ -839,8 +852,11 @@ class Front(FrontPageSource):
                 inline=False,
                 value=_(
                     """{user}, which is partially intended for the public.
-                    Written with only `{lines:,}` lines of code. Please be nice"""
-                ).format(user=menu.ctx.bot.user.mention, lines=menu.ctx.bot.lines),
+                    Written with only `{lines}` lines of code. Please be nice"""
+                ).format(
+                    user=menu.ctx.bot.user.mention,
+                    lines="{0:,}".format(menu.ctx.bot.lines),
+                ),
             )
         elif self.index == 1:
             embed.add_field(
