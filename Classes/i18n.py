@@ -4,7 +4,7 @@ from ast import AsyncFunctionDef, Call, ClassDef, Expr, Name, Str, parse
 from contextvars import ContextVar
 from gettext import NullTranslations, gettext, translation
 from glob import glob
-from inspect import getsource
+from inspect import cleandoc, getsource
 from os import getcwd, path, walk
 from subprocess import call
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
@@ -88,7 +88,11 @@ def setlocale(guild: Optional[bool] = False) -> Check[Any]:
         ctx: Optional[Context] = None, interaction: Optional[Interaction] = None
     ) -> bool:
         if isinstance(interaction, Interaction):
-            ctx = await Context.from_interaction(ctx)
+            if interaction.command:
+                ctx = await Context.from_interaction(ctx)
+            else:
+                return False
+
         bot: ShakeBot = ctx.bot
 
         locale = (
@@ -129,7 +133,7 @@ def i18n_docstring(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     assert len(gettext_call.args) == 1
     assert isinstance(gettext_call.args[0], Str)
 
-    func.__doc__ = gettext_call.args[0].s
+    func.__doc__ = cleandoc(gettext_call.args[0].s)
     return func
 
 

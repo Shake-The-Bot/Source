@@ -13,6 +13,7 @@ from Classes import (
     Migration,
     NoCommands,
     NoShards,
+    NoVotes,
     OnlyCommands,
     ShakeBot,
     config,
@@ -35,9 +36,17 @@ def setup():
         logger.addHandler(NullHandler())
         logger.setLevel(INFO)
 
-        file, stream = handler(
-            file=True,
+        *n, stream = handler(
+            file=False,
             stream=True,
+            filters=(
+                NoCommands,
+                NoVotes,
+            ),
+        )
+        file, *n = handler(
+            file=True,
+            stream=False,
             filepath="./Classes/logging/latest/shake.log",
             filters=(NoCommands,),
         )

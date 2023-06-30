@@ -218,6 +218,26 @@ class OneWord:
         self.spam_control = spam_control
         self._auto_spam_count = Counter()
 
+    async def onewords(
+        self,
+        channel: TextChannel,
+        guild: Guild,
+        user: Member,
+        used: datetime,
+        count: Optional[int],
+        failed: bool,
+    ) -> None:
+        self.bot.cache["OneWords"].append(
+            {
+                "guild_id": guild.id,
+                "channel_id": channel.id,
+                "user_id": user.id,
+                "used": str(used.isoformat()),
+                "count": count,
+                "failed": failed,
+            }
+        )
+
     async def __await__(self, member: Member, message: Message) -> SystemType:
         content: str = message.clean_content.strip()
         time = message.created_at
@@ -235,6 +255,7 @@ class OneWord:
                 )
 
         user_id: int = record["user_id"]
+        message_id: int = record["message_id"]
         count: int = record["count"] or 0
         words: List[str] = record["words"] or []
         used: datetime = record["used"]
@@ -274,10 +295,20 @@ class OneWord:
                 embed = None
                 words.append(content)
 
+        await self.onewords(
+            channel=self.channel,
+            guild=self.guild,
+            user=member,
+            used=time,
+            count=count + 1,
+            failed=not passed,
+        )
+
         self.cache[self.channel.id]: OneWordBatch = {
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "used": str(time.isoformat()) if passed else used,
+            "message_id": message.id if passed else message_id,
+            "used": str(time.isoformat() if passed else used),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,
@@ -357,6 +388,26 @@ class AboveMe:
         self.spam_control = spam_control
         self._auto_spam_count = Counter()
 
+    async def aboveme(
+        self,
+        channel: TextChannel,
+        guild: Guild,
+        user: Member,
+        used: datetime,
+        count: Optional[int],
+        failed: bool,
+    ) -> None:
+        self.bot.cache["AboveMes"].append(
+            {
+                "guild_id": guild.id,
+                "channel_id": channel.id,
+                "user_id": user.id,
+                "used": str(used.isoformat()),
+                "count": count,
+                "failed": failed,
+            }
+        )
+
     async def __await__(
         self, member: Member, message: Message
     ) -> Tuple[Optional[ShakeEmbed], bool, bool]:
@@ -376,10 +427,11 @@ class AboveMe:
                 )
 
         user_id: int = record["user_id"]
+        message_id: int = record["message_id"]
         count: int = record.get("count", 0)
         used: str = record["used"]
         react: bool = record.get("react", True)
-        phrases: List[str] = record.get("phrases", [])
+        phrases: List[str] = record.get("phrases", []) or []
 
         embed = ShakeEmbed(timestamp=None)
 
@@ -412,10 +464,20 @@ class AboveMe:
                 phrases.pop()
             phrases.insert(0, content)
 
+        await self.aboveme(
+            channel=self.channel,
+            guild=self.guild,
+            user=member,
+            used=time,
+            count=count + 1,
+            failed=not passed,
+        )
+
         self.cache[self.channel.id]: AboveMeBatch = {
-            "used": str(time.isoformat()) if passed else used,
+            "used": str(time.isoformat() if passed else used),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
+            "message_id": message.id if passed else message_id,
             "phrases": phrases,
             "react": react,
             "count": count + 1 if passed else count,
@@ -490,6 +552,7 @@ class Counting:
         streak: int = record.get("streak", 0) or 0
         best: int = record.get("best", 0) or 0
         user_id: int = record.get("user_id")
+        message_id: int = record.get("message_id")
         goal: int = record.get("goal")
         count: int = record.get("count", 0) or 0
         used: datetime = record.get("used")
@@ -560,10 +623,9 @@ class Counting:
                 else:
                     embed.description = TextFormat.bold(
                         _(
-                            "You ruined it at {count} {facepalm}. The next number is {backup}. {streak}"
+                            "You ruined it at {count}. The next number is {backup}. {streak}"
                         ).format(
                             count=TextFormat.underline(record["count"]),
-                            facepalm="<:facepalm:1038177759983304784>",
                             streak=s,
                             backup=TextFormat.codeblock(f" {backup + 1} "),
                         )
@@ -585,12 +647,22 @@ class Counting:
             else:
                 embed = None
 
+        await self.counting(
+            channel=self.channel,
+            guild=self.guild,
+            user=member,
+            used=time,
+            count=count + 1,
+            failed=not passed,
+        )
+
         s = streak + 1 if passed else streak
         self.cache[self.channel.id]: CountingBatch = {
-            "used": str(time.isoformat()) if passed else used,
+            "used": str(time.isoformat() if passed else used),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "streak": s,
+            "message_id": message.id if passed else message_id,
             "react": react,
             "best": s if s > best else best,
             "count": count + 1 if passed else count,
@@ -598,6 +670,26 @@ class Counting:
             "numbers": numbers,
         }
         return embed, delete, bad_reaction if react == True else MISSING
+
+    async def counting(
+        self,
+        channel: TextChannel,
+        guild: Guild,
+        user: Member,
+        used: datetime,
+        count: Optional[int],
+        failed: bool,
+    ) -> None:
+        self.bot.cache["Countings"].append(
+            {
+                "guild_id": guild.id,
+                "channel_id": channel.id,
+                "user_id": user.id,
+                "used": str(used.isoformat()),
+                "count": count,
+                "failed": failed,
+            }
+        )
 
     async def syntax_check(self, content: str):
         if not content.isdigit():

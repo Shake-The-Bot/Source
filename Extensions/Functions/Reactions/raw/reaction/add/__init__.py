@@ -47,8 +47,8 @@ class on_raw_reaction_add(Cog):
             raise
 
 
-async def setup(bot: ShakeBot):
-    await bot.add_cog(on_raw_reaction_add(bot))
+# async def setup(bot: ShakeBot):
+#     await bot.add_cog(on_raw_reaction_add(bot))
 
 
 #

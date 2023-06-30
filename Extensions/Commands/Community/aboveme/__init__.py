@@ -1,9 +1,10 @@
 ############
 #
 from importlib import reload
-from typing import Optional
+from typing import Optional, Union
 
 from discord import PartialEmoji, TextChannel
+from discord.app_commands import Choice, choices
 from discord.ext.commands import guild_only, has_permissions, hybrid_group
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
@@ -48,7 +49,7 @@ class aboveme_extension(Community):
         ctx: ShakeContext,
         /,
         channel: Optional[TextChannel] = None,
-        react: Optional[bool] = None,
+        react: Optional[bool] = True,
     ):
         _(
             """Setup the whole AboveMe game in seconds
@@ -66,6 +67,35 @@ class aboveme_extension(Community):
 
         try:
             await do.command(ctx=ctx).setup(channel=channel, react=react)
+
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+    @aboveme.command(name="score")
+    @choices(
+        type=[
+            Choice(name="Servers", value="servers"),
+            Choice(name="Users", value="users"),
+        ]
+    )
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def score(self, ctx: ShakeContext, *, type: Optional[str] = "Servers"):
+        _("""View the top Counting users and servers""")
+        if ctx.testing:
+            try:
+                reload(testing)
+            except Exception as e:
+                await self.bot.testing_error(module=testing, error=e)
+                ctx.testing = False
+
+        do = testing if ctx.testing else aboveme
+
+        try:
+            await do.command(ctx=ctx).score(type=type)
 
         except:
             if ctx.testing:

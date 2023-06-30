@@ -45,7 +45,7 @@ class stats_extension(Information):
             and not self.bot.get_command(command).extras.get("owner", False)
         ]
 
-    @hybrid_command(name="stats", aliases=["about", "info"])
+    @hybrid_command(name="stats", aliases=["about", "info", "botinfo", "bot"])
     @guild_only()
     @setlocale()
     @locale_doc

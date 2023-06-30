@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
-from discord import File, Interaction, PartialEmoji
+from discord import ButtonStyle, File, Interaction, PartialEmoji, ui
 from discord.ext import menus
 
+from Classes import MISSING, ShakeContext, ShakeEmbed, TextFormat, _
 from Classes.accessoires import page
-from Classes.helpful import ShakeEmbed
-from Classes.i18n import _
-from Classes.useful import MISSING
 
 if TYPE_CHECKING:
+    from Classes.accessoires import ForwardingMenu
     from Classes.helpful import ShakeBot, ShakeContext
 
 __all__ = (
     "SourceSource",
     "FrontPageSource",
     "ItemPageSource",
+    "ForwardingSource",
+    "ForwardingFinishSource",
     "ListPageSource",
 )
 
@@ -179,6 +180,72 @@ class FrontPageSource(menus.PageSource):
 
 SourceTypes = ItemPageSource | ListPageSource | FrontPageSource
 sources = (ItemPageSource, ListPageSource, FrontPageSource)
+
+
+class ForwardingSource:
+    view: ForwardingMenu
+    bot: ShakeBot
+    ctx: ShakeContext
+    items: List[Union[ui.Select, ui.Button]]
+
+    next: Optional[ForwardingSource]
+    previous: Optional[ForwardingSource]
+
+    def __init__(
+        self,
+        view: ForwardingMenu,
+        previous: Optional[ForwardingSource],
+        next: Optional[ForwardingSource],
+        items: List[Union[ui.Select, ui.Button]],
+    ) -> None:
+        self.view = view
+        self.bot = view.bot
+        self.ctx = view.ctx
+        self.items = items
+        self.previous = previous
+        self.next = next
+        for item in items:
+            if not item in (view.cancel, view.previous):
+                item.callback = self.__call__
+
+    async def message(self) -> dict:
+        raise NotImplemented
+
+    async def __call__(self, interaction: Interaction) -> None:
+        value = self.item.values[0]
+        await self.callback(interaction, value)
+
+    async def callback(self, interaction: Interaction, value: Any) -> None:
+        raise NotImplemented
+
+
+class ForwardingFinishSource(ForwardingSource):
+    item = ui.Button(label="Confirm and Finish", row=4, style=ButtonStyle.green)
+
+    def __init__(self, view: ForwardingMenu) -> None:
+        self.item.callback = self.__call__
+        super().__init__(
+            view=view,
+            previous=None,
+            next=None,
+            items=[view.previous, self.item],
+        )
+
+    async def __call__(self, interaction: Interaction) -> None:
+        await self.callback(interaction)
+
+    async def callback(self, interaction: Interaction):
+        self.view.stop()
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed(timestamp=None)
+        embed.description = TextFormat.bold(
+            _("Please confirm your selection to exit the menu.")
+        )
+        return {"embed": embed}
+
 
 #
 ############

@@ -1,113 +1,215 @@
+from collections import deque
 from enum import Enum
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Coroutine, List, Optional, Union
 
-from discord import (
-    Forbidden,
-    HTTPException,
-    Interaction,
-    Message,
-    PartialEmoji,
-    SelectOption,
-    TextChannel,
-    ui,
-)
+from discord import ButtonStyle, Interaction, Message, PartialEmoji, SelectOption, ui
+from discord.ui import Button, Item, Select
 from discord.utils import maybe_coroutine
 
-from Classes import ShakeCommand, ShakeContext, ShakeEmbed, TextFormat, _
+from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, TextFormat, _
+from Classes.accessoires import ForwardingMenu, ForwardingSource
+
+previousemoji = PartialEmoji(name="left", id=1033551843210579988)
 
 
 ############
 #
-class Duration(Enum):
+class Types(Enum):
+    webhook = 1
+    message = 0
+
+
+class Methods(Enum):
+    sleep = 0
+    database = 1
+    scheduler = 2
+
+
+class Durations(Enum):
     forever = 0
     specific = 1
     until = 3
 
 
-class Interval(Enum):
+class Intervals(Enum):
     never = 0
     daily = 1
     weekly = 7
     monthly = 31
-    yearly = 356
+    yearly = 365
+
+
+class ScheduleMenu(ForwardingMenu):
+    ctx: ShakeContext
+    message: Message
+
+    interval = Select(
+        placeholder="Choose the repetition...",
+        options=[
+            SelectOption(label=label, description=description, value=value)
+            for label, description, value in [
+                ("Never", "Set the Alert for only once", Intervals.never.name),
+                ("Daily", "Set the Alert for every day", Intervals.daily.name),
+                ("Weekly", "Set the Alert for every week", Intervals.weekly.name),
+                ("Monthly", "Set the Alert for every montg", Intervals.monthly.name),
+                ("Yearly", "Set the Alert for every year", Intervals.yearly.name),
+            ]
+        ],
+    )
+
+    duration = Select(
+        placeholder="Choose the duration...",
+        options=[
+            SelectOption(label=label, description=description, value=value)
+            for label, description, value in [
+                ("Forever", None, Durations.forever.name),
+                ("Specific number of times", None, Durations.specific.name),
+                ("Until", None, Durations.until.name),
+            ]
+        ],
+    )
+
+    type = Select(
+        placeholder="Choose the alert message type...",
+        options=[
+            SelectOption(label=label, description=description, value=value)
+            for label, description, value in [
+                ("Bot message", "Let me send the Alert", Types.message.name),
+                ("Webhook", "Let a Webhook send the Alert", Types.webhook.name),
+            ]
+        ],
+    )
+
+    def __init__(self, ctx):
+        self.start = Interval()
+
+        self.interval.callback = self.duration
+        self.duration.callback = self.types
+        self.type.callback = self.finish
+        super().__init__(ctx)
+        sites = [
+            [self.inter, self.cancel],
+            [self.dur, self.cancel],
+            [self.typ, self.cancel],
+        ]
+        self.setup(sites)
+
+    async def start(self, interaction: Interaction):
+        embed = ShakeEmbed()
+        embed.title = _("Repetition")
+        embed.description = TextFormat.bold(_("Decide to only get alerted once or choose the interval between the alerts!"))
+
+        self.update(1)
+        await self.message.edit(embed=embed, view=self)
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+
+class Interval(ForwardingSource):
+    view: ScheduleMenu
+    interval: Optional[Intervals]
+
+    def __init__(self, view: ScheduleMenu, item) -> None:
+        super().__init__(view=view, item=item)
+        self.next = Duration
+        self.previous = None
+
+    async def function(self, interaction: Interaction, value: Intervals):
+        self.interval = Intervals[value]
+
+        # if self.interval != Intervals.never:
+        #     """-> when it is clear how long the alarm will last"""
+        #     if self.time.small:
+        #         self.view.method = Methods.sleep
+        #     else:
+        #         self.method = Methods.scheduler
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+        await self.view.show_source(self.next())
+
+    async def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.title = _("Repetition")
+        embed.description = TextFormat.bold(_("Decide to only get alerted once or choose the interval between the alerts!"))
+        return {'embed': embed}
+
+
+class Duration(ForwardingSource):
+    view: ScheduleMenu
+    duration: Optional[Durations]
+
+    def __init__(self, view: ScheduleMenu, item) -> None:
+        super().__init__(view=view, item=item)
+        self.previous = Interval
+        self.next = Type
+
+    async def function(self, interaction: Interaction, value: Durations):
+        self.duration = Durations[value]
+        await interaction.response.defer()  ## send modal for timezone
+
+        if self._duration == Durations.until:
+            # self.view.insert()
+            pass
+
+        elif self._duration == Durations.specific:
+            # self.view.insert()
+            pass
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+        await self.view.show_source(self.next())
+
+    async def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.description = TextFormat.bold(_("Second step: Choose the duration"))
+        return {'embed': embed}
+
+
+class Type(ForwardingSource):
+    view: ScheduleMenu
+    type: Optional[Types]
+
+    def __init__(self, view: ScheduleMenu, item) -> None:
+        super().__init__(view=view, item=item)
+        self.previous = Duration
+        self.next = None
+
+    async def function(self, interaction: Interaction, value: Types):
+        self.type = Types[value]
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+        self.view.stop()
+        # await self.view.show_next_page(self.next())
+
+    async def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.description = TextFormat.bold(_("Third step: Choose the Message Type"))
+        return {'embed': embed}
+
+
+class UntilModal:
+    ...
+
+
+class SpecificModal:
+    ...
 
 
 class command(ShakeCommand):
+    """"""
+
     async def create(self):
-        embed = ShakeEmbed()
-        embed.description = TextFormat.bold(_("First step: Choose the repetition"))
-        view = ScheduleView(cmd=self, ctx=self.ctx)
-        view.message = await self.ctx.send(embed=embed, view=view)
-
-
-class ScheduleView(ui.View):
-    ctx: ShakeContext
-    message: Message
-    cmd: command
-
-    def __init__(self, cmd, ctx):
-        self.ctx = ctx
-        self.cmd = cmd
-        super().__init__()
-        select = Select(
-            options=[
-                ("Never", "Just get reminded once", Interval.never.name),
-                ("Daily", "Get reminded every day", Interval.daily.name),
-                ("Weekly", "Get reminded every week", Interval.weekly.name),
-                ("Monthly", "Get reminded every montg", Interval.monthly.name),
-                ("Yearly", "Get reminded every year", Interval.yearly.name),
-            ],
-            placeholder="Choose the repetition...",
-            function=self.interval,
-        )
-        self.item = select
-        self.add_item(select)
-
-    async def interval(self, interval: Interval):
-        self._interval = Interval[interval]
-
-        select = Select(
-            options=[
-                ("Forever", None, Duration.forever.name),
-                ("Specific number of times", None, Duration.specific.name),
-                ("Until", None, Duration.until.name),
-            ],
-            placeholder="Choose the repetition...",
-            function=self.duration,
-        )
-        self.remove_item(self.item)
-        self.item = select
-        self.add_item(select)
-
-        embed = ShakeEmbed()
-        embed.description = TextFormat.bold(_("Second step: Choose the Duration"))
-
-        await self.message.edit(embed=embed, view=self)
-
-    async def duration(self, duration: Duration):
-        self._duration = Duration[duration]
-        await self.ctx.send(str(duration))
-
-
-class Select(ui.Select):
-    view: ScheduleView
-
-    def __init__(
-        self,
-        options: List[Tuple[str, Optional[str], Enum]],
-        placeholder: str,
-        function: Callable,
-    ):
-        options = [
-            SelectOption(label=label, description=description, value=value)
-            for label, description, value in options
-        ]
-        super().__init__(placeholder=placeholder, options=options)
-        self.function: Callable = function
-
-    async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        return await maybe_coroutine(self.function, self.values[0])
+        embed = ShakeEmbed(description=TextFormat.bold(_("Before continuing you must click on the Setup button.")))
+        menu = ScheduleMenu(ctx=self.ctx)
+        menu.setup()
+        message = await menu.send(embed=embed)
+        await menu.wait()
 
 
 #

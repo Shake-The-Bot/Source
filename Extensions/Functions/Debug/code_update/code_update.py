@@ -1,15 +1,11 @@
 from importlib import reload
 from inspect import getfile
-from os import path
 from re import findall
 from sys import modules
 from time import time
-from typing import List, Tuple, Union
 
-from discord import Message
-from discord.ext.commands import Cog, Command, ExtensionNotLoaded
+from discord.ext.commands import Cog, ExtensionNotLoaded
 from watchdog.events import DirModifiedEvent, FileModifiedEvent, FileSystemEventHandler
-from watchdog.observers import Observer
 
 from Classes import ShakeBot, ShakeContext
 
@@ -114,10 +110,16 @@ class Handler(FileSystemEventHandler):
             if all([ctx is None, reloadable is None]):
                 return
 
-            last = [message async for message in ctx.channel.history(limit=1)][0]
+            try:
+                messages = [message async for message in ctx.channel.history(limit=1)]
+            except:
+                last = None
+            else:
+                last = messages[0]
+
             last_content = None
+            number = 0
             if last:
-                number = 0
                 if numbers := findall(r"\d+", last.content):
                     number = int("".join(map(str, numbers)))
                     last_content = last.content.removesuffix(f" ({number}x)")

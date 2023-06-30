@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from contextlib import suppress
 from copy import copy
+from inspect import cleandoc
 from itertools import chain
 from itertools import combinations as cmb
 from itertools import groupby
 from random import sample
-from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional
+from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional, Union
 
 from discord import (
     ButtonStyle,
@@ -19,7 +20,14 @@ from discord import (
     ui,
 )
 from discord.ext import commands, menus
-from discord.ext.commands import Cog, Command, CommandError, Group, errors
+from discord.ext.commands import (
+    Cog,
+    Command,
+    CommandError,
+    Group,
+    HybridCommand,
+    errors,
+)
 from discord.utils import format_dt, maybe_coroutine
 
 from Classes import (
@@ -66,6 +74,7 @@ configurations: Callable[
         "suffix": bot.emojis.help.permissions,
         "text": _("This command requires certain rights from the user to be executed"),
     },
+    "group": {"suffix": "(G)", "text": _("This group-command has sub-commands")},
 }
 
 
@@ -524,12 +533,15 @@ class CategorySource(ListPageSource):
             signature.append("{}".format(argument))
         return signature
 
-    def add_field(self, embed: ShakeEmbed, item: Command, config):
+    def add_field(self, embed: ShakeEmbed, item: Command, config: configurations):
         suffix: dict[str, dict] = {
             extra: config[extra]
             for extra, key in getattr(item.callback, "extras", {}).items()
             if key is True and extra in set(config.keys())
         }
+        if isinstance(item, Group):
+            suffix["group"] = config["group"]
+
         self.suffixes.update(set(suffix.keys()))
         arguments = (
             (" `" + " ".join(sig) + "`") if bool(sig := self.signature(item)) else ""
@@ -547,17 +559,13 @@ class CategorySource(ListPageSource):
         emoji = getattr(item.cog, "display_emoji", "👀")
 
         signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
-        info = (
-            " " + _("(has also more sub-commands)") if isinstance(item, Group) else ""
-        )
         help = (
             _(item.help).split("\n", 1)[0]
             if item.help
             else _("No help given... (You should report this)")
         )
-
         embed.add_field(
-            name=signature + info,
+            name=signature,
             inline=False,
             value=TextFormat.blockquotes(help).capitalize() + badges,
         )
@@ -598,25 +606,30 @@ class CategorySource(ListPageSource):
 
 
 class CommandSource(ItemPageSource):
-    command: Command
+    item: Command
 
     async def get_page(self, page: Command) -> Coroutine[Any, Any, Any]:
         self.page: Command = page
         return self
 
-    def format_page(self, menu: ShakePages, items: Any, **kwargs: Any):
+    def format_page(self, menu: ShakePages, *args: Any, **kwargs: Any):
         self.cog: Cog = self.item.cog
         self.category = menu.bot.get_cog(self.cog.__class__.__bases__[0].__name__)
+
+        description = (
+            self.item.callback.__doc__
+            or self.item.help
+            or _("No more detailed description given.")
+        )
+
         embed = ShakeEmbed.default(
             menu.ctx,
             title=_("{category} » {command} Command").format(
                 category=self.category.label,
                 command=self.item.name.capitalize(),
             ),
-            description="{}".format(
-                _(self.item.help).format(prefix=menu.ctx.prefix)
-                if self.item.help
-                else _("No more detailed description given.")
+            description=TextFormat.multicodeblock(
+                cleandoc(_(description).format(prefix=menu.ctx.prefix)), "py"
             ),
         )
         embed.set_author(name=_("More detailed command description"))
@@ -823,7 +836,7 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             menu.ctx,
             title=(
-                _("{emoji} Bot Help (Timeouted type ?help again!)")
+                _("{emoji} Bot Help (Timeouted type /help again!)")
                 if self.timeouted
                 else _("{emoji} Bot Help")
             ).format(

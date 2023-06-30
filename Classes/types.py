@@ -4,7 +4,7 @@ from functools import partial
 from sys import exc_info
 from typing import Callable, Literal, TypedDict
 
-from discord import PartialEmoji, Thread
+from discord import Guild, PartialEmoji, Thread, User
 from discord.channel import *
 from discord.ext.commands import Bot
 
@@ -17,6 +17,7 @@ __all__ = (
     "Regex",
     "OneWordBatch",
     "Locale",
+    "FunctionsBatch",
     "CATEGORYS",
     "Categorys",
     "AboveMeBatch",
@@ -24,7 +25,18 @@ __all__ = (
     "tick",
     "TracebackType",
     "ExtensionMethods",
+    "UserGuild",
 )
+
+
+class UserGuild(Enum):
+    servers = Guild
+    server = User
+    users = User
+    user = User
+    guilds = Guild
+    guild = Guild
+
 
 try:
     raise TypeError
@@ -169,6 +181,7 @@ class CountingBatch(TypedDict):
     channel_id: int
     count: int
     user_id: int
+    message_id: int
     streak: int
     best: int
     goal: int
@@ -177,9 +190,19 @@ class CountingBatch(TypedDict):
     numbers: bool
 
 
+class FunctionsBatch(TypedDict):
+    guild_id: int
+    channel_id: int
+    user_id: int
+    count: int
+    failed: bool
+    used: str
+
+
 class OneWordBatch(TypedDict):
     channel_id: int
     user_id: int
+    message_id: int
     count: int
     words: list
     phrase: str
@@ -190,6 +213,7 @@ class OneWordBatch(TypedDict):
 class AboveMeBatch(TypedDict):
     channel_id: int
     user_id: int
+    message_id: int
     count: int
     phrases: list
     react: bool

@@ -41,7 +41,7 @@ class pp_extension(Gimmicks):
             Parameters
             -----------
             member: Greedy[Member]
-                the member to ban"""
+                the member to reveal"""
         )
 
         if ctx.testing:

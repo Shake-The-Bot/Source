@@ -41,6 +41,7 @@ __all__ = (
     "MISSING",
     "choice",
     "getrandbits",
+    "stdoutable",
     "random_token",
     "stdoutable",
     "safe_output",
@@ -448,10 +449,13 @@ def stdoutable(code: str, output: bool = False):
     return s
 
 
-def safe_output(ctx: ShakeContext, input_: str) -> str:
+def safe_output(ctx: ShakeContext, input: str) -> str:
     """Hides the bot's token from a string."""
     token = ctx.bot.http.token
-    return sub(escape(token), random_token(ctx.author.id), input_, I)
+    input = input.replace("@everyone", "@\u200beveryone").replace(
+        "@here", "@\u200bhere"
+    )
+    return sub(escape(token), random_token(ctx.author.id), input, I)
 
 
 def async_compile(source, filename, mode):
@@ -462,12 +466,15 @@ def cleanup(content: str) -> str:
     """Automatically removes code blocks from the code."""
     starts = ("py", "js")
     for start in starts:
-        i = len(start)
         if content.startswith(f"```{start}"):
+            i = len(start)
             content = content[3 + i :]
-    if content.startswith(f"```"):
-        content = content[3]
+    if content.startswith("```"):
+        content = content[-3:]
+    if content.endswith("```"):
+        content = content[:-3]
     content = content.strip("`").strip()
+    content = "\n".join(_ for _ in content.split("\n") if not _.startswith("#"))
     return content
 
 
@@ -488,6 +495,15 @@ def get_syntax_error(e):
     if e.text is None:
         return "{0.__class__.__name__}: {0}".format(e)
     return "{0.text}{1:>{0.offset}}\n{2}: {0}".format(e, "^", type(e).__name__)
+
+
+def stdoutable(code: str, output: bool = False):
+    content = code.split("\n")
+    s = ""
+    for i, line in enumerate(content):
+        s += ("..." if output else ">>>") + " "
+        s += line + "\n"
+    return s
 
 
 def tens(count: int, higher_when_same: bool = False):

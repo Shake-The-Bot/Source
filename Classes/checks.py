@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any, Callable, Coroutine, Dict, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Optional,
+    TypeVar,
+    Union,
+)
 
-from discord import utils
-from discord.ext.commands import Command, Context, check
+from discord import Permissions, utils
+from discord.ext.commands import Command, Context, MissingPermissions, check
 from discord.ext.commands._types import BotT, Check
 from typing_extensions import ParamSpec
 
 from Classes.exceptions import NotVoted
 from Classes.useful import votecheck
 
-__all__ = ("event_check", "has_voted", "extras")
+if TYPE_CHECKING:
+    from Classes.helpful import ShakeContext
+
+__all__ = ("event_check", "has_voted", "extras", "has_permissions")
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -35,6 +47,57 @@ def event_check(event_predicate: Callable[P, MaybeCoro[bool]]) -> _WrappedEvent:
 
     setattr(wrapper, "predicate", event_predicate)
     return wrapper
+
+
+def has_permissions(testing: Optional[bool] = False, **perms: bool) -> Check[Any]:
+    """A :func:`.check` that is added that checks if the member has all of
+    the permissions necessary.
+
+    Note that this check operates on the current channel permissions, not the
+    guild wide permissions.
+
+    The permissions passed in must be exactly like the properties shown under
+    :class:`.discord.Permissions`.
+
+    This check raises a special exception, :exc:`.MissingPermissions`
+    that is inherited from :exc:`.CheckFailure`.
+
+    Parameters
+    ------------
+    perms
+        An argument list of permissions to check for.
+
+    Example
+    ---------
+
+    .. code-block:: python3
+
+        @bot.command()
+        @commands.has_permissions(manage_messages=True)
+        async def test(ctx):
+            await ctx.send('You can manage messages.')
+
+    """
+
+    invalid = set(perms) - set(Permissions.VALID_FLAGS)
+    if invalid:
+        raise TypeError(f"Invalid permission(s): {', '.join(invalid)}")
+
+    def predicate(ctx: ShakeContext) -> bool:
+        permissions = ctx.permissions
+
+        missing = [
+            perm for perm, value in perms.items() if getattr(permissions, perm) != value
+        ]
+
+        if not missing:
+            return True
+        if testing and ctx.testing:
+            return True
+
+        raise MissingPermissions(missing)
+
+    return check(predicate)
 
 
 def has_voted() -> Check[Any]:

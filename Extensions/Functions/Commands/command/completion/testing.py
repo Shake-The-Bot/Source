@@ -19,14 +19,15 @@ class Event:
         if not self.ctx.done:
             self.ctx.done = True
 
-        self.bot.cache["used_commands"][self.ctx.author.id] += 1
+        if self.ctx.command and not self.ctx.command.extras.get("owner", False):
+            self.bot.cache["used_commands"][self.ctx.author.id] += 1
 
-        if self.bot.cache["used_commands"][self.ctx.author.id] >= 10:
-            if random() < (6 / 100):
-                content = _(
-                    "{_}Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or **share** me to your friends!{_}"
-                ).format(votelink=self.bot.config.other.vote, _="*")
-                await self.ctx.chat(content=content, forced=True)
+            if self.bot.cache["used_commands"][self.ctx.author.id] >= 10:
+                if random() < (6 / 100):
+                    content = _(
+                        "{_}Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or **share** me to your friends!{_}"
+                    ).format(votelink=self.bot.config.other.vote, _="*")
+                    await self.ctx.chat(content=content, forced=True)
 
 
 #

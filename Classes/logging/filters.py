@@ -3,7 +3,7 @@
 from logging import Filter
 from typing import Optional, Tuple
 
-__all__ = ("NoShards", "NoAttemps", "NoJobs", "NoCommands", "OnlyCommands")
+__all__ = ("NoShards", "NoAttemps", "NoVotes", "NoJobs", "NoCommands", "OnlyCommands")
 
 
 def only(
@@ -38,15 +38,33 @@ def nomore(
         def filter(self, record):
             if mute:
                 return False
-            if names and record.name.lower() in [name.lower() for name in names]:
+
+            steps = list()
+
+            if names:
+                if record.name.lower() in [name.lower() for name in names]:
+                    steps.append(False)
+                else:
+                    steps.append(True)
+
+            if levelnames:
+                if record.levelname.lower() in [
+                    levelname.lower() for levelname in levelnames
+                ]:
+                    steps.append(False)
+                else:
+                    steps.append(True)
+
+            if messages:
+                if any(msg.lower() in record.msg.lower() for msg in messages):
+                    steps.append(False)
+                else:
+                    steps.append(True)
+
+            if all(_ is False for _ in steps):
                 return False
-            if levelnames and record.levelname.lower() in [
-                levelname.lower() for levelname in levelnames
-            ]:
-                return False
-            if messages and any(msg.lower() in record.msg.lower() for msg in messages):
-                return False
-            return True
+            else:
+                return True
 
     return final()
 
@@ -77,6 +95,9 @@ NoJobs = nomore(
     ),
 )
 OnlyCommands = only(names=("shake.commands",))
+NoVotes = nomore(
+    names=("aiohttp.access",), levelnames=("INFO",), messages=("159.203.105.187",)
+)
 NoCommands = nomore(names=("shake.commands",))
 #
 ############

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import inspect
+import re
 from ast import literal_eval
 from datetime import datetime, timezone
 from difflib import get_close_matches
-from re import *
-from typing import Any, List, Literal, Optional, Tuple
+from typing import Any, List, Literal, Optional, Self, Tuple
 
+import parsedatetime
 from dateutil.relativedelta import relativedelta
 from discord import TextChannel
 from discord.app_commands import AppCommand, AppCommandGroup, Command, CommandTree
@@ -14,6 +15,10 @@ from discord.ext.commands import *
 
 from .i18n import _
 from .types import Types
+
+units = parsedatetime.pdtLocales['en_US'].units
+units['minutes'].append('mins')
+units['seconds'].append('secs')
 
 __all__ = (
     "DurationDelta",
@@ -43,11 +48,7 @@ class RtfmKey(Converter):
     """convert into a valid key"""
 
     async def convert(cls, ctx: Context, argument: Optional[str] = None) -> List[str]:
-        return (
-            argument
-            if not argument is None and argument in Types.RtfmPage.value
-            else None
-        )
+        return argument if not argument is None and argument in Types.RtfmPage.value else None
 
 
 class ValidKwarg(Converter):
@@ -69,15 +70,10 @@ class ValidKwarg(Converter):
 class CleanChannels(Converter):
     _channel_converter = TextChannelConverter()
 
-    async def convert(
-        self, ctx: Context, argument: str
-    ) -> Literal["*"] | list[TextChannel]:
+    async def convert(self, ctx: Context, argument: str) -> Literal["*"] | list[TextChannel]:
         if argument == "*":
             return "*"
-        return [
-            await self._channel_converter.convert(ctx, channel)
-            for channel in argument.split()
-        ]
+        return [await self._channel_converter.convert(ctx, channel) for channel in argument.split()]
 
 
 class DurationDelta(Converter):
@@ -85,9 +81,7 @@ class DurationDelta(Converter):
 
     async def convert(self, ctx: Context, argument: str) -> relativedelta:
         if not (delta := duration(argument)):
-            raise errors.BadArgument(
-                _("`{duration}` is not a valid duration string.")
-            ).format(duration=argument)
+            raise errors.BadArgument(_("`{duration}` is not a valid duration string.")).format(duration=argument)
 
         return delta
 
@@ -107,19 +101,17 @@ class Age(DurationDelta):
         try:
             return now - delta
         except (ValueError, OverflowError):
-            raise errors.BadArgument(
-                f"`{duration}` results in a datetime outside the supported range."
-            )
+            raise errors.BadArgument(f"`{duration}` results in a datetime outside the supported range.")
 
 
 class Regex(Converter):
-    async def convert(self, ctx: Context, argument: str) -> Pattern:
-        match = fullmatch(r"`(.+?)`", argument)
+    async def convert(self, ctx: Context, argument: str) -> re.Pattern:
+        match = re.fullmatch(r"`(.+?)`", argument)
         if not match:
             raise errors.BadArgument(_("Regex pattern missing wrapping backticks"))
         try:
-            return compile(match.group(1), IGNORECASE + DOTALL)
-        except error as e:
+            return compile(match.group(1), re.IGNORECASE + re.DOTALL)
+        except re.error as e:
             raise errors.BadArgument(_("Regex error: {e_msg}")).format(e_msg=e.msg)
 
 
@@ -152,12 +144,87 @@ def duration(duration: str) -> Optional[relativedelta]:
     if not match:
         return None
 
-    duration_dict = {
-        unit: int(amount) for unit, amount in match.groupdict(default=0).items()
-    }
+    duration_dict = {unit: int(amount) for unit, amount in match.groupdict(default=0).items()}
     delta = relativedelta(**duration_dict)
 
     return delta
+
+
+class ShortTime:
+    human_fmt = re.compile(
+        """
+           (?:(?P<years>[0-9])(?:years?|year|Y|y))?             # e.g. 2y
+           (?:(?P<months>[0-9]{1,2})(?:months?|month|m))?       # e.g. 2months
+           (?:(?P<weeks>[0-9]{1,4})(?:weeks?|week|W|w))?        # e.g. 10w
+           (?:(?P<days>[0-9]{1,5})(?:days?|day|D|d))?           # e.g. 14d
+           (?:(?P<hours>[0-9]{1,5})(?:hours?|hour|H|h))?        # e.g. 12h
+           (?:(?P<minutes>[0-9]{1,5})(?:minutes?|minute|M))?    # e.g. 10m
+           (?:(?P<seconds>[0-9]{1,5})(?:seconds?|second|S|s))?  # e.g. 15s
+        """,
+        re.VERBOSE,
+    )
+
+    discord_fmt = re.compile(r'<t:(?P<ts>[0-9]+)(?:\:?[RFfDdTt])?>')
+
+    dt: datetime.datetime
+
+    def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
+        match = self.human_fmt.fullmatch(argument)
+        if match is None or not match.group(0):
+            match = self.discord_fmt.fullmatch(argument)
+            if match is not None:
+                self.dt = datetime.datetime.fromtimestamp(int(match.group('ts')), tz=datetime.timezone.utc)
+                return
+            else:
+                raise BadArgument('invalid time provided')
+
+        data = {k: int(v) for k, v in match.groupdict(default=0).items()}
+        now = now or datetime.datetime.now(datetime.timezone.utc)
+        self.dt = now + relativedelta(**data)
+
+    @classmethod
+    async def convert(cls, ctx: Context, argument: str) -> Self:
+        return cls(argument, now=ctx.message.created_at)
+
+
+class HumanTime:
+    calendar = parsedatetime.Calendar(version=parsedatetime.VERSION_CONTEXT_STYLE)
+
+    def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
+        now = now or datetime.datetime.utcnow()
+        dt, status = self.calendar.parseDT(argument, sourceTime=now)
+        if not status.hasDateOrTime:
+            raise BadArgument('invalid time provided, try e.g. "tomorrow" or "3 days"')
+
+        if not status.hasTime:
+            # replace it with the current time
+            dt = dt.replace(hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond)
+
+        self.dt: datetime.datetime = dt
+        self._past: bool = dt < now
+
+    @classmethod
+    async def convert(cls, ctx: Context, argument: str) -> Self:
+        return cls(argument, now=ctx.message.created_at)
+
+
+class Time(HumanTime):
+    def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
+        try:
+            o = ShortTime(argument, now=now)
+        except Exception as e:
+            super().__init__(argument)
+        else:
+            self.dt = o.dt
+            self._past = False
+
+
+class FutureTime(Time):
+    def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
+        super().__init__(argument, now=now)
+
+        if self._past:
+            raise BadArgument('this time is in the past')
 
 
 class Slash:
@@ -180,15 +247,12 @@ class Slash:
 
     @property
     def is_group(self) -> bool:
-        return any(
-            isinstance(option, AppCommandGroup) for option in self.app_command.options
-        )
+        return any(isinstance(option, AppCommandGroup) for option in self.app_command.options)
 
     @property
     def is_subcommand(self) -> bool:
         return any(
-            isinstance(option, AppCommandGroup) and self.command.name in option.name
-            for option in self.app_command.options
+            isinstance(option, AppCommandGroup) and self.command.name in option.name for option in self.app_command.options
         )
 
     async def get_sub_command(self, sub_command: Command) -> tuple[AppCommand, str]:
@@ -227,9 +291,7 @@ class ValidCog(Converter):
     async def convert(self, ctx: Context, argument: str) -> str:
         def validation(final: str):
             if any(_ in str(final) for _ in ["load", "unload", "reload"]):
-                raise BadArgument(
-                    message=str(final) + " is not a valid module to work with"
-                )
+                raise BadArgument(message=str(final) + " is not a valid module to work with")
             return final
 
         if command := ctx.bot.get_command(argument):
@@ -242,7 +304,7 @@ class ValidCog(Converter):
         elif argument in ctx.bot.config.client.extensions:
             return validation(argument)
 
-        elif len(parts := split(r"[./]", argument)) > 1:
+        elif len(parts := re.split(r"[./]", argument)) > 1:
             build = list(filter(lambda x: not x in ["__init__", "py"], parts))
 
             try:
@@ -268,21 +330,13 @@ class ValidCog(Converter):
                 return validation(matches[0])
 
         else:
-            shortened = [
-                _.split(".")[-1].lower() for _ in ctx.bot.config.client.extensions
-            ]
+            shortened = [_.split(".")[-1].lower() for _ in ctx.bot.config.client.extensions]
             if argument.lower() in shortened:
-                return validation(
-                    ctx.bot.config.client.extensions[shortened.index(argument)]
-                )
+                return validation(ctx.bot.config.client.extensions[shortened.index(argument)])
             elif matches := get_close_matches(argument.lower(), shortened):
-                return validation(
-                    ctx.bot.config.client.extensions[shortened.index(matches[0])]
-                )
+                return validation(ctx.bot.config.client.extensions[shortened.index(matches[0])])
 
-        raise BadArgument(
-            message="Specify either the module name or the path to the module"
-        )
+        raise BadArgument(message="Specify either the module name or the path to the module")
 
 
 #

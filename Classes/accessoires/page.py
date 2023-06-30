@@ -207,7 +207,7 @@ class ShakePages(ui.View):
         self.page = page
         return True
 
-    async def send(self, ephemeral: Optional[bool] = False):
+    async def send(self, ephemeral: Optional[bool] = None):
         files = (
             (self.file if isinstance(self.file, list) else [self.file])
             if self.file
@@ -217,9 +217,8 @@ class ShakePages(ui.View):
             files=files,
             view=self,
             **self.kwargs,
-            ephemeral=(True if await self.bot.is_owner(self.ctx.author) else False)
-            if ephemeral is None
-            else ephemeral,
+            ephemeral=ephemeral
+            or (True if await self.bot.is_owner(self.ctx.author) else False),
         )
 
     @ui.button(emoji=firstemoji, style=ButtonStyle.blurple, row=1)

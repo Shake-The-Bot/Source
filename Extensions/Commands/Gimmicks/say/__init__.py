@@ -30,7 +30,7 @@ class say_extension(Gimmicks):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def say(self, ctx: ShakeContext, reply: Optional[bool] = True, *, text: str):
+    async def say(self, ctx: ShakeContext, reply: Optional[bool] = False, *, text: str):
         _(
             """I will say whatever you tell me to say, except...
             Speak as if you were me. URLs/Invites not allowed!

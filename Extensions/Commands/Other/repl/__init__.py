@@ -39,22 +39,27 @@ class repl_extension(Other):
     async def repl(self, ctx: ShakeContext, *, code: str) -> None:
         _(
             """Run your own xyz codes.
-            
+
+            A read-eval-print loop (REPL), also termed an interactive toplevel or language shell,
+            takes single user inputs, executes them, and returns the result to the user.
+
             You can simply specify this code as an argument and also in quotes (`).
             Optionally you can use common attributes like ctx, bot etc. in the code.
-            
+
             Environment Variables:
-                ctx     - command invocation context
-                bot     - bot object
-                channel - the current channel object
-                author  - command author's member object
-                message - the command's message object
-                _       - The result of the last dev command.
-            
+                ctx         - command invocation context
+                bot         - ShakeBot
+                channel     - current channel
+                author      - command author's member
+                message     - command's message
+                __ref       - reference if given
+                __last__    - variables of the last repl
+                __          - results of the last repl.
+
             Parameters
             -----------
             code: str
-                the code"""
+                the code input to execute"""
         )
 
         if ctx.testing:

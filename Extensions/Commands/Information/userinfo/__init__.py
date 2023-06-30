@@ -49,7 +49,9 @@ class userinfo_extension(Information):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def userinfo(self, ctx: ShakeContext, user: Optional[User | Member] = None):
+    async def userinfo(
+        self, ctx: ShakeContext, *, user: Optional[User | Member] = None
+    ):
         _(
             """Get information about you or a specified user.
             

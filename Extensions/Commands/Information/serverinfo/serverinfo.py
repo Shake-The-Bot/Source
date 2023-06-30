@@ -84,12 +84,6 @@ class command(ShakeCommand):
 
         categoies = {
             RolesSource(ctx=self.ctx, guild=self.guild): set(self.guild.roles),
-            EmojisSource(ctx=self.ctx, guild=self.guild): [
-                self.guild.icon,
-                self.guild.banner,
-                self.guild.splash,
-                self.guild.discovery_splash,
-            ],
             ChannelsSource(ctx=self.ctx, guild=self.guild): set(self.guild.channels),
             MembersSource(ctx=self.ctx, guild=self.guild): set(self.guild.members),
             ActivitiesSource(ctx=self.ctx, guild=self.guild): set(
@@ -99,6 +93,14 @@ class command(ShakeCommand):
                 self.guild.premium_subscribers
             ),
         }
+        if bool(self.guild.emojis):
+            categoies[EmojisSource(ctx=self.ctx, guild=self.guild)] = [
+                self.guild.icon,
+                self.guild.banner,
+                self.guild.splash,
+                self.guild.discovery_splash,
+            ]
+
         assets: Dict[Asset, str] = {
             self.guild.icon: _("Servers's icon"),
             self.guild.splash: _("Servers's splash"),
@@ -521,19 +523,18 @@ class ActivitiesSource(ListPageSource):
 
     def __init__(self, ctx: ShakeContext | Interaction, guild: Guild, *args, **kwargs):
         self.guild: Guild = guild
-        self.counter = {
-            k: v
-            for k, v in Counter(
-                set(
-                    (member.activities[0].type, member.activities[0].name)
-                    for member in guild.members
-                    if not member.bot
-                    and bool(member.activities)
-                    and not member.activities[0].name is None
-                )
-            ).most_common()
-            if not (k[0].value == 4 and v == 1)
-        }
+        activities = [
+            (activity.type, activity.name)
+            for activity in [
+                member.activities[0]
+                for member in guild.members
+                if bool(member.activities)
+            ]
+            if not activity.name is None and activity.type.value != 4
+        ]
+        counter = Counter(activities).most_common()
+        self.counter = {(t, n): v for (t, n), v in counter if v > 1}
+        self.places = list(sorted(set(self.counter.values()), reverse=True))
         super().__init__(
             ctx,
             items=list(self.counter.keys()),
@@ -551,8 +552,8 @@ class ActivitiesSource(ListPageSource):
         embed = ShakeEmbed(title=_("Server Activities"))
         prefix = str(PartialEmoji(name="dot", id=1093146860182568961)) + ""
         for type, name in items:
-            index = self.counter[(type, name)]
-            i = self.items.index((type, name)) + 1
+            people = self.counter[(type, name)]
+            i = self.places.index(people) + 1
             _type = translator.get(str(type.name), str(type.name))
 
             to_long = len(str(name)) > 31
@@ -565,7 +566,7 @@ class ActivitiesSource(ListPageSource):
                 + _("Top {index} Activity ({type})").format(
                     _="`", index="`" + str(i) + "`", type=_type
                 ),
-                value="**({}):** ".format(index) + _name,
+                value="**({}):** ".format(people) + _name,
             )
             if (items.index((type, name)) + 1) % 2 == 0:
                 embed.add_field(name=f"\u200b", value="\u200b", inline=True)

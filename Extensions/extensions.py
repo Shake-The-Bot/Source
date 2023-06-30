@@ -1,5 +1,6 @@
 from enum import Enum
 from functools import partial
+from itertools import chain
 from typing import Literal
 
 from discord.ext.commands import Bot
@@ -22,7 +23,7 @@ extensions = [
     "Extensions.Commands.Gimmicks.count.__init__",
     "Extensions.Commands.Gimmicks.countdown.__init__",
     "Extensions.Commands.Gimmicks.random.__init__",
-    "Extensions.Commands.Gimmicks.meme.__init__",
+    # "Extensions.Commands.Gimmicks.meme.__init__",
     "Extensions.Commands.Gimmicks.wouldyou.__init__",
     "Extensions.Commands.Gimmicks.scenario.__init__",
     "Extensions.Commands.Information.information",
@@ -39,10 +40,10 @@ extensions = [
     "Extensions.Commands.Information.list.__init__",
     "Extensions.Commands.Moderation.moderation",
     "Extensions.Commands.Moderation.sudo.__init__",
-    "Extensions.Commands.Moderation.do.__init__",
     "Extensions.Commands.Moderation.timeout.__init__",
     "Extensions.Commands.Moderation.kick.__init__",
     "Extensions.Commands.Other.other",
+    "Extensions.Commands.Other.do.__init__",
     "Extensions.Commands.Other.language.__init__",
     "Extensions.Commands.Other.extensions.__init__",
     "Extensions.Commands.Other.bash.__init__",
@@ -57,6 +58,7 @@ extensions = [
     "Extensions.Functions.Commands.command.completion.__init__",
     "Extensions.Functions.Commands.command.delete.__init__",
     "Extensions.Functions.Debug.code_update.__init__",
+    "Extensions.Functions.Gateway.dblgg.__init__",
     "Extensions.Functions.Gateway.ready.__init__",
     "Extensions.Functions.Gateway.shard.connect.__init__",
     "Extensions.Functions.Gateway.shard.disconnect.__init__",
@@ -68,8 +70,8 @@ extensions = [
     "Extensions.Functions.Members.member.join.__init__",
     "Extensions.Functions.Messages.message.__init__",
     "Extensions.Functions.Messages.message.edit.__init__",
-    "Extensions.Functions.Reactions.raw.reaction.add.__init__",
-    "Extensions.Functions.Reactions.raw.reaction.remove.__init__",
+    # "Extensions.Functions.Reactions.raw.reaction.add.__init__",
+    # "Extensions.Functions.Reactions.raw.reaction.remove.__init__",
     "Extensions.Functions.Scheduled.freegames.__init__",
     # "Extensions.Functions.Voice.voice_state_update.__init__",
 ]
@@ -83,10 +85,4 @@ class Categorys(Enum):
     other = "Other"
 
 
-CATEGORYS = Literal[
-    "Community",
-    "Gimmicks",
-    "Information",
-    "Moderation",
-    "Other",
-]
+CATEGORYS = Literal["Community", "Gimmicks", "Information", "Moderation", "Other"]

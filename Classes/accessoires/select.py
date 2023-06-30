@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, Union
 
-from discord import Interaction, PartialEmoji, ui, utils
+from discord import Emoji, Interaction, PartialEmoji, SelectOption, ui, utils
+from discord.utils import maybe_coroutine
 
 from Classes.accessoires.page import ShakePages
 from Classes.accessoires.source import FrontPageSource, ListPageSource
@@ -15,6 +16,30 @@ if TYPE_CHECKING:
     from Classes import ShakeBot, ShakeContext
 
 __all__ = ("CategoricalSelect",)
+
+
+class Selects:
+    label: str
+    value: str
+    description: Optional[str]
+    emoji: Optional[Union[str, Emoji, PartialEmoji]]
+    default: bool
+
+    def __init__(
+        self,
+        label=MISSING,
+        value=MISSING,
+        description=MISSING,
+        emoji=MISSING,
+        default=MISSING,
+        /,
+        options: List = MISSING,
+    ) -> None:
+        if any(
+            not _ is MISSING for _ in (label, value, description, emoji, default)
+        ) and bool(options):
+            raise ValueError("Can't pass options and other kwargs too")
+        pass
 
 
 class CategoricalSelect(ui.Select):

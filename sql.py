@@ -53,9 +53,9 @@ def migrate(reason, type: Literal["guild", "bot"] = "bot"):
     echo(f"Created revision V{revision.version!r}")
 
 
-async def run_upgrade(migration: Migration) -> int:
+async def run_migration(migration: Migration) -> int:
     connection: Connection = await connect(migration.using_uri)  # type: ignore
-    return await migration.upgrade(connection)
+    return await migration.run(connection)
 
 
 @db.command()
@@ -76,7 +76,7 @@ def upgrade(sql, type: Literal["guild", "bot"] = "bot"):
         return
 
     try:
-        applied = run(run_upgrade(migration))
+        applied = run(run_migration(migration))
     except Exception:
         print_exc()
         secho("failed to apply migration due to error", fg="red")

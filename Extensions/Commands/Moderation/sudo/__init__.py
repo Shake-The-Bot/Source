@@ -4,7 +4,7 @@ from importlib import reload
 from typing import Optional, Union
 
 from discord import Member, PartialEmoji, TextChannel, User
-from discord.ext.commands import guild_only, has_permissions, hybrid_command
+from discord.ext.commands import guild_only, has_permissions, hybrid_command, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
@@ -27,8 +27,8 @@ class sudo_extension(Moderation):
         return PartialEmoji(name="\N{WASTEBASKET}")
 
     @hybrid_command(name="sudo")
-    @extras(permissions=True)
-    @has_permissions(administrator=True)
+    @extras(owner=True)
+    @is_owner()
     @guild_only()
     @setlocale(guild=True)
     @locale_doc

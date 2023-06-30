@@ -66,6 +66,7 @@ configurations: Callable[
         "suffix": bot.emojis.help.permissions,
         "text": _("This command requires certain rights from the user to be executed"),
     },
+    "group": {"suffix": "(G)", "text": _("This group-command has sub-commands")},
 }
 
 
@@ -524,12 +525,15 @@ class CategorySource(ListPageSource):
             signature.append("{}".format(argument))
         return signature
 
-    def add_field(self, embed: ShakeEmbed, item: Command, config):
+    def add_field(self, embed: ShakeEmbed, item: Command, config: configurations):
         suffix: dict[str, dict] = {
             extra: config[extra]
             for extra, key in getattr(item.callback, "extras", {}).items()
             if key is True and extra in set(config.keys())
         }
+        if isinstance(item, Group):
+            suffix["group"] = config["group"]
+
         self.suffixes.update(set(suffix.keys()))
         arguments = (
             (" `" + " ".join(sig) + "`") if bool(sig := self.signature(item)) else ""
@@ -547,17 +551,13 @@ class CategorySource(ListPageSource):
         emoji = getattr(item.cog, "display_emoji", "👀")
 
         signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
-        info = (
-            " " + _("(has also more sub-commands)") if isinstance(item, Group) else ""
-        )
         help = (
             _(item.help).split("\n", 1)[0]
             if item.help
             else _("No help given... (You should report this)")
         )
-
         embed.add_field(
-            name=signature + info,
+            name=signature,
             inline=False,
             value=TextFormat.blockquotes(help).capitalize() + badges,
         )
@@ -823,7 +823,7 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             menu.ctx,
             title=(
-                _("{emoji} Bot Help (Timeouted type ?help again!)")
+                _("{emoji} Bot Help (Timeouted type /help again!)")
                 if self.timeouted
                 else _("{emoji} Bot Help")
             ).format(

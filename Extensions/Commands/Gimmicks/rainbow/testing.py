@@ -1,7 +1,7 @@
 ############
 #
 from io import BytesIO
-from random import choice
+from random import choice, randrange
 
 from discord import File, Member
 from PIL import Image, ImageFilter
@@ -27,8 +27,8 @@ class command(ShakeCommand):
 
         image2 = image2.resize((576, 576))
         image2 = image2.filter(ImageFilter.BoxBlur(radius=10))
-        image2 = image2.rotate(350, center=(288, 288))  # 350
-        image2.putalpha(60)
+        image2 = image2.rotate(randrange(0, 360), center=(288, 288))  # 350
+        image2.putalpha(randrange(30, 90))
         image.paste(image2, (-88, -88), image2)
         name = "rainbow{}".format(choice([1, 2, 3]))
 
@@ -36,14 +36,8 @@ class command(ShakeCommand):
             image.save(image_binary, "PNG")
             image_binary.seek(0)
             file = File(fp=image_binary, filename=f"{name}.png")
-        embed = ShakeEmbed.default(
-            self.ctx,
-            description=_("**{emoji} {prefix} `{user}` is part of it**").format(
-                emoji=self.bot.emojis.hook,
-                prefix=self.bot.emojis.prefix,
-                user=self.member,
-            ),
-        )
+        embed = ShakeEmbed.default(self.ctx)
+        embed.set_author(name=str(self.member), icon_url=self.member.display_avatar)
         embed.set_image(url=f"attachment://{name}.png")
         await self.ctx.chat(embed=embed, file=file)
 

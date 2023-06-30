@@ -17,7 +17,7 @@ from typing import *
 from uuid import uuid4
 
 import asyncpraw
-from _collections_abc import dict_items
+from _collections_abc import dict_items, dict_values
 from aiohttp import ClientSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
@@ -73,8 +73,8 @@ class ShakeContext(Context):
     command: Command[Any, ..., Any]
     message: Message
     testing: bool
-    bot: "ShakeBot"
-    pool: Pool
+    bot: ShakeBot
+    pool: DatabaseProtocol
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -390,7 +390,9 @@ class BotBase(AutoShardedBot):
         self.cache.setdefault("pages", dict())
         self.cache.setdefault("locales", dict())
         self.cache.setdefault("_data_batch", list())
-        self.cache.setdefault("testing", {1036952232719024129: None})
+        self.cache.setdefault(
+            "testing", {1036952232719024129: None, 1103300342856286260: None}
+        )
         self.cache.setdefault("context", deque(maxlen=100))
         self.cache.setdefault("tests", ExpiringCache(60 * 5))
         self.cache.setdefault("cached_posts", dict())
@@ -635,8 +637,8 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs["description"] = TextFormat.bold(
-                f"{bot.emojis.hook} {bot.emojis.prefix} {description}"
+            kwargs["description"] = TextFormat.multiblockquotes(
+                TextFormat.bold(f"{bot.emojis.hook} {bot.emojis.prefix} {description}")
             )
         instance = cls(colour=colour or 0x00CC88, **kwargs)
         instance.timestamp = None
@@ -656,8 +658,8 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs["description"] = TextFormat.bold(
-                f"{bot.emojis.cross} {bot.emojis.prefix} {description}"
+            kwargs["description"] = TextFormat.multiblockquotes(
+                TextFormat.bold(f"{bot.emojis.cross} {bot.emojis.prefix} {description}")
             )
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
@@ -706,7 +708,7 @@ class Migration:
         self.base_url = base_url
         self.type: Literal["guild", "bot"] = type
         self.root: Path = Path(filename).parent
-        self.revisions: dict[int, Revision] = self.get_revisions()
+        self.revisions: dict[int, Revision] = self.get_revisions(self.root)
         self.load()
 
     def ensure_path(self) -> None:
@@ -722,9 +724,10 @@ class Migration:
                 "base_url": MISSING,
             }
 
-    def get_revisions(self) -> dict[int, Revision]:
+    @staticmethod
+    def get_revisions(root: Path) -> dict[int, Revision]:
         result: dict[int, Revision] = {}
-        for file in self.root.glob("*.sql"):
+        for file in root.glob("*.sql"):
             match = Regex.revision.value.match(file.name)
             if match is not None:
                 rev = Revision.from_match(match, file)
@@ -825,7 +828,7 @@ class Migration:
             min_size=20,
         )
 
-    async def upgrade(self, connection: Connection) -> int:
+    async def run(self, connection: Connection) -> int:
         ordered = self.ordered_revisions
         successes = 0
         async with connection.transaction():
@@ -1142,21 +1145,25 @@ class Record:
 
 
 class ExpiringCache(dict):
-    def __init__(self, seconds: float):
+    def __init__(self, seconds: float = 60 * 5):
         self.__ttl: float = seconds
         super().__init__()
 
     def __verify_cache_integrity(self):
-        # Have to do this in two steps...
         current_time = monotonic()
         to_remove = [
-            k for (k, (v, t)) in self.items() if current_time > (t + self.__ttl)
+            k for (k, (v, t)) in super().items() if current_time > (t + self.__ttl)
         ]
         for k in to_remove:
             del self[k]
 
     def items(self) -> dict_items:
+        self.__verify_cache_integrity()
         return [(k, v) for k, (v, t) in super().items()]
+
+    def values(self) -> dict_values:
+        self.__verify_cache_integrity()
+        return [v for v, t in super().values()]
 
     def __contains__(self, key: str):
         self.__verify_cache_integrity()

@@ -4,7 +4,7 @@ from importlib import reload
 from typing import Optional
 
 from discord import PartialEmoji, TextChannel
-from discord.ext.commands import guild_only, has_permissions, hybrid_command
+from discord.ext.commands import guild_only, has_permissions, hybrid_command, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
@@ -28,8 +28,9 @@ class schedule_extension(Community):
 
     @hybrid_command(name="schedule")
     @guild_only()
+    @is_owner()
     @has_permissions(administrator=True)
-    @extras(permissions=True)
+    @extras(owner=True)
     @setlocale()
     @locale_doc
     async def schedule(self, ctx: ShakeContext):

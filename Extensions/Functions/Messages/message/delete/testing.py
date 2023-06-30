@@ -255,7 +255,6 @@ class OneWord:
                 )
 
         user_id: int = record["user_id"]
-        message_id: int = record["message_id"]
         count: int = record["count"] or 0
         words: List[str] = record["words"] or []
         used: datetime = record["used"]
@@ -307,7 +306,6 @@ class OneWord:
         self.cache[self.channel.id]: OneWordBatch = {
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "message_id": message.id if passed else message_id,
             "used": str(time.isoformat() if passed else used),
             "phrase": phrase,
             "words": [] if passed else words,
@@ -427,7 +425,6 @@ class AboveMe:
                 )
 
         user_id: int = record["user_id"]
-        message_id: int = record["message_id"]
         count: int = record.get("count", 0)
         used: str = record["used"]
         react: bool = record.get("react", True)
@@ -477,7 +474,6 @@ class AboveMe:
             "used": str(time.isoformat() if passed else used),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
-            "message_id": message.id if passed else message_id,
             "phrases": phrases,
             "react": react,
             "count": count + 1 if passed else count,
@@ -552,7 +548,6 @@ class Counting:
         streak: int = record.get("streak", 0) or 0
         best: int = record.get("best", 0) or 0
         user_id: int = record.get("user_id")
-        message_id: int = record.get("message_id")
         goal: int = record.get("goal")
         count: int = record.get("count", 0) or 0
         used: datetime = record.get("used")
@@ -662,7 +657,6 @@ class Counting:
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "streak": s,
-            "message_id": message.id if passed else message_id,
             "react": react,
             "best": s if s > best else best,
             "count": count + 1 if passed else count,

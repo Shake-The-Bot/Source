@@ -65,16 +65,30 @@ class command(ShakeCommand):
             select=select,
         )
 
-        categories = {
-            BadgesSource(ctx=self.ctx, user=self.user): list(self.user.public_flags),
-            AssetsSource(ctx=self.ctx, user=self.user): self.user.display_avatar,
-            # AssetsSource(ctx=self.ctx, user=self.user): set(self.user.emojis),
-            # EmojisSource(ctx=self.ctx, user=self.user): [self.user.icon, self.user.banner, self.user.splash, self.user.discovery_splash],
-            # ChannelsSource(ctx=self.ctx, user=self.user): set(self.user.channels),
-            # MembersSource(ctx=self.ctx, user=self.user): set(self.user.members),
-            # ActivitiesSource(ctx=self.ctx, user=self.user): set(m.activities for m in self.user.members),
-            # PremiumSource(ctx=self.ctx, user=self.user): set(self.user.premium_subscribers)
-        }
+        # async with self.bot.gpool.acquire() as connection:
+        #     query = "SELECT user_id, used, count, SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed FROM countings GROUP BY user_id;"
+        #     counters: List[int, int, int, int, int] = await connection.fetch(
+        #         query
+        #     )
+
+        categories = dict()
+
+        flags = [has is True for flag, has in self.user.public_flags]
+        if any(flags):
+            categories[BadgesSource(ctx=self.ctx, user=self.user)] = list(
+                self.user.public_flags
+            )
+
+        assets = [
+            getattr(self.member or self.user, "avatar"),
+            getattr(self.member or self.user, "display_avatar"),
+            getattr(self.member, "guild_avatar", None),
+            getattr(self.user, "banner"),
+        ]
+        if any(_ is not None for _ in assets):
+            categories[
+                AssetsSource(ctx=self.ctx, user=self.user, got=assets)
+            ] = self.user.display_avatar
 
         if self.member:
             member = {
@@ -167,6 +181,7 @@ class RolesSource(ListPageSource):
 
 class AssetsSource(ListPageSource):
     guild: Guild
+    got: Dict[Asset, str]
 
     def __init__(
         self,
@@ -178,17 +193,18 @@ class AssetsSource(ListPageSource):
     ):
         self.user: User = user
         self.member: Optional[Member] = member
-        self.from_dict: Dict[Asset, str] = {
-            member.avatar if member else user.avatar: _("User's Avatar"),
-            member.display_avatar
-            if member
-            else getattr(user, "display_icon", None): _("User's Display Avatar"),
-            member.guild_avatar if member else None: _("User's Guild Avatar"),
-            user.banner: _("User's Banner"),
+        self.assets = {
+            self.member.avatar if self.member else self.user.avatar: _("User's Avatar"),
+            getattr(self.member or self.user, "display_avatar", None): _(
+                "User's Display Avatar"
+            ),
+            self.member.guild_avatar if self.member else None: _("User's Guild Avatar"),
+            self.user.banner: _("User's Banner"),
         }
+
         super().__init__(
             ctx,
-            items=list(x for x in self.from_dict.keys() if x),
+            items=list(x for x in self.assets.keys() if x),
             title=MISSING,
             label=_("Avatar/Banner"),
             paginating=True,
@@ -216,7 +232,7 @@ class AssetsSource(ListPageSource):
         avatars = _("Open link: {links}").format(links=", ".join(listed))
 
         embed = ShakeEmbed(
-            title=self.from_dict[items], description=avatars if bool(avatars) else None
+            title=self.assets[items], description=avatars if bool(avatars) else None
         )
         embed.set_image(url=items.url)
         embed.set_footer(
@@ -347,7 +363,41 @@ class BadgesSource(ItemPageSource):
             )
             embed.add_field(name=str(badge) + " " + name, value="\u200b")
 
-        return embed, None, None
+        return embed, None
+
+
+class CountingSource(ItemPageSource):
+    user: User
+
+    def __init__(self, ctx: ShakeContext | Interaction, user: User, *args, **kwargs):
+        self.user: User = user
+        super().__init__(
+            ctx,
+            item=user,
+            title=MISSING,
+            label=_("Badges"),
+            paginating=True,
+            per_page=25,
+            *args,
+            **kwargs,
+        )
+
+    def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
+        flags: set[PublicUserFlags] = set(self.item)
+        embed = ShakeEmbed(title=_("User Badges"))
+        is_animated = self.user.display_avatar.is_animated()
+
+        if is_animated or self.user.banner:
+            flags.add(("subscriber", True))
+
+        for property in set([flag for flag, has in flags if has]):
+            badge = self.ctx.bot.get_emoji_local("badges", property)
+            name = " ".join(
+                list(x.capitalize() for x in str(property).replace("_", " ").split())
+            )
+            embed.add_field(name=str(badge) + " " + name, value="\u200b")
+
+        return embed, None
 
 
 features = RolesSource | BadgesSource | AssetsSource | PositionSource
@@ -359,6 +409,7 @@ class Front(FrontPageSource):
         member: Optional[Member] = menu.member
         fallback: Optional[Member] = menu.fallback
         embed = ShakeEmbed.default(menu.ctx, title=_("General Overview"))
+
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(user.avatar, "url", recovery))
 
@@ -372,11 +423,9 @@ class Front(FrontPageSource):
         )
 
         if m := member or fallback:
-            embed.description = (
-                "„" + m.activities[0].name + "“"
-                if bool(m.activities) and m.activities[0].type == m.status.value == 4
-                else None
-            )
+            for activity in filter(lambda a: a.type.value == 4, m.activities):
+                embed.description = "„" + activity.name + "“"
+                break
 
             emojis = menu.bot.emojis.status
             emoji = {
@@ -422,7 +471,11 @@ class Front(FrontPageSource):
         ] or [tick[False]]
 
         more: Dict[str, str] = {
-            (_("#Tag"), ":"): TextFormat.codeblock(user.discriminator),
+            (_("#Tag"), ":"): TextFormat.codeblock(
+                _("Migrated to username")
+                if user.discriminator == "0"
+                else user.discriminator
+            ),
             (_("ID"), ":"): TextFormat.codeblock(user.id),
             (_("Created"), ":"): str(format_dt(user.created_at, "R")),
             (_("Shared Servers"), ":"): TextFormat.codeblock(

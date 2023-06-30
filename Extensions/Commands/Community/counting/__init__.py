@@ -1,12 +1,22 @@
 ############
 #
 from importlib import reload
-from typing import Optional
+from typing import Optional, Union
 
 from discord import PartialEmoji, TextChannel
-from discord.ext.commands import guild_only, has_permissions, hybrid_group
+from discord.app_commands import Choice, choices
+from discord.ext.commands import guild_only, hybrid_group
 
-from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+from Classes import (
+    ShakeBot,
+    ShakeContext,
+    Testing,
+    _,
+    extras,
+    has_permissions,
+    locale_doc,
+    setlocale,
+)
 
 from ..community import Community
 from . import counting, testing
@@ -31,14 +41,12 @@ class counting_extension(Community):
     @setlocale()
     @locale_doc
     async def counting(self, ctx: ShakeContext):
-        _(
-            """Count yourself to the end of the numbers and get support from other users!"""
-        )
+        _("""Start with 1 and never stop counting again!""")
         ...
 
     @counting.command(name="setup")
     @guild_only()
-    @has_permissions(administrator=True)
+    @has_permissions(testing=True, administrator=True)
     @extras(permissions=True)
     @setlocale()
     @locale_doc
@@ -69,6 +77,36 @@ class counting_extension(Community):
             await do.command(ctx=ctx).setup(
                 channel=channel, goal=goal, numbers=only_numbers, react=react
             )
+
+        except:
+            if ctx.testing:
+                raise Testing
+            raise
+
+    @counting.command(name="score")
+    @choices(
+        type=[
+            Choice(name="Servers", value="servers"),
+            Choice(name="Users", value="users"),
+        ]
+    )
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def score(self, ctx: ShakeContext, type: Optional[str] = "Servers"):
+        _("""View the top Counting users and servers""")
+
+        if ctx.testing:
+            try:
+                reload(testing)
+            except Exception as e:
+                await self.bot.testing_error(module=testing, error=e)
+                ctx.testing = False
+
+        do = testing if ctx.testing else counting
+
+        try:
+            await do.command(ctx=ctx).score(type=type)
 
         except:
             if ctx.testing:

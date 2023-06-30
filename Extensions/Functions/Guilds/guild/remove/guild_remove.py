@@ -32,8 +32,9 @@ class Event:
             filter(
                 lambda item: item is not None,
                 [
-                    Webhook.from_url(url, client=self.bot)
-                    for url in self.bot.config.bot.webhook_urls
+                    Webhook.from_url(webhook.link, client=self.bot)
+                    for webhook in self.bot.config.bot.webhooks
+                    if webhook.type == "servers"
                 ],
             )
         )

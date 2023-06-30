@@ -7,13 +7,13 @@ from discord.ext.commands import guild_only, has_permissions, hybrid_command
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..moderation import Moderation
+from ..other import Other
 from . import do, testing
 
 
 ########
 #
-class do_extension(Moderation):
+class do_extension(Other):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:

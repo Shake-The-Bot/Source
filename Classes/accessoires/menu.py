@@ -1,21 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from collections import deque
+from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Optional
 
-from discord import ButtonStyle, Interaction, ui
+from discord import ButtonStyle, Embed, Interaction, Message, PartialEmoji, ui
 from discord.ext import menus
 
 from Classes.accessoires import source as _source
 from Classes.accessoires.page import ShakePages
 from Classes.accessoires.select import CategoricalSelect
 from Classes.accessoires.source import FrontPageSource, ItemPageSource, ListPageSource
+from Classes.i18n import _
+from Classes.types import TextFormat
 
-__all__ = ("ListMenu", "CategoricalMenu", "LinkingSource")
+__all__ = ("ListMenu", "CategoricalMenu", "LinkingSource", "ForwardingMenu")
 
+previousemoji = PartialEmoji(name="left", id=1033551843210579988)
 Group = Item = Any
 
 if TYPE_CHECKING:
-    from Classes import ShakeContext
+    from Classes import ShakeBot, ShakeContext
+    from Classes.accessoires import ForwardingFinishSource, ForwardingSource
     from Classes.types import sourcetypes
 
 
@@ -169,3 +174,124 @@ class CategoricalMenu(ShakePages):
         await self.rebind(
             self.front(timeout=True), interaction=interaction, update=False
         )
+
+
+class ForwardingMenu(ui.View):
+    ctx: ShakeContext
+    message: Message
+    source: ForwardingSource
+    items: Dict[int, List[ui.Item]]
+    slots: List[List[ui.Item]]
+
+    def __init__(self, ctx):
+        self.ctx: ShakeContext = ctx
+        self.bot: ShakeBot = ctx.bot
+        self.timeouted = False
+        super().__init__()
+
+    @property
+    def page(self) -> int:
+        return self.pages[0]
+
+    def insert(self, site: List[ui.Item], index: Optional[int] = None):
+        if index is None:
+            i = (self.pages[0] + self.pages[1]) / 2
+        else:
+            i = (2 * index - 1) / 2
+        self.items[i] = site
+        pass
+
+    async def setup(self, sources: List[ForwardingSource], **kwargs) -> None:
+        for source in sources:
+            if any(
+                item.callback in (ui.Select.callback, ui.Button.callback)
+                for item in source.items
+            ):
+                raise ValueError("Items are not configured!")
+
+        self.items = {0: [self.start_menu, self.cancel]} | {
+            source: source.items for source in sources
+        }
+        self.pages = deque(list(self.items.keys()))
+
+        self.update()
+        embed = Embed(
+            colour=self.bot.config.embed.colour,
+            description=TextFormat.bold(
+                _("Before continuing you must click on the Setup button.")
+            ),
+        )
+        view = kwargs.pop("view", None)
+        em = kwargs.pop("embed", None)
+        self.message = await self.ctx.send(embed=embed, **kwargs, view=self)
+        return self.message
+
+    def update(self, rotation: Optional[int] = None) -> None:
+        timeouted = self.timeouted
+
+        if rotation:
+            self.pages.rotate(-rotation)
+
+        self.clear_items()
+        for item in self.items[self.page]:
+            self.add_item(item)
+
+        if timeouted:
+            for item in self._children:
+                item.disabled = True
+                if isinstance(item, ui.Button):
+                    item.style = ButtonStyle.grey
+
+    async def show_source(
+        self, source: Optional[ForwardingSource] = None, rotation: Optional[int] = None
+    ):
+        if rotation:
+            self.update(rotation)
+            if not source:
+                source = self.page
+        self.source = source
+        await self.message.edit(**source.message(), view=self)
+
+    async def on_timeout(
+        self, interaction: Optional[Interaction] = None
+    ) -> Coroutine[Any, Any, None]:
+        self.timeouted = True
+        self.update(-list(self.items.keys()).index(self.page))
+
+        embed = self.message.embeds[0]
+        embed.description = TextFormat.bold(
+            _("The ShakeMenu was canceled due inactivity")
+        )
+        await self.message.edit(embed=embed, view=self)
+        self.stop()
+
+    @ui.button(label=_("Start"), style=ButtonStyle.blurple, row=4)
+    async def start_menu(self, interaction: Interaction, button: ui.Button):
+        await self.show_source(rotation=1)
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    @ui.button(emoji=previousemoji, style=ButtonStyle.blurple, row=4)
+    async def previous(self, interaction: Interaction, button: ui.Button):
+        if self.source.previous:
+            await self.show_source(self.source.previous(view=self), -1)
+        else:
+            await self.show_source(self.source, rotation=0)
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    @ui.button(label=_("Cancel"), style=ButtonStyle.red, row=4)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+        self.timeouted = True
+        self.pages = [0]
+        self.update()
+
+        embed = self.message.embeds[0]
+        embed.description = TextFormat.bold(_("The ShakeMenu was canceled"))
+        await self.message.edit(embed=embed, view=self)
+
+        self.stop()

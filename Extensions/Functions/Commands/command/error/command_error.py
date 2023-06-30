@@ -15,13 +15,18 @@ from Classes.exceptions import *
 #
 class Event:
     def __init__(self, ctx: ShakeContext | Interaction, error):
-        self.bot: ShakeBot = ctx.bot
         self.ctx: ShakeContext | Interaction = ctx
         self.error: errors.CommandError = error
 
     async def __await__(self):
         if isinstance(self.ctx, Interaction):
-            self.ctx: ShakeContext = ShakeContext.from_interaction(self.ctx)
+            if self.ctx.command:
+                self.ctx = await ShakeContext.from_interaction(self.ctx)
+                self.bot = self.ctx.bot
+            else:
+                self.bot = self.ctx.client
+        else:
+            self.bot = self.ctx.bot
 
         await self.bot.register_command(self.ctx)
         if not self.ctx in self.bot.cache["context"]:
@@ -36,7 +41,7 @@ class Event:
             return
 
         elif isinstance(original, errors.BotMissingPermissions):
-            description = original.message or _(
+            description = getattr(original, "message", None) or _(
                 "I am missing [`{permissions}`](https://support.discord.com/hc/en-us/articles/206029707) permission(s) to run this command."
             ).format(permissions=", ".join(original.missing_permissions))
 
@@ -61,7 +66,7 @@ class Event:
             ).format(command=self.ctx.prefix + "help")
 
         elif isinstance(original, (errors.GuildNotFound,)):
-            description = original.message or _(
+            description = getattr(original, "message", None) or _(
                 "I cannot see the server `{argument}` because it does not exist or I am not a member of it."
             ).format(argument=original.argument)
 
@@ -79,8 +84,8 @@ class Event:
                 )
 
         elif isinstance(original, errors.CommandOnCooldown):
-            description = _("You can use this command in {0:.0f} seconds.").format(
-                original.retry_after
+            description = _("You can use this command in {retry} seconds.").format(
+                retry="{0:.0f}".format(original.retry_after)
             )
 
         elif isinstance(original, errors.NotOwner):
@@ -123,15 +128,10 @@ class Event:
         if bool(matches):
             for match in matches:
                 cmd = await Slash(self.bot).__await__(commands[match])
-                if cmd:
+                if cmd and hasattr(cmd.app_command, "mention"):
                     description = _(
                         """Nothing named `{invoked}` found. Did you mean {closest}?"""
-                    ).format(
-                        invoked=invoked,
-                        closest=cmd.app_command.mention
-                        if hasattr(cmd, "app_command")
-                        else ctx.prefix + cmd.command.name,
-                    )
+                    ).format(invoked=invoked, closest=cmd.app_command.mention)
                     break
 
         await self.send(description)
