@@ -86,6 +86,7 @@ class command(ShakeCommand):
             RolesSource(ctx=self.ctx, guild=self.guild): set(self.guild.roles),
             ChannelsSource(ctx=self.ctx, guild=self.guild): set(self.guild.channels),
             MembersSource(ctx=self.ctx, guild=self.guild): set(self.guild.members),
+            BadgesSource(ctx=self.ctx, guild=self.guild): 1,
             ActivitiesSource(ctx=self.ctx, guild=self.guild): set(
                 m.activities for m in self.guild.members
             ),
@@ -504,6 +505,57 @@ class MembersSource(ItemPageSource):
         }
         for name, value in infos.items():
             embed.add_field(name=name, value=value)
+        return embed, None
+
+
+class BadgesSource(ItemPageSource):
+    guild: Guild
+
+    def __init__(self, ctx: ShakeContext | Interaction, guild: Guild, *args, **kwargs):
+        self.guild: Guild = guild
+        members = guild.members
+        self.all = list(dict(members[0].public_flags).keys())
+
+        flags = Counter(
+            flag
+            for member in members
+            for flag, has in dict(member.public_flags).items()
+            if has
+        )
+        bots = Counter("bot" for member in members if member.bot)
+
+        counted = flags | bots
+
+        super().__init__(
+            ctx,
+            item=counted,
+            title=MISSING,
+            label=_("Badges"),
+            *args,
+            **kwargs,
+        )
+
+    def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("Server Member Badges"))
+
+        badges = [
+            (
+                emoji,
+                " ".join(
+                    list(_.capitalize() for _ in str(badge).replace("_", " ").split())
+                ),
+                TextFormat.bold(self.item.get(badge, 0)),
+            )
+            for badge in self.all
+            if (emoji := self.bot.get_emoji_local("badges", badge))
+        ]
+
+        embed.description = "\n".join(
+            list(
+                "{} {}: {}".format(emoji, name, count) for emoji, name, count in badges
+            )
+        )
+
         return embed, None
 
 
