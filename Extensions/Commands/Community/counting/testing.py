@@ -498,7 +498,7 @@ class command(ShakeCommand):
             if is_guild:
                 query = "SELECT guild_id, count FROM counting;"
             else:
-                query = "SELECT user_id, SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS count FROM countings GROUP BY user_id;"
+                query = "SELECT user_id, SUM(CASE WHEN failed = false THEN 1 ELSE -1 END) AS count FROM countings GROUP BY user_id;"
                 # highest = "SELECT user_id, MAX(count) AS highest FROM countings GROUP BY user_id;"
             counters: List[int, int] = await connection.fetch(query)
         items = {

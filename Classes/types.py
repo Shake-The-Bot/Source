@@ -2,12 +2,13 @@ import re
 from enum import Enum
 from functools import partial
 from sys import exc_info
-from typing import Callable, Literal, TypedDict
+from typing import Any, Callable, Literal, Optional, TypedDict
 
 from discord import Guild, PartialEmoji, Thread, User
 from discord.channel import *
 from discord.ext.commands import Bot
 
+from Classes.i18n import _
 from Classes.useful import string
 from Extensions.extensions import CATEGORYS, Categorys
 
@@ -20,13 +21,27 @@ __all__ = (
     "FunctionsBatch",
     "CATEGORYS",
     "Categorys",
+    "AboveMesBatch",
     "AboveMeBatch",
     "CountingBatch",
     "tick",
+    "Translated",
     "TracebackType",
     "ExtensionMethods",
     "UserGuild",
 )
+
+
+class Translated:
+    ActitiyType = {
+        "unknown": _("unknown"),
+        "playing": _("playing"),
+        "streaming": _("streaming"),
+        "listening": _("listening"),
+        "watching": _("watching"),
+        "custom": _("custom"),
+        "competing": _("competing in"),
+    }
 
 
 class UserGuild(Enum):
@@ -122,6 +137,9 @@ class TextFormat(Enum):
     underlinebolditalics: Callable[[str], str] = lambda t: string(t, "__", "***")
     strikethrough: Callable[[str], str] = lambda t: string(t, "~~")
     codeblock: Callable[[str], str] = lambda t: string(t, "`")
+    join: Callable[[Any, str], str] = lambda *args, splitter=" ": splitter.join(
+        str(arg) for arg in args
+    )
     codeunderline: Callable[[str], str] = lambda t: string(t, "__", "`")
     multicodeblock: Callable[[str], str] = lambda t, f=None: string(
         t, front="```" + (f + "\n" if f else ""), end="```", iterate=False
@@ -195,6 +213,15 @@ class FunctionsBatch(TypedDict):
     channel_id: int
     user_id: int
     count: int
+    failed: bool
+    used: str
+
+
+class AboveMesBatch(TypedDict):
+    guild_id: int
+    channel_id: int
+    user_id: int
+    phrase: str
     failed: bool
     used: str
 

@@ -260,9 +260,7 @@ async def dump(
     async with session.post(
         "https://hastebin.com/documents",
         data=content,
-        headers={
-            "Authorization": "Bearer 27e4168ab6efb5fc22135cdea73f9f04b6581de99785b84daf1c2c3803e61e28c0f4881710e29cc0e9706b35a11cff8e46ef2b00999db3010ee1dc818f9be255"
-        },
+        headers={"Authorization": config.other.hastebin.token},
     ) as post:
         if 200 <= post.status < 400:
             text = await post.text()

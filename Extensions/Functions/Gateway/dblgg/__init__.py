@@ -32,7 +32,7 @@ class topgg_extension(Cog):
         except:
             pass
 
-        if not self.update_stats.is_running:
+        if not self.update_stats.is_running():
             self.update_stats.start()
 
     @loop(minutes=30)

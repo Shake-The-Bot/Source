@@ -81,6 +81,10 @@ class ItemPageSource(menus.PageSource):
     def get_max_pages(self) -> Optional[int]:
         return 1
 
+    @property
+    def maximum(self) -> int:
+        return 1
+
     async def get_page(self, page: int) -> Any:
         return self
 

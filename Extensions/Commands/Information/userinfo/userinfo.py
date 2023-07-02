@@ -1,21 +1,19 @@
 ############
 #
-from inspect import cleandoc
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, get_args
 
 from discord import (
     Asset,
     Colour,
-    File,
     Guild,
     Interaction,
     Member,
-    PartialEmoji,
     PublicUserFlags,
     Role,
     User,
 )
-from discord.activity import ActivityTypes
+from discord.activity import ActivityType, ActivityTypes, Spotify
 from discord.ext import menus
 from discord.utils import format_dt
 
@@ -28,7 +26,7 @@ from Classes.accessoires import (
     ListPageSource,
     SourceSource,
 )
-from Classes.types import TextFormat, Types
+from Classes.types import TextFormat, Translated, Types
 from Classes.useful import MISSING
 
 ########
@@ -65,13 +63,17 @@ class command(ShakeCommand):
             select=select,
         )
 
-        # async with self.bot.gpool.acquire() as connection:
-        #     query = "SELECT user_id, used, count, SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed FROM countings GROUP BY user_id;"
-        #     counters: List[int, int, int, int, int] = await connection.fetch(
-        #         query
-        #     )
+        categories = {}
 
-        categories = dict()
+        if self.user.bot:
+            counting = False
+        else:
+            async with self.bot.gpool.acquire() as connection:
+                query = "SELECT EXISTS (SELECT 1 FROM countings WHERE user_id = $1 LIMIT 1);"
+                counting: bool = await connection.fetchval(query, self.user.id)
+
+        if bool(counting):
+            categories[CountingSource(ctx=self.ctx, user=self.user)] = 1
 
         flags = [has is True for flag, has in self.user.public_flags]
         if any(flags):
@@ -95,6 +97,12 @@ class command(ShakeCommand):
                 RolesSource(ctx=self.ctx, member=self.member): set(self.member.roles),
                 PositionSource(ctx=self.ctx, member=self.member): list(
                     self.member.guild.members
+                ),
+                ActivitiesSource(
+                    ctx=self.ctx, member=self.member
+                ): self.member.activities,
+                PermissionsSource(ctx=self.ctx, member=self.member): list(
+                    self.member.guild_permissions
                 ),
             }
             categories = categories | member
@@ -123,7 +131,9 @@ class Menu(CategoricalMenu):
     def embed(self, embed: ShakeEmbed):
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_author(
-            name=self.user.name, icon_url=getattr(self.user.avatar, "url", recovery)
+            name=self.user.name,
+            icon_url=getattr(self.user.avatar, "url", recovery),
+            url=f"https://discordapp.com/users/{self.user.id}",
         )
         return embed
 
@@ -160,7 +170,7 @@ class RolesSource(ListPageSource):
             name = "@" + (role.name[0:15] + "[...]" if to_long else role.name)
             is_member: bool = menu.ctx.author in self.guild.members
             infos = {
-                "ID:": f"{TextFormat.codeblock(role.id)}",
+                "ID:": TextFormat.codeblock(role.id),
                 _("Created") + ":": str(format_dt(role.created_at, "f")),
                 _("Mention") + ":": role.mention if is_member else "@" + role.name,
                 _("Colour") + ":": TextFormat.codeblock(str(role.colour))
@@ -356,12 +366,17 @@ class BadgesSource(ItemPageSource):
         if is_animated or self.user.banner:
             flags.add(("subscriber", True))
 
-        for property in set([flag for flag, has in flags if has]):
-            badge = self.ctx.bot.get_emoji_local("badges", property)
-            name = " ".join(
-                list(x.capitalize() for x in str(property).replace("_", " ").split())
+        embed.description = "\n".join(
+            TextFormat.list(
+                TextFormat.join(
+                    str(self.ctx.bot.get_emoji_local("badges", property)),
+                    *list(
+                        x.capitalize() for x in str(property).replace("_", " ").split()
+                    ),
+                )
             )
-            embed.add_field(name=str(badge) + " " + name, value="\u200b")
+            for property in set(flag for flag, has in flags if has)
+        )
 
         return embed, None
 
@@ -375,32 +390,227 @@ class CountingSource(ItemPageSource):
             ctx,
             item=user,
             title=MISSING,
-            label=_("Badges"),
-            paginating=True,
-            per_page=25,
+            label=_("Counting"),
             *args,
             **kwargs,
         )
 
-    def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
-        flags: set[PublicUserFlags] = set(self.item)
-        embed = ShakeEmbed(title=_("User Badges"))
-        is_animated = self.user.display_avatar.is_animated()
-
-        if is_animated or self.user.banner:
-            flags.add(("subscriber", True))
-
-        for property in set([flag for flag, has in flags if has]):
-            badge = self.ctx.bot.get_emoji_local("badges", property)
-            name = " ".join(
-                list(x.capitalize() for x in str(property).replace("_", " ").split())
+    async def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("Counting stats"))
+        async with self.bot.gpool.acquire() as connection:
+            query = """SELECT
+                    SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, 
+                    SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed,
+                    (
+                        SELECT MAX(count) AS highest FROM countings WHERE user_id = $1 AND failed = false GROUP BY user_id
+                    ),
+                    (
+                        SELECT used FROM countings WHERE user_id = $1 ORDER BY used DESC LIMIT 1
+                    ) AS latest,
+                    (
+                        WITH ranked AS (
+                            SELECT user_id, ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) - SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) DESC) AS position FROM countings GROUP BY user_id
+                        )
+                        SELECT position FROM ranked WHERE user_id = $1
+                    )
+                FROM countings
+                WHERE user_id = $1
+                GROUP BY user_id;
+            """
+            failed, passed, highest, latest, placement = await connection.fetchrow(
+                query, self.user.id
             )
-            embed.add_field(name=str(badge) + " " + name, value="\u200b")
+            summed: int = failed + passed
+            score: int = passed - failed
+            rate: float = passed * 100 / summed
+            latest: datetime
+
+        placements = {1: "🥇", 2: "🥈", 3: "🥉"}
+        embed.description = TextFormat.bold(
+            _("{user} scored a total of {score} valid counts (#{placement})").format(
+                user=self.user.mention,
+                score=score,
+                placement=TextFormat.join(
+                    str(placement), placements.get(placement, "")
+                ),
+            )
+        )
+
+        embed.add_field(
+            name=_("Total passed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (passed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total failed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (failed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total rate"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(str(round(rate, 2)) + "%", "css")
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total last played"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.join(
+                    format_dt(latest.replace(tzinfo=timezone.utc), "F"),
+                    "(" + format_dt(latest.replace(tzinfo=timezone.utc), "R") + ")",
+                    splitter="\n",
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total highest count"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(highest, "css")
+            ),
+        )
+
+        embed.set_footer(text=_("Information can update every 30 seconds"))
 
         return embed, None
 
 
-features = RolesSource | BadgesSource | AssetsSource | PositionSource
+class PermissionsSource(ListPageSource):
+    guild: Guild
+    got: Dict[Asset, str]
+
+    def __init__(
+        self,
+        ctx: ShakeContext | Interaction,
+        member: Member = None,
+        *args,
+        **kwargs,
+    ):
+        self.member: Optional[Member] = member
+
+        super().__init__(
+            ctx,
+            items=member.guild_permissions,
+            title=MISSING,
+            label=_("Permissions"),
+            paginating=True,
+            per_page=6,
+            *args,
+            **kwargs,
+        )
+
+    def format_page(self, menu: Menu, items: Asset, **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("Members server permissions"))
+
+        embed.description = "\n".join(
+            TextFormat.list(
+                " ".join(
+                    list(
+                        _.capitalize()
+                        for _ in str(permission).replace("_", " ").split()
+                    )
+                )
+            )
+            for permission, has in items
+            if has
+        )
+
+        embed.set_footer(
+            text=_("Page {page} of {pages}").format(
+                page=menu.page + 1, pages=self.maximum
+            )
+        )
+        return embed, None
+
+
+class ActivitiesSource(ItemPageSource):
+    member: Member
+
+    def __init__(
+        self, ctx: ShakeContext | Interaction, member: Member, *args, **kwargs
+    ):
+        self.member: Member = member
+        filtered = list(filter(lambda a: a.type.value != 4, member.activities))
+
+        types = set(activity.type for activity in filtered)
+
+        activities = {
+            atype: list(filter(lambda a: a.type == atype, filtered)) for atype in types
+        }
+
+        super().__init__(
+            ctx,
+            item=activities,
+            title=MISSING,
+            label=_("Activities"),
+            *args,
+            **kwargs,
+        )
+
+    def format_page(
+        self, menu: Menu, items: Tuple[ActivityType, str], **kwargs: Any
+    ) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("Member Activities"))
+
+        self.item: Dict[ActivityType, Tuple[ActivityTypes, ...]]
+        for type, activities in self.item.items():
+            type = TextFormat.join(
+                Translated.ActitiyType.get(str(type.name), str(type.name)).capitalize(),
+                "...",
+            )
+            values = list()
+            for activity in activities:
+                if isinstance(activity, Spotify):
+                    values.append(
+                        _("to {name} by {author} on Spotify").format(
+                            name=TextFormat.bold(activity.title),
+                            author=TextFormat.bold(", ".join(activity.artists)),
+                        )
+                    )
+                else:
+                    values.append(activity.name)
+
+            embed.add_field(
+                name=type,
+                value="\n".join(
+                    TextFormat.list(TextFormat.join("...", value)) for value in values
+                ),
+                inline=False,
+            )
+
+        embed.set_footer(
+            text=_("Page {page} of {pages}").format(
+                page=menu.page + 1, pages=self.maximum
+            )
+        )
+        return embed, None
+
+
+features = (
+    RolesSource
+    | BadgesSource
+    | AssetsSource
+    | PositionSource
+    | PermissionsSource
+    | ActivitiesSource
+)
 
 
 class Front(FrontPageSource):
@@ -471,6 +681,7 @@ class Front(FrontPageSource):
         ] or [tick[False]]
 
         more: Dict[str, str] = {
+            (_("Display name"), ":"): TextFormat.codeblock(user.global_name),
             (_("#Tag"), ":"): TextFormat.codeblock(
                 _("Migrated to username")
                 if user.discriminator == "0"
@@ -499,95 +710,4 @@ class Front(FrontPageSource):
             embed.set_image(url=banner.url)
         else:
             embed.advertise(menu.bot)
-        return embed, None
-
-
-class ActivitieSource(ItemPageSource):
-    user: Member
-
-    def __init__(self, ctx: ShakeContext | Interaction, user: Member, *args, **kwargs):
-        self.user: Member = user
-        super().__init__(
-            ctx,
-            item=user.activities,
-            title=MISSING,
-            label=_("Activities"),
-            paginating=True,
-            per_page=10,
-            *args,
-            **kwargs,
-        )
-
-    def format_page(
-        self, menu: Menu, item: Tuple[ActivityTypes, ...], **kwargs: Any
-    ) -> ShakeEmbed:
-        embed = ShakeEmbed(title=_("User Activities"))
-        prefix = str(PartialEmoji(name="dot", id=1093146860182568961)) + ""
-        for activity in item:
-            index = self.item[activity]
-            i = self.item.index(activity) + 1
-            _type = {
-                "online": _("online"),
-                "offline": _("offline"),
-                "streaming": _("streaming"),
-                "idle": _("idle"),
-                "dnd": _("dnd"),
-            }.get(str(type.name), str(type.name))
-
-            to_long = len(str(activity.name)) > 31
-
-            _name = activity.name[0:28] + "[...]" if to_long else activity.name
-            _name = f"„{_name}“".lower() if type.value == 4 else _name
-
-            embed.add_field(
-                name=prefix
-                + _("Top {index} Activity ({type})").format(
-                    _="`", index="`" + str(i) + "`", type=_type
-                ),
-                value="**({}):** ".format(index) + _name,
-            )
-            if (item.index((type, activity.name)) + 1) % 2 == 0:
-                embed.add_field(name=f"\u200b", value="\u200b", inline=True)
-        embed.set_footer(
-            text=_("Page {page} of {pages}").format(
-                page=menu.page + 1, pages=self.maximum
-            )
-        )
-        return embed, None
-
-
-class PremiumSource(ListPageSource):
-    guild: Guild
-
-    def __init__(self, ctx: ShakeContext | Interaction, guild: Guild, *args, **kwargs):
-        self.guild: Guild = guild
-        subscriber: List[Member] = set(guild.premium_subscribers)
-        super().__init__(
-            ctx,
-            items=subscriber,
-            title=MISSING,
-            label=_("Nitro Booster"),
-            paginating=True,
-            per_page=25,
-            *args,
-            **kwargs,
-        )
-
-    def format_page(self, menu: Menu, items: List[Member], **kwargs: Any) -> ShakeEmbed:
-        description = (
-            ", ".join(
-                [
-                    m.mention if self.ctx.author in self.guild.members else str(m)
-                    for m in items
-                ]
-            )
-            or ""
-        )
-        embed = ShakeEmbed(title=_("Server Nitro Booster"), description=description)
-
-        embed.set_footer(
-            text=_("Page {page} of {pages} (Total of {items} Booster)").format(
-                page=menu.page + 1, pages=self.maximum, items=len(self.entries)
-            )
-        )
         return embed, None

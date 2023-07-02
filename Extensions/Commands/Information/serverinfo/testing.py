@@ -27,7 +27,7 @@ from Classes.accessoires import (
     ListPageSource,
     SourceSource,
 )
-from Classes.types import TextFormat, Types, tick
+from Classes.types import TextFormat, Translated, Types
 from Classes.useful import MISSING, human_join
 
 ############
@@ -559,17 +559,6 @@ class BadgesSource(ItemPageSource):
         return embed, None
 
 
-translator = {
-    "unknown": _("unknown"),
-    "playing": _("playing"),
-    "streaming": _("streaming"),
-    "listening": _("listening"),
-    "watching": _("watching"),
-    "custom": _("custom"),
-    "competing": _("competing in"),
-}
-
-
 class ActivitiesSource(ListPageSource):
     guild: Guild
 
@@ -606,7 +595,7 @@ class ActivitiesSource(ListPageSource):
         for type, name in items:
             people = self.counter[(type, name)]
             i = self.places.index(people) + 1
-            _type = translator.get(str(type.name), str(type.name))
+            _type = Translated.ActitiyType.get(str(type.name), str(type.name))
 
             to_long = len(str(name)) > 31
 

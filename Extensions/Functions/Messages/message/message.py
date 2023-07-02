@@ -1,6 +1,6 @@
 from asyncio import TaskGroup
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, TextChannel
@@ -232,7 +232,7 @@ class OneWord:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
-                "used": str(used.isoformat()),
+                "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
                 "count": count,
                 "failed": failed,
             }
@@ -308,7 +308,9 @@ class OneWord:
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
-            "used": str(time.isoformat() if passed else used),
+            "used": str(
+                time.replace(tzinfo=timezone.utc).isoformat() if passed else used
+            ),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,
@@ -359,7 +361,7 @@ class OneWord:
         member: Member,
         testing: bool,
     ):
-        if testing and await self.bot.is_owner(member):
+        if testing:
             return True
         elif user_id == member.id:
             return False
@@ -394,7 +396,7 @@ class AboveMe:
         guild: Guild,
         user: Member,
         used: datetime,
-        count: Optional[int],
+        phrase: str,
         failed: bool,
     ) -> None:
         self.bot.cache["AboveMes"].append(
@@ -402,8 +404,8 @@ class AboveMe:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
-                "used": str(used.isoformat()),
-                "count": count,
+                "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
+                "phrase": phrase,
                 "failed": failed,
             }
         )
@@ -469,12 +471,14 @@ class AboveMe:
             guild=self.guild,
             user=member,
             used=time,
-            count=count + 1,
+            phrase=content,
             failed=not passed,
         )
 
         self.cache[self.channel.id]: AboveMeBatch = {
-            "used": str(time.isoformat() if passed else used),
+            "used": str(
+                time.replace(tzinfo=timezone.utc).isoformat() if passed else used
+            ),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
             "message_id": message.id if passed else message_id,
@@ -504,7 +508,7 @@ class AboveMe:
         member: Member,
         testing: bool,
     ):
-        if testing and await self.bot.is_owner(member):
+        if testing:
             return True
         elif user_id == member.id:
             return False
@@ -658,7 +662,9 @@ class Counting:
 
         s = streak + 1 if passed else streak
         self.cache[self.channel.id]: CountingBatch = {
-            "used": str(time.isoformat() if passed else used),
+            "used": str(
+                time.replace(tzinfo=timezone.utc).isoformat() if passed else used
+            ),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "streak": s,
@@ -685,7 +691,7 @@ class Counting:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
-                "used": str(used.isoformat()),
+                "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
                 "count": count,
                 "failed": failed,
             }
@@ -702,7 +708,7 @@ class Counting:
         return True
 
     async def member_check(self, testing: bool, user_id: int, member: Member):
-        if testing and await self.bot.is_owner(member):
+        if testing:
             return True
         elif user_id == member.id:
             return False
