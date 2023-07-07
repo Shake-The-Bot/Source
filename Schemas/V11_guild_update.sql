@@ -15,13 +15,16 @@ CREATE TABLE
         streak BIGINT DEFAULT 0,
         best BIGINT DEFAULT 0,
         goal BIGINT,
+        webhook BOOLEAN,
+        start BIGINT,
+        done BOOLEAN DEFAULT false,
         used TIMESTAMP,
-        react BOOLEAN DEFAULT TRUE,
-        numbers BOOLEAN DEFAULT FALSE,
-        hardcore BOOLEAN DEFAULT FALSE
+        math BOOLEAN,
+        direction BOOLEAN,
+        react BOOLEAN DEFAULT true,
+        numbers BOOLEAN DEFAULT false,
+        hardcore BOOLEAN DEFAULT false
     );
-
-ALTER TABLE counting ADD COLUMN message_id BIGINT;
 
 CREATE INDEX
     IF NOT EXISTS counting_message_id_idx ON counting (message_id);
@@ -39,6 +42,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         channel_id BIGINT,
         guild_id BIGINT,
+        direction BOOLEAN,
         user_id BIGINT,
         used TIMESTAMP,
         count BIGINT DEFAULT 0,
@@ -73,8 +77,6 @@ CREATE TABLE
         phrases TEXT [],
         react BOOLEAN DEFAULT TRUE
     );
-
-ALTER TABLE aboveme ADD COLUMN message_id BIGINT;
 
 CREATE INDEX
     IF NOT EXISTS aboveme_message_id_idx ON aboveme (message_id);
@@ -126,8 +128,6 @@ CREATE TABLE
         react BOOLEAN DEFAULT TRUE
     );
 
-ALTER TABLE oneword ADD COLUMN message_id BIGINT;
-
 CREATE INDEX
     IF NOT EXISTS oneword_message_id_idx ON oneword (message_id);
 
@@ -145,7 +145,6 @@ CREATE TABLE
         guild_id BIGINT,
         user_id BIGINT,
         used TIMESTAMP,
-        count BIGINT DEFAULT 0,
         failed BOOLEAN DEFAULT False
     );
 

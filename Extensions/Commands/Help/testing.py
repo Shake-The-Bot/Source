@@ -608,17 +608,23 @@ class CategorySource(ListPageSource):
 class CommandSource(ItemPageSource):
     item: Command
 
+    @property
+    def command(
+        self,
+    ) -> Command:
+        return self.item
+
     async def get_page(self, page: Command) -> Coroutine[Any, Any, Any]:
         self.page: Command = page
         return self
 
     def format_page(self, menu: ShakePages, *args: Any, **kwargs: Any):
-        self.cog: Cog = self.item.cog
+        self.cog: Cog = self.command.cog
         self.category = menu.bot.get_cog(self.cog.__class__.__bases__[0].__name__)
 
         description = (
-            self.item.callback.__doc__
-            or self.item.help
+            self.command.callback.__doc__
+            or self.command.help
             or _("No more detailed description given.")
         )
 
@@ -626,14 +632,35 @@ class CommandSource(ItemPageSource):
             menu.ctx,
             title=_("{category} » {command} Command").format(
                 category=self.category.label,
-                command=self.item.name.capitalize(),
+                command=self.command.name.capitalize(),
             ),
             description=TextFormat.multicodeblock(
                 cleandoc(_(description).format(prefix=menu.ctx.prefix)), "py"
             ),
         )
         embed.set_author(name=_("More detailed command description"))
-        required, optionals = get_signature(menu, self.item)
+
+        if bool(self.command.aliases):
+            headder = _("This command got aliases which you can use").format(
+                mention="@" + self.bot.user.display_name
+            )
+            embed.add_field(
+                name="\u200b",
+                value=TextFormat.join(
+                    TextFormat.multicodeblock(headder),
+                    TextFormat.list(
+                        ", ".join(
+                            TextFormat.bold(
+                                TextFormat.join(self.bot.user.mention, alias)
+                            )
+                            for alias in self.command.aliases
+                        )
+                    ),
+                    splitter="\n",
+                ),
+            )
+
+        required, optionals = get_signature(menu, self.command)
         if bool(required) or bool(optionals):
             count = 3 if len(optionals.items()) > 3 else len(optionals.items()) + 1
             combinations = [
@@ -641,22 +668,24 @@ class CommandSource(ItemPageSource):
                 for L in range(len(optionals.keys()) + 1)
                 for subset in cmb(optionals.keys(), L)
             ]
-            fetched = sample(
-                [combi for combi in combinations], count
-            )  # if not any(not bool(x) for x in combi)
+            fetched = sample([combi for combi in combinations], count)
 
             usgs = [[k for k in combina] for combina in fetched]
             exmpls = [[optionals[k] for k in combina] for combina in fetched]
 
             usage = [
-                f'```\n{_("Usage of the {command} command").format(command=self.item.name.capitalize())}\n```'
+                TextFormat.multicodeblock(
+                    _("Usage of the {command} command").format(
+                        command=self.command.name.capitalize()
+                    )
+                )
             ]
             for usg in usgs:
                 usage.append(
                     "\n> "
                     + "\n ".join(
                         [
-                            f"**/{self.item.name}** "
+                            f"**/{self.command.name}** "
                             + " ".join(required.keys())
                             + " "
                             + " ".join(usg)
@@ -666,14 +695,18 @@ class CommandSource(ItemPageSource):
             embed.add_field(name="\u200b", inline=False, value="".join(usage))
 
             examples = [
-                f'```\n{_("Examples of the {command} command").format(command=self.item.name.capitalize())}\n```'
+                TextFormat.multicodeblock(
+                    _("Examples of the {command} command").format(
+                        command=self.command.name.capitalize()
+                    )
+                )
             ]
             for exmpl in exmpls:
                 examples.append(
                     "\n> "
                     + "\n ".join(
                         [
-                            f"**/{self.item.name}** "
+                            f"**/{self.command.name}** "
                             + " ".join(required.values())
                             + " "
                             + " ".join(exmpl)
@@ -682,8 +715,8 @@ class CommandSource(ItemPageSource):
                 )
             embed.add_field(name="\u200b", inline=False, value="".join(examples))
 
-        bot = self.item.extras.get("permissions", {}).get("bot", [])
-        user = self.item.extras.get("permissions", {}).get("user", [])
+        bot = self.command.extras.get("permissions", {}).get("bot", [])
+        user = self.command.extras.get("permissions", {}).get("user", [])
 
         if any([bool(user), bool(bot)]):
             embed.add_field(
@@ -845,8 +878,10 @@ class Front(FrontPageSource):
         )
         if self.index in [1, 2]:
             embed.description = _(
-                """Hello and welcome to my help page {emoji}
+                cleandoc(
+                    """Hello and welcome to my help page {emoji}
                 Type `{prefix}help <command/category>` to get more information on a\ncommand/category."""
+                )
             ).format(emoji="", prefix=menu.ctx.clean_prefix)
             embed.add_field(
                 name=_("Support Server"),
@@ -864,8 +899,10 @@ class Front(FrontPageSource):
                 name=_("Who am I?"),
                 inline=False,
                 value=_(
-                    """{user}, which is partially intended for the public.
+                    cleandoc(
+                        """{user}, which is partially intended for the public.
                     Written with only `{lines}` lines of code. Please be nice"""
+                    )
                 ).format(
                     user=menu.ctx.bot.user.mention,
                     lines="{0:,}".format(menu.ctx.bot.lines),
@@ -876,12 +913,14 @@ class Front(FrontPageSource):
                 name=_("What am I for?"),
                 inline=False,
                 value=_(
-                    """I am a functional all-in-one bot that will simplify setting up your server for you!
+                    cleandoc(
+                        """I am a functional all-in-one bot that will simplify setting up your server for you!
 
                     I have been created {created_at} & 
                     I have functions like voting, level system, music, moderation & much more. 
                     You can get more information by using the dropdown menu below.
                     dropdown menu."""
+                    )
                 ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
             )
         elif self.index == 2:
@@ -898,10 +937,12 @@ class Front(FrontPageSource):
                 (
                     f"[{_('argument')}]…",
                     _(
-                        """Stands for the fact that you can use multiple arguments.
+                        cleandoc(
+                            """Stands for the fact that you can use multiple arguments.
 
                     Now that you know the basics, you should still know that...
                     __**You don't include the parentheses!**__"""
+                        )
                     ),
                 ),
             )

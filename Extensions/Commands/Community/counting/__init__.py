@@ -53,11 +53,6 @@ class counting_extension(Community):
     async def setup(
         self,
         ctx: ShakeContext,
-        /,
-        channel: Optional[TextChannel] = None,
-        goal: Optional[int] = None,
-        only_numbers: Optional[bool] = True,
-        react: Optional[bool] = True,
     ):
         _(
             """Setup the whole Counting game in seconds
@@ -74,9 +69,7 @@ class counting_extension(Community):
         do = testing if ctx.testing else counting
 
         try:
-            await do.command(ctx=ctx).setup(
-                channel=channel, goal=goal, numbers=only_numbers, react=react
-            )
+            await do.command(ctx=ctx).setup()
 
         except:
             if ctx.testing:

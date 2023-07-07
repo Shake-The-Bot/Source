@@ -47,9 +47,6 @@ class aboveme_extension(Community):
     async def setup(
         self,
         ctx: ShakeContext,
-        /,
-        channel: Optional[TextChannel] = None,
-        react: Optional[bool] = True,
     ):
         _(
             """Setup the whole AboveMe game in seconds
@@ -66,7 +63,7 @@ class aboveme_extension(Community):
         do = testing if ctx.testing else aboveme
 
         try:
-            await do.command(ctx=ctx).setup(channel=channel, react=react)
+            await do.command(ctx=ctx).setup()
 
         except:
             if ctx.testing:

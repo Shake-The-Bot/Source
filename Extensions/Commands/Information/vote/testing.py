@@ -27,9 +27,7 @@ class command(ShakeCommand):
         )
         embed.add_field(
             inline=False,
-            name=_("{emoji} Sites the bot is listed at").format(
-                emoji=self.bot.emojis.dot
-            ),
+            name=_("{emoji} Sites I am listed at").format(emoji=self.bot.emojis.dot),
             value=_(
                 """**[Vote for Shake on Top.gg]({topgg})**
                 **[Vote for Shake on Discordbotlist.com]({discordbotlist})**

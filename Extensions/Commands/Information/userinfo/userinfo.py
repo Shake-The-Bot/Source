@@ -28,6 +28,7 @@ from Classes.accessoires import (
 )
 from Classes.types import TextFormat, Translated, Types
 from Classes.useful import MISSING
+from Extensions.Commands.Information.serverinfo.serverinfo import Front as SiFront
 
 ########
 #
@@ -66,20 +67,33 @@ class command(ShakeCommand):
         categories = {}
 
         if self.user.bot:
-            counting = False
+            counting = aboveme = oneword = False
         else:
             async with self.bot.gpool.acquire() as connection:
-                query = "SELECT EXISTS (SELECT 1 FROM countings WHERE user_id = $1 LIMIT 1);"
-                counting: bool = await connection.fetchval(query, self.user.id)
+                query = """SELECT 
+                    EXISTS (SELECT 1 FROM countings WHERE user_id = $1 LIMIT 1),
+                    EXISTS (SELECT 1 FROM abovemes WHERE user_id = $1 LIMIT 1),
+                    EXISTS (SELECT 1 FROM onewords WHERE user_id = $1 LIMIT 1);
+                """
+                counting, aboveme, oneword = await connection.fetchrow(
+                    query, self.user.id
+                )
 
         if bool(counting):
             categories[CountingSource(ctx=self.ctx, user=self.user)] = 1
 
+        if bool(oneword):
+            categories[OneWordSource(ctx=self.ctx, user=self.user)] = 1
+
+        if bool(aboveme):
+            categories[AboveMeSource(ctx=self.ctx, user=self.user)] = 1
+
+        if bool(self.user.mutual_guilds):
+            categories[MutualSource(ctx=self.ctx, user=self.user)] = 1
+
         flags = [has is True for flag, has in self.user.public_flags]
         if any(flags):
-            categories[BadgesSource(ctx=self.ctx, user=self.user)] = list(
-                self.user.public_flags
-            )
+            categories[BadgesSource(ctx=self.ctx, user=self.user)] = 1
 
         assets = [
             getattr(self.member or self.user, "avatar"),
@@ -253,6 +267,43 @@ class AssetsSource(ListPageSource):
         return embed, None
 
 
+class MutualSource(ListPageSource):
+    guild: Guild
+    got: Dict[Asset, str]
+
+    def __init__(
+        self,
+        ctx: ShakeContext | Interaction,
+        user: User,
+        *args,
+        **kwargs,
+    ):
+        self.user: User = user
+        guilds: Optional[Member] = user.mutual_guilds
+
+        super().__init__(
+            ctx,
+            items=list(guilds),
+            title=MISSING,
+            label=_("Mutual Servers"),
+            paginating=True,
+            per_page=1,
+            *args,
+            **kwargs,
+        )
+
+    def format_page(self, menu: Menu, items: Guild, **kwargs: Any) -> ShakeEmbed:
+        embed = SiFront().guild(menu.ctx, items)
+        embed.title = str(items.name)
+        embed.set_footer(
+            text=_("Guild {page} of {pages}").format(
+                page=menu.page + 1, pages=self.maximum
+            )
+        )
+
+        return embed, None
+
+
 class PositionSource(ItemPageSource):
     guild: Guild
 
@@ -402,10 +453,10 @@ class CountingSource(ItemPageSource):
                     SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, 
                     SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed,
                     (
-                        SELECT MAX(count) AS highest FROM countings WHERE user_id = $1 AND failed = false GROUP BY user_id
+                        SELECT MAX(count) AS highest FROM countings WHERE user_id = $1 AND direction = false AND failed = false GROUP BY user_id
                     ),
                     (
-                        SELECT used FROM countings WHERE user_id = $1 ORDER BY used DESC LIMIT 1
+                        SELECT used FROM countings WHERE user_id = $1 AND failed = false ORDER BY used DESC LIMIT 1
                     ) AS latest,
                     (
                         WITH ranked AS (
@@ -487,7 +538,220 @@ class CountingSource(ItemPageSource):
             ),
         )
 
-        embed.set_footer(text=_("Information can update every 30 seconds"))
+        embed.set_footer(text=_("Information can update with time"))
+
+        return embed, None
+
+
+class OneWordSource(ItemPageSource):
+    user: User
+
+    def __init__(self, ctx: ShakeContext | Interaction, user: User, *args, **kwargs):
+        self.user: User = user
+        super().__init__(
+            ctx,
+            item=user,
+            title=MISSING,
+            label=_("OneWord"),
+            *args,
+            **kwargs,
+        )
+
+    async def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("OneWord stats"))
+        async with self.bot.gpool.acquire() as connection:
+            query = """SELECT
+                    SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, 
+                    SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed,
+                    (
+                        SELECT used FROM countings WHERE user_id = $1 AND failed = false ORDER BY used DESC LIMIT 1
+                    ) AS latest,
+                    (
+                        WITH ranked AS (
+                            SELECT user_id, ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) - SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) DESC) AS position FROM countings GROUP BY user_id
+                        )
+                        SELECT position FROM ranked WHERE user_id = $1
+                    )
+                FROM onewords
+                WHERE user_id = $1
+                GROUP BY user_id;
+            """
+            failed, passed, latest, placement = await connection.fetchrow(
+                query, self.user.id
+            )
+            summed: int = failed + passed
+            score: int = passed - failed
+            rate: float = passed * 100 / summed
+            latest: datetime
+
+        placements = {1: "🥇", 2: "🥈", 3: "🥉"}
+        embed.description = TextFormat.bold(
+            _("{user} scored a total of {score} valid counts (#{placement})").format(
+                user=self.user.mention,
+                score=score,
+                placement=TextFormat.join(
+                    str(placement), placements.get(placement, "")
+                ),
+            )
+        )
+
+        embed.add_field(
+            name=_("Total passed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (passed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total failed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (failed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total rate"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(str(round(rate, 2)) + "%", "css")
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total last played"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.join(
+                    format_dt(latest.replace(tzinfo=timezone.utc), "F"),
+                    "(" + format_dt(latest.replace(tzinfo=timezone.utc), "R") + ")",
+                    splitter="\n",
+                )
+            ),
+        )
+
+        embed.set_footer(text=_("Information can update with time"))
+
+        return embed, None
+
+
+class AboveMeSource(ItemPageSource):
+    user: User
+
+    def __init__(self, ctx: ShakeContext | Interaction, user: User, *args, **kwargs):
+        self.user: User = user
+        super().__init__(
+            ctx,
+            item=user,
+            title=MISSING,
+            label=_("AboveMe"),
+            *args,
+            **kwargs,
+        )
+
+    async def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
+        embed = ShakeEmbed(title=_("AboveMe stats"))
+        async with self.bot.gpool.acquire() as connection:
+            query = """SELECT
+                    SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) AS failed, 
+                    SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) AS passed,
+                    (
+                        SELECT phrase FROM abovemes WHERE user_id = $1 AND failed = false AND phrase IS NOT NULL ORDER BY LENGTH(phrase) DESC LIMIT 1
+                    ) AS longest,
+                    (
+                        SELECT used FROM abovemes WHERE user_id = $1 AND failed = false ORDER BY used DESC LIMIT 1
+                    ) AS latest,
+                    (
+                        WITH ranked AS (
+                            SELECT user_id, ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN failed = false THEN 1 ELSE 0 END) - SUM(CASE WHEN failed = true THEN 1 ELSE 0 END) DESC) AS position FROM countings GROUP BY user_id
+                        )
+                        SELECT position FROM ranked WHERE user_id = $1
+                    )
+                FROM abovemes
+                WHERE user_id = $1
+                GROUP BY user_id;
+            """
+            failed, passed, longest, latest, placement = await connection.fetchrow(
+                query, self.user.id
+            )
+            summed: int = failed + passed
+            score: int = passed - failed
+            rate: float = passed * 100 / summed
+            latest: datetime
+
+        placements = {1: "🥇", 2: "🥈", 3: "🥉"}
+        embed.description = TextFormat.bold(
+            _("{user} scored a total of {score} valid phrases (#{placement})").format(
+                user=self.user.mention,
+                score=score,
+                placement=TextFormat.join(
+                    str(placement), placements.get(placement, "")
+                ),
+            )
+        )
+
+        embed.add_field(
+            name=_("Total passed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (passed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total failed"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(
+                        TextFormat.join("/".join(str(_) for _ in (failed, summed))),
+                        "css",
+                    )
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total rate"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.bold(
+                    TextFormat.multicodeblock(str(round(rate, 2)) + "%", "css")
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("Total last played"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.join(
+                    format_dt(latest.replace(tzinfo=timezone.utc), "F"),
+                    "(" + format_dt(latest.replace(tzinfo=timezone.utc), "R") + ")",
+                )
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name=_("Total longest sentance"),
+            value=TextFormat.multiblockquotes(
+                TextFormat.multicodeblock(longest, "css")
+            ),
+            inline=False,
+        )
+
+        embed.set_footer(text=_("Information can update with time"))
 
         return embed, None
 
@@ -610,6 +874,9 @@ features = (
     | PositionSource
     | PermissionsSource
     | ActivitiesSource
+    | CountingSource
+    | AboveMeSource
+    | OneWordSource
 )
 
 

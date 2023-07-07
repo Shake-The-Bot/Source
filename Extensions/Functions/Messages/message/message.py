@@ -1,9 +1,9 @@
-from asyncio import TaskGroup
+from asyncio import TaskGroup, sleep
 from collections import Counter
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from discord import Guild, Member, Message, TextChannel
+from discord import Guild, Member, Message, TextChannel, Webhook
 from discord.ext.commands import BucketType, CooldownMapping
 
 from Classes import (
@@ -15,11 +15,14 @@ from Classes import (
     ShakeEmbed,
     TextFormat,
     _,
+    cleanup,
     current,
+    evaluate,
+    string_is_calculation,
     tens,
 )
 
-Literals = Literal["aboveme", "counting", "oneword"]
+Literals = Literal["AboveMe", "Counting", "OneWord"]
 SystemType = Tuple[Optional[ShakeEmbed], bool, bool]
 ############
 #
@@ -37,26 +40,48 @@ class Event:
         self.author = message.author
         self.guild = message.guild
         self.channel = message.channel
+        self.content = message.content
         self.message = message
 
     async def __await__(self):
         ctx = await self.bot.get_context(self.message)
-        if ctx.valid and ctx.command:
+
+        if ctx and ctx.valid and ctx.command:
             return
 
-        async with TaskGroup() as tg:
-            tg.create_task(self.check(game="counting"))
-            tg.create_task(self.check(game="aboveme"))
-            tg.create_task(self.check(game="oneword"))
+        if self.bot.user.mentioned_in(self.message) and not bool(
+            self.message.attachments
+        ):
+            content = cleanup(self.content.strip())
+            if len(content.split()) == 1:
+                content = content.replace(self.bot.user.mention, "", 1)
+                if len(content) == 0:
+                    message = _("Hey {user}! My prefix is / or {mention}").format(
+                        user=self.author.mention,
+                        mention=self.bot.user.mention,
+                    )
+                    try:
+                        await self.message.reply(message)
+                    except:
+                        await self.channel.send(message)
+                    finally:
+                        return
+        if isinstance(self.channel, TextChannel):
+            async with TaskGroup() as tg:
+                tg.create_task(self.check(game="Counting"))
+                tg.create_task(self.check(game="AboveMe"))
+                tg.create_task(self.check(game="OneWord"))
         return
 
     async def check(self, game: Literals):
         cache = self.bot.cache.get(game, list())
-        r = False
+
         if self.channel.id in cache:
-            func = getattr(self, game, MISSING)
-            if func:
-                r = await func()
+            done = cache.get(self.channel.id, {}).get("done", None)
+            if done:
+                return
+            if func := getattr(self, game.lower(), MISSING):
+                await func(game)
             else:
                 return False
         else:
@@ -64,13 +89,20 @@ class Event:
                 records: List[int] = [
                     r[0]
                     for r in await connection.fetch(
-                        f"SELECT channel_id FROM {game} WHERE guild_id = $1",
+                        f"SELECT channel_id FROM {game.lower()} WHERE guild_id = $1",
                         self.guild.id,
                     )
                 ]
             if self.channel.id in records:
-                self.bot.cache.setdefault(game, list())
-                self.bot.cache[game].append(self.channel.id)
+                if game == "counting":
+                    async with self.bot.gpool.acquire() as connection:
+                        done = await connection.fetchval(
+                            f"SELECT done FROM {game.lower()} WHERE channel_id = $1",
+                            self.channel.id,
+                        )
+                    if done:
+                        return
+
                 if (not self.message.content) or bool(self.message.attachments):
                     embed = ShakeEmbed(timestamp=None)
                     embed.description = TextFormat.bold(
@@ -81,12 +113,11 @@ class Event:
                     await self.message.reply(embed=embed, delete_after=10)
                     await self.message.delete(delay=10)
                 else:
-                    func = getattr(self, game, MISSING)
-                    if func:
-                        r = await func()
+                    if func := getattr(self, game.lower(), MISSING):
+                        await func(game)
 
         await self.unvalidate(game=game)
-        return r
+        return True
 
     async def unvalidate(self, game: Literals) -> None:
         async with self.bot.gpool.acquire() as connection:
@@ -104,7 +135,48 @@ class Event:
                     f"DELETE FROM {game} WHERE channel_id IN {'('+', '.join(unvalids)+')'};",
                 )
 
-    async def oneword(self):
+    async def chat(self, game: Literals, **kwargs: Any):
+        cache = self.bot.cache.get(game, list())
+
+        if self.channel.id in cache:
+            webhook_url = cache.get(self.channel.id, {}).get("webhook", False)
+        else:
+            async with self.bot.gpool.acquire() as connection:
+                webhook_url = await connection.fetchval(
+                    f"SELECT webhook FROM {game.lower()} WHERE channel_id = $1",
+                    self.channel.id,
+                )
+
+        delete_after = kwargs.pop("delete_after", None)
+        print(delete_after)
+        if webhook_url:
+            webhook = Webhook.from_url(
+                webhook_url,
+                session=self.bot.session,
+                client=self.bot,
+                bot_token=self.bot.http.token,
+            )
+
+            try:
+                await webhook.edit(
+                    name=self.author.display_name,
+                    avatar=await self.author.display_avatar.read(),
+                )
+            except:
+                pass
+
+            message = await webhook.send(wait=True, **kwargs)
+            if delete_after:
+                await sleep(delete_after)
+                await webhook.delete_message(message_id=message.id)
+
+        else:
+            try:
+                await self.message.reply(delete_after=delete_after, **kwargs)
+            except:
+                await self.message.channel.send(delete_after=delete_after, **kwargs)
+
+    async def oneword(self, game: Literals):
         system = OneWord(
             bot=self.bot,
             channel=self.channel,
@@ -122,19 +194,19 @@ class Event:
             await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
         if embed:
             last = self.channel.last_message
-            if last:
+            if last and last.author == self.bot.user:
                 descriptions = [embed.description[-22:] for embed in last.embeds]
             else:
                 descriptions = []
             if not embed.description[-22:] in descriptions:
-                await self.message.reply(
-                    embed=embed, delete_after=10 if delete else None
+                await self.chat(
+                    game=game, embed=embed, delete_after=10 if delete else None
                 )
         if delete:
             await self.message.delete(delay=10)
         return True
 
-    async def aboveme(self):
+    async def aboveme(self, game: Literals):
         system = AboveMe(
             bot=self.bot,
             channel=self.channel,
@@ -157,14 +229,14 @@ class Event:
             else:
                 descriptions = []
             if not embed.description[-22:] in descriptions:
-                await self.message.reply(
-                    embed=embed, delete_after=10 if delete else None
+                await self.chat(
+                    game=game, embed=embed, delete_after=10 if delete else None
                 )
         if delete:
             await self.message.delete(delay=10)
         return True
 
-    async def counting(self):
+    async def counting(self, game: Literals):
         system = Counting(
             bot=self.bot,
             channel=self.channel,
@@ -189,8 +261,8 @@ class Event:
             else:
                 descriptions = []
             if not embed.description[-22:] in descriptions:
-                await self.message.reply(
-                    embed=embed, delete_after=10 if delete else None
+                await self.chat(
+                    game=game, embed=embed, delete_after=10 if delete else None
                 )
         if delete:
             await self.message.delete(delay=10)
@@ -224,7 +296,6 @@ class OneWord:
         guild: Guild,
         user: Member,
         used: datetime,
-        count: Optional[int],
         failed: bool,
     ) -> None:
         self.bot.cache["OneWords"].append(
@@ -233,13 +304,12 @@ class OneWord:
                 "channel_id": channel.id,
                 "user_id": user.id,
                 "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
-                "count": count,
                 "failed": failed,
             }
         )
 
     async def __await__(self, member: Member, message: Message) -> SystemType:
-        content: str = message.clean_content.strip()
+        content: str = cleanup(message.clean_content.strip())
         time = message.created_at
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
@@ -256,7 +326,6 @@ class OneWord:
 
         user_id: int = record["user_id"]
         message_id: int = record["message_id"]
-        count: int = record["count"] or 0
         words: List[str] = record["words"] or []
         used: datetime = record["used"]
         react: bool = record.get("react", None) or True
@@ -300,7 +369,6 @@ class OneWord:
             guild=self.guild,
             user=member,
             used=time,
-            count=count + 1,
             failed=not passed,
         )
 
@@ -314,7 +382,6 @@ class OneWord:
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,
-            "count": count + 1 if passed else count,
         }
 
         return embed, delete, bad_reaction if react == True else MISSING
@@ -413,7 +480,7 @@ class AboveMe:
     async def __await__(
         self, member: Member, message: Message
     ) -> Tuple[Optional[ShakeEmbed], bool, bool]:
-        content: str = message.clean_content.strip()
+        content: str = cleanup(message.clean_content.strip())
         time = message.created_at
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
@@ -538,7 +605,7 @@ class Counting:
     async def __await__(
         self, member: Member, message: Message
     ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
-        content: str = message.clean_content.strip()
+        content: str = cleanup(message.clean_content.strip())
         time = message.created_at
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
@@ -559,11 +626,15 @@ class Counting:
         message_id: int = record.get("message_id")
         goal: int = record.get("goal")
         count: int = record.get("count", 0) or 0
+        start: int = record.get("start", 0) or 0
         used: datetime = record.get("used")
+        done: bool = record.get("done", False)
+        webhook: bool = record.get("webhook", None) or None
+        direction: bool = record.get("direction", True)
         react: bool = record.get("react", True)
         numbers: bool = record.get("numbers")
-        backup: int = tens(count, True) - 1
-        reached: bool = False
+        math: bool = record.get("math", False)
+        restart = reached = False
 
         current.set(
             await self.bot.locale.get_guild_locale(self.guild.id, default="en-US")
@@ -573,10 +644,12 @@ class Counting:
         delete = passed = False
         bad_reaction = 0
 
-        if not await self.syntax_check(content):
+        influence = +1 if direction is True else -1
+
+        if not await self.syntax_check(content, math):
             if numbers:
                 embed.description = TextFormat.bold(
-                    _("You're not allowed to use anything except numbers here")
+                    _("You can't use anything but arithmetic here.")
                 )
                 delete = True
                 bad_reaction = 1
@@ -592,7 +665,7 @@ class Counting:
             bad_reaction = 1
             delete = True
 
-        elif not await self.check_number(content, count):
+        elif not await self.check_number(content, count, direction, math):
             bucket = self.spam_control.get_bucket(message)
             retry_after = bucket and bucket.update_rate_limit(time.timestamp())
             if retry_after:  # member.id != self.owner_id:
@@ -614,12 +687,12 @@ class Counting:
                 else:
                     s = ""
 
-                if int(count) == backup:
+                if count == start:
                     embed.description = TextFormat.bold(
                         _(
-                            "Incorrect number! The next number remains {backup}. {streak}"
+                            "Incorrect number! The next number remains {start}. {streak}"
                         ).format(
-                            backup=TextFormat.codeblock(f" {backup + 1} "),
+                            start=TextFormat.codeblock(f" {start + influence} "),
                             streak=s,
                         )
                     )
@@ -627,15 +700,17 @@ class Counting:
                 else:
                     embed.description = TextFormat.bold(
                         _(
-                            "You ruined it at {count}. The next number is {backup}. {streak}"
+                            "{user} ruined it at {count}. The next number is {start}. {streak}"
                         ).format(
-                            count=TextFormat.underline(record["count"]),
+                            user=member.mention,
+                            count=TextFormat.underline(count + influence),
                             streak=s,
-                            backup=TextFormat.codeblock(f" {backup + 1} "),
+                            start=TextFormat.codeblock(f" {start + influence} "),
                         )
                     )
                     bad_reaction = 1
-                count = backup
+                    user_id = None
+                restart = True
                 streak = 0
 
         else:
@@ -648,15 +723,25 @@ class Counting:
                         "You've reached your goal of {goal} {emoji} Congratulations!"
                     ).format(goal=goal, emoji="<a:tadaa:1038228851173625876>")
                 )
+            elif direction is False and count - 1 <= 0:
+                embed.description = TextFormat.bold(
+                    _(
+                        "You've reached the end of the numbers until 0 {emoji} Congratulations!"
+                    ).format(emoji="<a:tadaa:1038228851173625876>")
+                )
+                done = True
             else:
                 embed = None
+
+        new = start if restart else (count + influence) if passed else count
 
         await self.counting(
             channel=self.channel,
             guild=self.guild,
             user=member,
+            direction=direction,
             used=time,
-            count=count + 1,
+            count=count,
             failed=not passed,
         )
 
@@ -667,13 +752,18 @@ class Counting:
             ),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "streak": s,
             "message_id": message.id if passed else message_id,
-            "react": react,
             "best": s if s > best else best,
-            "count": count + 1 if passed else count,
+            "count": new,
+            "done": done,
             "goal": None if reached else goal,
+            "webhook": webhook,
+            "streak": s,
+            "start": start,
+            "direction": direction,
+            "react": react,
             "numbers": numbers,
+            "math": math,
         }
         return embed, delete, bad_reaction if react == True else MISSING
 
@@ -682,6 +772,7 @@ class Counting:
         channel: TextChannel,
         guild: Guild,
         user: Member,
+        direction: bool,
         used: datetime,
         count: Optional[int],
         failed: bool,
@@ -691,20 +782,32 @@ class Counting:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
+                "direction": direction,
                 "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
                 "count": count,
                 "failed": failed,
             }
         )
 
-    async def syntax_check(self, content: str):
+    async def syntax_check(self, content: str, math: bool):
         if not content.isdigit():
+            if math and string_is_calculation(content):
+                return True
             return False
         return True
 
-    async def check_number(self, content: str, count: int):
-        if not int(content) == count + 1:
+    async def check_number(self, content: str, count: int, direction: bool, math: bool):
+        if math:
+            number = evaluate(content)
+        else:
+            number = int(content)
+
+        if direction is True and not number == count + 1:
             return False
+
+        if direction is False and not number == count - 1:
+            return False
+
         return True
 
     async def member_check(self, testing: bool, user_id: int, member: Member):

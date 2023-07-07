@@ -45,8 +45,6 @@ class oneword_extension(Community):
         self,
         ctx: ShakeContext,
         /,
-        channel: Optional[TextChannel] = None,
-        react: Optional[bool] = True,
     ):
         _(
             """Setup the whole OneWord game in seconds
@@ -63,7 +61,7 @@ class oneword_extension(Community):
         do = testing if ctx.testing else oneword
 
         try:
-            await do.command(ctx=ctx).setup(channel=channel, react=react)
+            await do.command(ctx=ctx).setup()
 
         except:
             if ctx.testing:

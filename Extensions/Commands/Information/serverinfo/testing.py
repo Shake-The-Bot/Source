@@ -18,7 +18,7 @@ from discord.enums import Status
 from discord.ext import menus
 from discord.utils import format_dt
 
-from Classes import ShakeCommand, ShakeContext, ShakeEmbed, _
+from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, _
 from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
@@ -632,14 +632,16 @@ features = (
 
 class Front(FrontPageSource):
     def format_page(self, menu: Menu, items: Any):
-        guild = menu.guild
+        return self.guild(menu.ctx, menu.guild), None
+
+    def guild(self, ctx: ShakeContext, guild: Guild):
         embed = ShakeEmbed.default(
-            menu.ctx,
+            ctx,
             title=_("General Overview"),
             description="„" + guild.description + "“" if guild.description else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
-        embed.set_thumbnail(url=getattr(menu.guild.icon, "url", recovery))
+        embed.set_thumbnail(url=getattr(guild.icon, "url", recovery))
 
         embed.add_field(
             name=_("Created"),
@@ -656,7 +658,7 @@ class Front(FrontPageSource):
 
         bots = len([member for member in guild.members if member.bot])
         status = Counter(str(member.status) for member in guild.members)
-        emojis = menu.bot.emojis.status
+        emojis = ctx.bot.emojis.status
         statuses = "︱".join(
             [
                 str(emojis.online) + TextFormat.codeblock(status["online"]),
@@ -693,4 +695,4 @@ class Front(FrontPageSource):
         )
         embed.set_image(url=getattr(guild.banner, "url", None))
 
-        return embed, None
+        return embed

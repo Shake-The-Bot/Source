@@ -37,7 +37,6 @@ class command(ShakeCommand):
             image_binary.seek(0)
             file = File(fp=image_binary, filename=f"{name}.png")
         embed = ShakeEmbed.default(self.ctx)
-        embed.set_author(name=str(self.member), icon_url=self.member.display_avatar)
         embed.set_image(url=f"attachment://{name}.png")
         await self.ctx.chat(embed=embed, file=file)
 

@@ -18,7 +18,6 @@ __all__ = (
     "Regex",
     "OneWordBatch",
     "Locale",
-    "FunctionsBatch",
     "CATEGORYS",
     "Categorys",
     "AboveMesBatch",
@@ -26,6 +25,9 @@ __all__ = (
     "CountingBatch",
     "tick",
     "Translated",
+    "CountingsBatch",
+    "AboveMesBatch",
+    "Batch",
     "TracebackType",
     "ExtensionMethods",
     "UserGuild",
@@ -195,46 +197,31 @@ class ExtensionMethods(Enum):
     reload = partial(Bot.reload_extension)
 
 
+class OneWordBatch(TypedDict):
+    channel_id: int
+    user_id: int
+    message_id: int
+    words: list
+    phrase: str
+    react: bool
+    used: str
+
+
 class CountingBatch(TypedDict):
     channel_id: int
     count: int
     user_id: int
     message_id: int
+    webhook: Optional[str]
     streak: int
     best: int
     goal: int
+    done: bool
+    direction: bool
+    math: bool
     react: bool
     used: str
     numbers: bool
-
-
-class FunctionsBatch(TypedDict):
-    guild_id: int
-    channel_id: int
-    user_id: int
-    count: int
-    failed: bool
-    used: str
-
-
-class AboveMesBatch(TypedDict):
-    guild_id: int
-    channel_id: int
-    user_id: int
-    phrase: str
-    failed: bool
-    used: str
-
-
-class OneWordBatch(TypedDict):
-    channel_id: int
-    user_id: int
-    message_id: int
-    count: int
-    words: list
-    phrase: str
-    react: bool
-    used: str
 
 
 class AboveMeBatch(TypedDict):
@@ -245,3 +232,20 @@ class AboveMeBatch(TypedDict):
     phrases: list
     react: bool
     used: str
+
+
+class Batch(TypedDict):
+    guild_id: int
+    channel_id: int
+    user_id: int
+    failed: bool
+    used: str
+
+
+class CountingsBatch(Batch):
+    count: int
+    direction: bool
+
+
+class AboveMesBatch(Batch):
+    phrase: str

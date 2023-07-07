@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from logging import Logger, getLogger
 from types import ModuleType
@@ -7,12 +9,13 @@ from discord import Message
 from discord.abc import Snowflake
 from discord.ext.commands import Cog
 from discord.ext.tasks import loop
+from py_expression_eval import Parser
 
 from Classes.helpful import BotBase
 from Classes.useful import MISSING, dump
 
 if TYPE_CHECKING:
-    from Classes import __version__
+    from Classes import ShakeContext, __version__
 else:
     __version__ = MISSING
 
@@ -26,6 +29,7 @@ class ShakeBot(BotBase):
     logger: Logger
 
     def __init__(self, **options):
+        self.maths: Parser = Parser()
         self.started = datetime.now()
         self.log: Logger = getLogger()
         super().__init__(**options)
@@ -37,11 +41,11 @@ class ShakeBot(BotBase):
         self.config.reload()
         self.emojis.reload()
 
-    async def process_commands(self, message: Message) -> None:
-        await super().process_commands(message)
+    async def process_commands(self, message: Message) -> Optional[ShakeContext]:
+        ctx = await super().process_commands(message)
         self.config.reload()
         self.emojis.reload()
-        return
+        return ctx
 
     async def testing_error(
         self, module: Dict[str, ModuleType], error: Exception

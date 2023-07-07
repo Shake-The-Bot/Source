@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT
+from ast import BinOp, Expression, PyCF_ALLOW_TOP_LEVEL_AWAIT, parse
 from base64 import b64encode
 from hmac import new
 from inspect import isawaitable
@@ -39,6 +39,8 @@ __all__ = (
     "dump",
     "cogshandler",
     "MISSING",
+    "evaluate",
+    "string_is_calculation",
     "choice",
     "getrandbits",
     "stdoutable",
@@ -159,6 +161,30 @@ def high_level_function():
 
 
 """     Numbers     """
+
+
+def evaluate(string):
+    try:
+        tree = parse(string, mode="eval")
+        result = eval(compile(tree, filename="<string>", mode="eval"))
+        return result
+    except (SyntaxError, TypeError, NameError):
+        return None
+
+
+def string_is_calculation(string):
+    try:
+        tree = parse(string, mode="eval")
+    except SyntaxError:
+        return False
+
+    if not isinstance(tree, Expression):
+        return False
+
+    if not isinstance(tree.body, BinOp):
+        return False
+
+    return True
 
 
 def source_lines(path: Optional[str] = None) -> int:
@@ -504,11 +530,17 @@ def stdoutable(code: str, output: bool = False):
     return s
 
 
-def tens(count: int, higher_when_same: bool = False):
+def tens(count: int, higher_when_same: bool = False, direction: bool = True):
     __len = len(str(count))
     __digits: List[str] = [int(_) for _ in str(count)]
     __saves = max(1, ceil(__len / 2))
     __saved = __digits[0:__saves]
+    if direction is False:
+        stringed = "".join(str(_) for _ in __saved)
+        inted = int(stringed)
+        upped = inted + 1
+        __saved: List[str] = [int(_) for _ in str(upped)]
+
     __zeros = list("0" for _ in range(len(__digits[__saves:__len])))
 
     final = int("".join(str(x) for x in __saved + __zeros))

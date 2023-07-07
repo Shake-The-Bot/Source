@@ -1,21 +1,11 @@
 ############
 #
 from importlib import reload
-from typing import Dict
 
-from asyncpg.exceptions import PostgresConnectionError
 from discord import Message
 from discord.ext.commands import Cog
-from discord.ext.tasks import loop
 
-from Classes import (
-    AboveMeBatch,
-    CountingBatch,
-    FunctionsBatch,
-    OneWordBatch,
-    ShakeBot,
-    Testing,
-)
+from Classes import ShakeBot, Testing
 
 from . import delete as _message
 from . import testing

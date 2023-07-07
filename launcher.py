@@ -2,17 +2,14 @@
 #
 from asyncio import run, set_event_loop_policy
 from contextlib import contextmanager
-from json import dumps, loads
 from logging import INFO, NullHandler, getLogger
-from typing import Literal
 
-from asyncpg import Pool, create_pool
+from asyncpg import Pool
 from discord import Activity, ActivityType, Intents
 
 from Classes import (
     Migration,
     NoCommands,
-    NoShards,
     NoVotes,
     OnlyCommands,
     ShakeBot,
@@ -67,7 +64,6 @@ def setup():
 
     def discord():
         log = getLogger("discord.gateway")
-        log.addFilter(NoShards)
 
     for func in (root, commands, discord):
         func()

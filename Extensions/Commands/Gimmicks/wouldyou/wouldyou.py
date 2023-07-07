@@ -58,10 +58,13 @@ class command(ShakeCommand):
 
 
 class VoteView(ui.View):
+    ctx: ShakeContext
+    bot: ShakeBot
+
     def __init__(self, ctx: ShakeContext, voting: bool, key: str):
         super().__init__(timeout=20)
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
+        self.ctx = ctx
+        self.bot = ctx.bot
         self.key: str = key
         self.voting: bool = voting
         self.no = set()

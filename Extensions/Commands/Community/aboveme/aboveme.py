@@ -1,12 +1,164 @@
+from enum import Enum
 from typing import Dict, List, Optional
 
-from discord import Forbidden, Guild, HTTPException, TextChannel
+from discord import (
+    ButtonStyle,
+    ChannelType,
+    Forbidden,
+    Guild,
+    HTTPException,
+    Interaction,
+    SelectOption,
+    TextChannel,
+)
+from discord.app_commands import AppCommandChannel
+from discord.ui import Button, ChannelSelect, Select
 
-from Classes import ShakeCommand, ShakeContext, ShakeEmbed, TextFormat, UserGuild, _
-from Classes.accessoires import ListPageSource, ShakePages
+from Classes import (
+    MISSING,
+    ShakeCommand,
+    ShakeContext,
+    ShakeEmbed,
+    TextFormat,
+    UserGuild,
+    _,
+)
+from Classes.accessoires import (
+    ForwardingFinishSource,
+    ForwardingMenu,
+    ForwardingSource,
+    ListPageSource,
+    ShakePages,
+)
 
 ############
 #
+
+
+class Permission(Enum):
+    allow = True
+    deny = False
+
+
+class AboveMeMenu(ForwardingMenu):
+    react: bool = MISSING
+    channel: Optional[TextChannel] = MISSING
+
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        finish = ForwardingFinishSource(self)
+        finish.previous = React
+
+        self.sites = [Channel(self), React(self), finish]
+
+
+class Channel(ForwardingSource):
+    view: AboveMeMenu
+    channel: Optional[TextChannel]
+    select = ChannelSelect(
+        channel_types=[ChannelType.text], placeholder="Select a TextChannel!", row=1
+    )
+    button = Button(label=_("Create one"), style=ButtonStyle.green, row=4)
+
+    def __init__(self, view: AboveMeMenu) -> None:
+        super().__init__(
+            view=view,
+            previous=None,
+            next=React,
+            items=[self.select, self.button, view.cancel],
+        )
+
+    async def __call__(self, interaction: Interaction) -> None:
+        if bool(self.select.values):
+            value = self.select.values[0]
+        else:
+            value = None
+        await self.callback(interaction, value)
+
+    async def callback(
+        self, interaction: Interaction, value: Optional[AppCommandChannel] = None
+    ):
+        if isinstance(value, AppCommandChannel):
+            value = self.bot.get_channel(value.id)
+        self.view.channel = value
+        await self.view.show_source(source=self.next(self.view), rotation=1)
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.set_author(name=_("AboveMe channel"))
+        embed.title = _("Choose in which text channel this game should be!")
+        points = [
+            _("You can set up an existing text channel from your server."),
+            _(
+                "Alternatively, you have the option to have a new text channel created for it."
+            ),
+        ]
+        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+
+        embed.set_footer(
+            text=_("You can go back here in the setup to change settings..")
+        )
+        return {"embed": embed}
+
+
+class React(ForwardingSource):
+    view: AboveMeMenu
+    react: Permission
+    item = Select(
+        options=[
+            SelectOption(
+                label="Allow Shake to react",
+                description=None,
+                value=Permission.allow.name,
+            ),
+            SelectOption(
+                label="Forbid Shake to react",
+                description=None,
+                value=Permission.deny.name,
+            ),
+        ],
+        placeholder="Decide between these two options...",
+        row=1,
+    )
+
+    def __init__(self, view: AboveMeMenu) -> None:
+        self.item.callback = self.__call__
+        super().__init__(
+            view=view,
+            previous=Channel,
+            next=MISSING,
+            items=[self.item, view.previous, view.cancel],
+        )
+
+    async def callback(self, interaction: Interaction, value: Permission):
+        self.view.react = Permission[value].value
+
+        finish = ForwardingFinishSource(self.view)
+        finish.previous = React
+        await self.view.show_source(source=finish, rotation=1)
+
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.set_author(name=_("AboveMe bot reactions"))
+        embed.title = _("Decide if I am allowed to react to the posts in the game")
+
+        points = [
+            _(
+                "You can allow me reactions so that users know directly whether posts are accepted as correct."
+            ),
+            _("You can also deny me reactions to suppress the spam of reactions."),
+        ]
+        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+
+        embed.set_footer(
+            text=_("You can go back here in the setup to change settings..")
+        )
+        return {"embed": embed}
 
 
 class Page(ListPageSource):
@@ -82,8 +234,22 @@ class command(ShakeCommand):
         await menu.send(ephemeral=True)
         pass
 
-    async def setup(self, channel: Optional[TextChannel], react: bool):
-        if not channel or not channel in self.ctx.guild.text_channels:
+    async def setup(
+        self,
+    ):
+        menu = AboveMeMenu(ctx=self.ctx)
+        message = await menu.setup(menu.sites)
+        await menu.wait()
+
+        embed = ShakeEmbed(timestamp=None)
+
+        channel = menu.channel
+        react = menu.react
+
+        if menu.timeouted or any(_ is MISSING for _ in (channel, react)):
+            return
+
+        if channel is None:
             try:
                 channel = await self.ctx.guild.create_text_channel(
                     name="aboveme", slowmode_delay=5
@@ -92,22 +258,52 @@ class command(ShakeCommand):
                 HTTPException,
                 Forbidden,
             ):
-                await self.ctx.chat(
-                    _(
-                        "The Aboveme-Game couldn't setup because I have no permissions to do so."
-                    )
+                embed = embed.to_error(
+                    self.ctx,
+                    description=_("I could not create a TextChannel. Aborting..."),
                 )
+                await message.edit(embed=embed, view=None)
                 return False
-            channel = channel
+
+        else:
+            if channel.slowmode_delay == 0:
+                try:
+                    await channel.edit(slowmode_delay=5)
+                except (HTTPException, Forbidden):
+                    embed = embed.to_error(
+                        self.ctx,
+                        description=_("I could not edit the TextChannel! Aborting..."),
+                    )
+                    await message.edit(embed=embed, view=None)
+                    return False
 
         async with self.ctx.db.acquire() as connection:
-            query = 'INSERT INTO aboveme (channel_id, guild_id, "react") VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
+            query = "SELECT * FROM counting WHERE channel_id = $1"
+            record = await connection.fetchrow(query, channel.id)
+            if record:
+                embed = embed.to_error(
+                    self.ctx,
+                    description=_(
+                        "In {channel} is alredy a Counting game set up. Aborting..."
+                    ).format(channel=channel.mention),
+                )
+                await message.edit(embed=embed, view=None)
+                return False
+
+            query = 'INSERT INTO "aboveme" (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
             await connection.execute(query, channel.id, self.ctx.guild.id, react)
 
-        await self.ctx.chat(
-            _("The Aboveme-Game is succsessfully setup in {channel}").format(
-                channel=channel.mention
-            )
+        embed = embed.to_success(
+            ctx=self.ctx,
+            description=_("{game} is succsessfully set up in {channel}!").format(
+                game="AboveMe", channel=channel.mention
+            ),
+        )
+        embed.set_footer(text=_("Note: you can freely edit the text channel now"))
+
+        await message.edit(
+            embed=embed,
+            view=None,
         )
 
 

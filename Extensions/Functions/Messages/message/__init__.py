@@ -11,8 +11,9 @@ from discord.ext.tasks import loop
 from Classes import (
     AboveMeBatch,
     AboveMesBatch,
+    Batch,
     CountingBatch,
-    FunctionsBatch,
+    CountingsBatch,
     OneWordBatch,
     ShakeBot,
     Testing,
@@ -79,18 +80,18 @@ class on_message(Cog):
     async def counting(self):
         batch: Dict[int, CountingBatch] = self.bot.cache["Counting"]
         if bool(batch):
-            query = """UPDATE counting set user_id = x.user_id, count = x.count, streak = x.streak, used = x.used, best = x.best, goal = x.goal 
-                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, count BIGINT, user_id BIGINT, streak BIGINT, best BIGINT, goal BIGINT, "react" BOOLEAN, used TIMESTAMP, numbers BOOLEAN) 
+            query = """UPDATE counting set user_id = x.user_id, count = x.count, streak = x.streak, used = x.used, best = x.best, message_id = x.message_id, done = x.done, webhook = x.webhook
+                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, count BIGINT, user_id BIGINT, streak BIGINT, best BIGINT, goal BIGINT, "react" BOOLEAN, used TIMESTAMP, math BOOLEAN, numbers BOOLEAN, direction BOOLEAN, start BIGINT, message_id BIGINT, done BOOLEAN, webhook TEXT) 
                 WHERE counting.channel_id = x.channel_id;
             """
             await self.bot.gpool.execute(query, list(batch.values()))
             self.bot.cache["Counting"].clear()
 
-        batch: list[FunctionsBatch] = self.bot.cache["Countings"]
+        batch: list[CountingsBatch] = self.bot.cache["Countings"]
         if bool(batch):
-            query = """INSERT INTO countings (guild_id, channel_id, user_id, used, count, failed)
-                SELECT x.guild_id, x.channel_id, x.user_id, x.used, x.count, x.failed
-                FROM jsonb_to_recordset($1::jsonb) AS x(guild_id BIGINT, channel_id BIGINT, user_id BIGINT, used TIMESTAMP, count BIGINT, failed BOOLEAN)
+            query = """INSERT INTO countings (guild_id, channel_id, user_id, used, count, failed, direction)
+                SELECT x.guild_id, x.channel_id, x.user_id, x.used, x.count, x.failed, x.direction
+                FROM jsonb_to_recordset($1::jsonb) AS x(guild_id BIGINT, channel_id BIGINT, user_id BIGINT, used TIMESTAMP, count BIGINT, failed BOOLEAN, direction BOOLEAN)
             """
             await self.bot.gpool.execute(query, batch)
             self.bot.cache["Countings"].clear()
@@ -99,8 +100,8 @@ class on_message(Cog):
     async def aboveme(self):
         batch: Dict[int, AboveMeBatch] = self.bot.cache["AboveMe"]
         if bool(batch):
-            query = """UPDATE aboveme set user_id = x.user_id, count = x.count, phrases = x.phrases, used = x.used
-                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, phrases TEXT[], "react" BOOLEAN, used TIMESTAMP) 
+            query = """UPDATE aboveme set user_id = x.user_id, count = x.count, phrases = x.phrases, used = x.used, message_id = x.message_id
+                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, phrases TEXT[], message_id BIGINT, "react" BOOLEAN, used TIMESTAMP) 
                 WHERE aboveme.channel_id = x.channel_id;
             """
             await self.bot.gpool.execute(query, list(batch.values()))
@@ -119,18 +120,18 @@ class on_message(Cog):
     async def oneword(self):
         batch: Dict[int, OneWordBatch] = self.bot.cache["OneWord"]
         if bool(batch):
-            query = """UPDATE oneword set user_id = x.user_id, count = x.count, words = x.words, phrase = x.phrase, used = x.used
-                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, words TEXT[], phrase TEXT, react BOOLEAN, used TIMESTAMP) 
+            query = """UPDATE oneword set user_id = x.user_id, count = x.count, words = x.words, phrase = x.phrase, used = x.used, message_id = x.message_id
+                FROM jsonb_to_recordset($1::jsonb) AS x(channel_id BIGINT, user_id BIGINT, count BIGINT, words TEXT[], phrase TEXT, message_id BIGINT, react BOOLEAN, used TIMESTAMP) 
                 WHERE oneword.channel_id = x.channel_id;
             """
             await self.bot.gpool.execute(query, list(batch.values()))
             self.bot.cache["OneWord"].clear()
 
-        batch: list[FunctionsBatch] = self.bot.cache["OneWords"]
+        batch: list[Batch] = self.bot.cache["OneWords"]
         if bool(batch):
-            query = """INSERT INTO onewords (guild_id, channel_id, user_id, used, count, failed)
-                SELECT x.guild_id, x.channel_id, x.user_id, x.used, x.count, x.failed
-                FROM jsonb_to_recordset($1::jsonb) AS x(guild_id BIGINT, channel_id BIGINT, user_id BIGINT, used TIMESTAMP, count BIGINT, failed BOOLEAN)
+            query = """INSERT INTO onewords (guild_id, channel_id, user_id, used, failed)
+                SELECT x.guild_id, x.channel_id, x.user_id, x.used, x.failed
+                FROM jsonb_to_recordset($1::jsonb) AS x(guild_id BIGINT, channel_id BIGINT, user_id BIGINT, used TIMESTAMP, failed BOOLEAN)
             """
             await self.bot.gpool.execute(query, batch)
             self.bot.cache["OneWords"].clear()

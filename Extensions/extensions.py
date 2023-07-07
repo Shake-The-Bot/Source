@@ -70,6 +70,7 @@ extensions = [
     "Extensions.Functions.Members.member.join.__init__",
     "Extensions.Functions.Messages.message.__init__",
     "Extensions.Functions.Messages.message.edit.__init__",
+    "Extensions.Functions.Messages.message.delete.__init__",
     # "Extensions.Functions.Reactions.raw.reaction.add.__init__",
     # "Extensions.Functions.Reactions.raw.reaction.remove.__init__",
     "Extensions.Functions.Scheduled.freegames.__init__",

@@ -312,7 +312,7 @@ class ShakeContext(Context):
 
     async def reinvoke(
         self, *, message: Optional[Message] = None, **kwargs: Any
-    ) -> None:
+    ) -> ShakeContext:
         self.reinvoked = True
         if message is None:
             return await super().reinvoke(**kwargs)
@@ -334,6 +334,7 @@ class ShakeContext(Context):
             self.__dict__[param] = new_param
             setattr(self, param, new_param)
         await self.bot.invoke(self, typing=False)
+        return self
 
     """ Do I really need following things? """
 
@@ -535,6 +536,7 @@ class BotBase(AutoShardedBot):
             typing=ctx.valid
             and not ctx.command.qualified_name in ["clear", "dispatch"],
         )
+        return ctx
 
     async def setup_hook(self):
         self._session = ClientSession()

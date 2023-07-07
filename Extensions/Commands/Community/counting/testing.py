@@ -9,10 +9,12 @@ from discord import (
     Guild,
     HTTPException,
     Interaction,
+    Message,
     PartialEmoji,
     SelectOption,
     TextChannel,
     TextStyle,
+    Webhook,
 )
 from discord.app_commands import AppCommandChannel
 from discord.components import SelectOption
@@ -36,25 +38,28 @@ previousemoji = PartialEmoji(name="left", id=1033551843210579988)
 
 
 class Directions(Enum):
-    up = 1
-    down = 0
+    up = True
+    down = False
 
 
-class Reacts(Enum):
-    yes = True
-    no = False
+class MessageTypes(Enum):
+    webhook = Webhook
+    botuser = Message
 
 
-class Text(Enum):
-    yes = True
-    no = False
+class Permission(Enum):
+    allow = True
+    deny = False
 
 
 class CountingMenu(ForwardingMenu):
-    direction: Directions = MISSING
+    start: Optional[int] = MISSING
     goal: Optional[int] = MISSING
-    numbers: bool = MISSING
-    react: bool = True
+    direction: Directions = MISSING
+    numbers: Permission = MISSING
+    math: Permission = MISSING
+    message_type: MessageTypes = MISSING
+    react: Permission = MISSING
     channel: Optional[TextChannel] = MISSING
 
     def __init__(self, ctx):
@@ -62,7 +67,15 @@ class CountingMenu(ForwardingMenu):
         finish = ForwardingFinishSource(self)
         finish.previous = React
 
-        self.sites = [Channel(self), Direction(self), Number(self), React(self), finish]
+        self.sites = [
+            Channel(self),
+            Direction(self),
+            Number(self),
+            Math(self),
+            MessageType(self),
+            React(self),
+            finish,
+        ]
 
 
 class Channel(ForwardingSource):
@@ -101,17 +114,17 @@ class Channel(ForwardingSource):
     def message(self) -> dict:
         embed = ShakeEmbed()
         embed.set_author(name=_("Counting channel"))
-        embed.title = _("Choose in which text channel Counting should be!")
+        embed.title = _("Choose in which text channel this game should be!")
         points = [
             _("You can set up an existing text channel from your server."),
             _(
-                "Alternatively, you have the option to have a new text channel created for {game}."
-            ).format(game=TextFormat.bold("Counting")),
+                "Alternatively, you have the option to have a new text channel created for it."
+            ),
         ]
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can always go back here in the setup to change settings.")
+            text=_("You can go back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -142,7 +155,7 @@ class Direction(ForwardingSource):
         self.view.direction = Directions[value].value
 
         if self.view.direction == Directions.up.value:
-            self.view.start = None
+            self.view.start = 0
             await interaction.response.send_modal(GoalModal(self, self.view))
         else:
             self.view.goal = None
@@ -166,25 +179,25 @@ class Direction(ForwardingSource):
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can always go back here in the setup to change settings.")
+            text=_("You can go back here in the setup to change settings..")
         )
         return {"embed": embed}
 
 
 class Number(ForwardingSource):
     view: CountingMenu
-    numbers: Directions
+    numbers: Permission
     item = Select(
         options=[
             SelectOption(
                 label="Allow text messages (comments) in Counting",
                 description=None,
-                value=Text.yes.name,
+                value=Permission.allow.name,
             ),
             SelectOption(
                 label="Deny text messages (comments) in Counting",
                 description=None,
-                value=Text.no.name,
+                value=Permission.deny.name,
             ),
         ],
         placeholder="Text messages often create a little more clutter",
@@ -195,12 +208,12 @@ class Number(ForwardingSource):
         super().__init__(
             view=view,
             previous=Direction,
-            next=React,
+            next=Math,
             items=[self.item, view.previous, view.cancel],
         )
 
-    async def callback(self, interaction: Interaction, value: Text):
-        self.view.numbers = not Text[value].value
+    async def callback(self, interaction: Interaction, value: Permission):
+        self.view.numbers = not Permission[value].value
 
         await self.view.show_source(source=self.next(self.view), rotation=1)
         if not interaction.response.is_done():
@@ -219,21 +232,79 @@ class Number(ForwardingSource):
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can always go back here in the setup to change settings.")
+            text=_("You can go back here in the setup to change settings..")
         )
         return {"embed": embed}
 
 
-class React(ForwardingSource):
+class Math(ForwardingSource):
     view: CountingMenu
-    react: Reacts
+    math: Permission
     item = Select(
         options=[
             SelectOption(
-                label="Allow Shake to react", description=None, value=Reacts.yes.name
+                label="Allow mathematical calculations in Counting",
+                description=None,
+                value=Permission.allow.name,
             ),
             SelectOption(
-                label="Forbid Shake to react", description=None, value=Reacts.no.name
+                label="Deny mathematical calculations in Counting",
+                description=None,
+                value=Permission.deny.name,
+            ),
+        ],
+        placeholder="Calculations expand the spectrum of possibilities",
+        row=1,
+    )
+
+    def __init__(self, view: CountingMenu) -> None:
+        super().__init__(
+            view=view,
+            previous=Number,
+            next=React,
+            items=[self.item, view.previous, view.cancel],
+        )
+
+    async def callback(self, interaction: Interaction, value: Permission):
+        self.view.math = Permission[value].value
+
+        await self.view.show_source(source=self.next(self.view), rotation=1)
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.set_author(name=_("Counting ways"))
+        embed.title = _("Decide if mathematical calculations are allowed in Counting")
+        points = [
+            _(
+                "You can allow mathematical calculations so that members can find new ways."
+            ),
+            _(
+                "You can deny mathematical calculations so that {game} remains clearer."
+            ).format(game=TextFormat.bold("Counting")),
+        ]
+        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+
+        embed.set_footer(
+            text=_("You can go back here in the setup to change settings.")
+        )
+        return {"embed": embed}
+
+
+class MessageType(ForwardingSource):
+    view: CountingMenu
+    item = Select(
+        options=[
+            SelectOption(
+                label="Get responses via custom Webhook",
+                description=None,
+                value=MessageTypes.webhook.name,
+            ),
+            SelectOption(
+                label="Get responses via Shake",
+                description=None,
+                value=MessageTypes.botuser.name,
             ),
         ],
         placeholder="Decide between these two options...",
@@ -244,13 +315,70 @@ class React(ForwardingSource):
         self.item.callback = self.__call__
         super().__init__(
             view=view,
-            previous=Number,
+            previous=Math,
+            next=React,
+            items=[self.item, view.previous, view.cancel],
+        )
+
+    async def callback(self, interaction: Interaction, value: MessageTypes):
+        self.view.message_type = MessageTypes[value].value
+
+        await self.view.show_source(source=self.next(self.view), rotation=1)
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.set_author(name=_("Counting bot responses"))
+        embed.title = _("Decide in which way I should response to fails, edits, etc.")
+
+        points = [
+            _(
+                "You can let me send the responses via webhooks that will make the whole thing look more natural"
+            ),
+            _(
+                "You can also let me send all messages as a user, to create an easier overview of the actions."
+            ),
+        ]
+        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+
+        embed.set_footer(
+            text=_("You can go back here in the setup to change settings..")
+        )
+        return {"embed": embed}
+
+
+class React(ForwardingSource):
+    view: CountingMenu
+    react: Permission
+    item = Select(
+        options=[
+            SelectOption(
+                label="Allow Shake to react",
+                description=None,
+                value=Permission.allow.name,
+            ),
+            SelectOption(
+                label="Forbid Shake to react",
+                description=None,
+                value=Permission.deny.name,
+            ),
+        ],
+        placeholder="Decide between these two options...",
+        row=1,
+    )
+
+    def __init__(self, view: CountingMenu) -> None:
+        self.item.callback = self.__call__
+        super().__init__(
+            view=view,
+            previous=MessageType,
             next=MISSING,
             items=[self.item, view.previous, view.cancel],
         )
 
-    async def callback(self, interaction: Interaction, value: Reacts):
-        self.view.react = Reacts[value].value
+    async def callback(self, interaction: Interaction, value: Permission):
+        self.view.react = Permission[value].value
 
         finish = ForwardingFinishSource(self.view)
         finish.previous = React
@@ -261,8 +389,8 @@ class React(ForwardingSource):
 
     def message(self) -> dict:
         embed = ShakeEmbed()
-        embed.set_author(name=_("Bot reactions"))
-        embed.title = _("Decide if I am allowed to react to the posts in Counting")
+        embed.set_author(name=_("Counting bot reactions"))
+        embed.title = _("Decide if I am allowed to react to the posts in the game")
 
         points = [
             _(
@@ -273,7 +401,7 @@ class React(ForwardingSource):
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can always go back here in the setup to change settings.")
+            text=_("You can go back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -315,7 +443,7 @@ class StartModal(Modal):
         self.view = view
         super().__init__(title="Start")
 
-    goal = TextInput(
+    start = TextInput(
         label="Start",
         required=True,
         style=TextStyle.short,
@@ -323,17 +451,24 @@ class StartModal(Modal):
     )
 
     async def on_submit(self, interaction: Interaction):
-        if not self.goal.value.isdigit():
+        if not self.start.value.isdigit():
             await interaction.response.send_message(
                 "You have not typed in any numbers! Aborting.",
                 ephemeral=True,
             )
-            return self.view.stop()
+            return
+
+        if not int(self.start.value) > 0:
+            await interaction.response.send_message(
+                "Your start need to be greater than 0! Aborting.",
+                ephemeral=True,
+            )
+            return
 
         if not interaction.response.is_done():
             await interaction.response.defer()
 
-        self.view.start = int(self.goal.value)
+        self.view.start = int(self.start.value)
         await self.view.show_source(self.source.next(self.view), 1)
 
 
@@ -528,14 +663,18 @@ class command(ShakeCommand):
 
         embed = ShakeEmbed(timestamp=None)
 
+        start = menu.start
         direction = menu.direction
         channel = menu.channel
         goal = menu.goal
         numbers = menu.numbers
+        math = menu.math
         react = menu.react
+        message_type = menu.message_type
 
         if menu.timeouted or any(
-            _ is MISSING for _ in (direction, channel, goal, numbers, react)
+            _ is MISSING
+            for _ in (direction, channel, start, goal, math, numbers, react)
         ):
             return
 
@@ -567,6 +706,23 @@ class command(ShakeCommand):
                     await message.edit(embed=embed, view=None)
                     return False
 
+        if message_type == MessageTypes.webhook.value:
+            try:
+                webhook = await channel.create_webhook(
+                    name=self.bot.user.name, avatar=None
+                )
+            except (HTTPException, Forbidden):
+                embed = embed.to_error(
+                    self.ctx,
+                    description=_(
+                        "I could not create a webhook in the TextChannel! Aborting..."
+                    ),
+                )
+                await message.edit(embed=embed, view=None)
+                return False
+        else:
+            webhook = None
+
         async with self.ctx.db.acquire() as connection:
             query = "SELECT * FROM counting WHERE channel_id = $1"
             record = await connection.fetchrow(query, channel.id)
@@ -580,21 +736,29 @@ class command(ShakeCommand):
                 await message.edit(embed=embed, view=None)
                 return False
 
-            query = 'INSERT INTO "counting" (channel_id, guild_id, goal, hardcore, numbers, "react") VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING'
+            query = """
+                INSERT INTO counting 
+                (channel_id, guild_id, goal, direction, webhook, count, start, numbers, math, react) 
+                VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9) 
+                ON CONFLICT DO NOTHING"""
+
             await connection.execute(
                 query,
                 channel.id,
                 self.ctx.guild.id,
                 goal,
-                False,
+                direction,
+                webhook.url if webhook else None,
+                0 if direction else start + 1,
                 numbers,
+                math,
                 react,
             )
 
         embed = embed.to_success(
             ctx=self.ctx,
-            description=_("Counting is succsessfully set up in {channel}!").format(
-                channel=channel.mention
+            description=_("{game} is succsessfully set up in {channel}!").format(
+                game="Counting", channel=channel.mention
             ),
         )
         embed.set_footer(text=_("Note: you can freely edit the text channel now"))

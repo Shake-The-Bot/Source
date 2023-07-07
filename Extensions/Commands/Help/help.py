@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from contextlib import suppress
 from copy import copy
+from inspect import cleandoc
 from itertools import chain
 from itertools import combinations as cmb
 from itertools import groupby
 from random import sample
-from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional
+from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional, Union
 
 from discord import (
     ButtonStyle,
@@ -19,7 +20,14 @@ from discord import (
     ui,
 )
 from discord.ext import commands, menus
-from discord.ext.commands import Cog, Command, CommandError, Group, errors
+from discord.ext.commands import (
+    Cog,
+    Command,
+    CommandError,
+    Group,
+    HybridCommand,
+    errors,
+)
 from discord.utils import format_dt, maybe_coroutine
 
 from Classes import (
@@ -598,25 +606,30 @@ class CategorySource(ListPageSource):
 
 
 class CommandSource(ItemPageSource):
-    command: Command
+    item: Command
 
     async def get_page(self, page: Command) -> Coroutine[Any, Any, Any]:
         self.page: Command = page
         return self
 
-    def format_page(self, menu: ShakePages, items: Any, **kwargs: Any):
+    def format_page(self, menu: ShakePages, *args: Any, **kwargs: Any):
         self.cog: Cog = self.item.cog
         self.category = menu.bot.get_cog(self.cog.__class__.__bases__[0].__name__)
+
+        description = (
+            self.item.callback.__doc__
+            or self.item.help
+            or _("No more detailed description given.")
+        )
+
         embed = ShakeEmbed.default(
             menu.ctx,
             title=_("{category} » {command} Command").format(
                 category=self.category.label,
                 command=self.item.name.capitalize(),
             ),
-            description="{}".format(
-                _(self.item.help).format(prefix=menu.ctx.prefix)
-                if self.item.help
-                else _("No more detailed description given.")
+            description=TextFormat.multicodeblock(
+                cleandoc(_(description).format(prefix=menu.ctx.prefix)), "py"
             ),
         )
         embed.set_author(name=_("More detailed command description"))
@@ -832,8 +845,10 @@ class Front(FrontPageSource):
         )
         if self.index in [1, 2]:
             embed.description = _(
-                """Hello and welcome to my help page {emoji}
+                cleandoc(
+                    """Hello and welcome to my help page {emoji}
                 Type `{prefix}help <command/category>` to get more information on a\ncommand/category."""
+                )
             ).format(emoji="", prefix=menu.ctx.clean_prefix)
             embed.add_field(
                 name=_("Support Server"),
@@ -851,8 +866,10 @@ class Front(FrontPageSource):
                 name=_("Who am I?"),
                 inline=False,
                 value=_(
-                    """{user}, which is partially intended for the public.
+                    cleandoc(
+                        """{user}, which is partially intended for the public.
                     Written with only `{lines}` lines of code. Please be nice"""
+                    )
                 ).format(
                     user=menu.ctx.bot.user.mention,
                     lines="{0:,}".format(menu.ctx.bot.lines),
@@ -863,12 +880,14 @@ class Front(FrontPageSource):
                 name=_("What am I for?"),
                 inline=False,
                 value=_(
-                    """I am a functional all-in-one bot that will simplify setting up your server for you!
+                    cleandoc(
+                        """I am a functional all-in-one bot that will simplify setting up your server for you!
 
                     I have been created {created_at} & 
                     I have functions like voting, level system, music, moderation & much more. 
                     You can get more information by using the dropdown menu below.
                     dropdown menu."""
+                    )
                 ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
             )
         elif self.index == 2:
@@ -885,10 +904,12 @@ class Front(FrontPageSource):
                 (
                     f"[{_('argument')}]…",
                     _(
-                        """Stands for the fact that you can use multiple arguments.
+                        cleandoc(
+                            """Stands for the fact that you can use multiple arguments.
 
                     Now that you know the basics, you should still know that...
                     __**You don't include the parentheses!**__"""
+                        )
                     ),
                 ),
             )
