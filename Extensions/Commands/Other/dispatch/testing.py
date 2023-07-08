@@ -3,7 +3,7 @@
 from ast import literal_eval
 from contextlib import suppress
 
-from discord import Forbidden, HTTPException, Message
+from discord import Forbidden, HTTPException, Message, NotFound
 
 from Classes import ShakeCommand
 
@@ -22,7 +22,7 @@ class command(ShakeCommand):
             for k, v in [pair.split("=") for pair in self.kwargs.split()]
         )
         self.bot.dispatch(str(self.event_name), **kwargs)
-        with suppress(Forbidden, HTTPException):
+        with suppress(NotFound, Forbidden, HTTPException):
             await self.ctx.message.add_reaction(self.bot.emojis.hook)
 
 

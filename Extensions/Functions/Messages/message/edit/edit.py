@@ -99,7 +99,10 @@ class Event:
 
             try:
                 message = await webhook.send(wait=True, **kwargs)
-                await message.add_reaction("☑️")
+                try:
+                    await message.add_reaction("☑️")
+                except:
+                    pass
             except:
                 pass
             else:

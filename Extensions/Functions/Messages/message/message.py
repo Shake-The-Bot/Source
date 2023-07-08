@@ -148,7 +148,6 @@ class Event:
                 )
 
         delete_after = kwargs.pop("delete_after", None)
-        print(delete_after)
         if webhook_url:
             webhook = Webhook.from_url(
                 webhook_url,
@@ -191,7 +190,12 @@ class Event:
             return
 
         if not bad_reaction is MISSING:
-            await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
+            try:
+                await self.message.add_reaction(
+                    ("☑️", self.bot.emojis.cross)[bad_reaction]
+                )
+            except:
+                pass
         if embed:
             last = self.channel.last_message
             if last and last.author == self.bot.user:
@@ -221,7 +225,12 @@ class Event:
             return
 
         if not bad_reaction is MISSING:
-            await self.message.add_reaction(("☑️", self.bot.emojis.cross)[bad_reaction])
+            try:
+                await self.message.add_reaction(
+                    ("☑️", self.bot.emojis.cross)[bad_reaction]
+                )
+            except:
+                pass
         if embed:
             last = self.channel.last_message
             if last:
@@ -251,9 +260,12 @@ class Event:
             return
 
         if not bad_reaction is MISSING:
-            await self.message.add_reaction(
-                ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
-            )
+            try:
+                await self.message.add_reaction(
+                    ("☑️", self.bot.emojis.cross, "⚠️")[bad_reaction]
+                )
+            except:
+                pass
         if embed:
             last = self.channel.last_message
             if last:

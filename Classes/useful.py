@@ -284,15 +284,6 @@ async def dump(
     content: str, session: ClientSession, lang: Optional[str] = "txt"
 ) -> Optional[str]:
     async with session.post(
-        "https://hastebin.com/documents",
-        data=content,
-        headers={"Authorization": config.other.hastebin.token},
-    ) as post:
-        if 200 <= post.status < 400:
-            text = await post.text()
-            return f"https://hastebin.com/share/{text[8:-2]}"
-
-    async with session.post(
         "https://hastepaste.com/api/create",
         data=f"raw=false&text={quote(content)}",
         headers={
@@ -303,6 +294,15 @@ async def dump(
         if 200 <= post.status < 400:
             text = await post.text()
             return text
+
+    async with session.post(
+        "https://hastebin.com/documents",
+        data=content,
+        headers={"Authorization": config.other.hastebin.token},
+    ) as post:
+        if 200 <= post.status < 400:
+            text = await post.text()
+            return f"https://hastebin.com/share/{text[8:-2]}"
 
     async with session.post("https://api.mystb.in/paste", data=content) as post:
         if 200 <= post.status < 400:

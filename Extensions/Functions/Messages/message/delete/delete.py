@@ -61,8 +61,6 @@ class Event:
             except KeyError:
                 return False
 
-        if last.author == self.bot.user or last.webhook_id:
-            return None
         if not last.author == self.bot.user and not last.webhook_id:
             last = None
 
@@ -75,6 +73,7 @@ class Event:
         self, webhook_url: Optional[str], last: Optional[Message], **kwargs: Any
     ):
         delete_after = kwargs.pop("delete_after", None)
+        content = kwargs.pop("content", None)
         if webhook_url:
             webhook = Webhook.from_url(
                 webhook_url,
@@ -92,11 +91,13 @@ class Event:
                 pass
 
             try:
-                if last:
-                    message = await webhook.edit_message(message_id=last.id, **kwargs)
-                else:
-                    message = await webhook.send(wait=True, **kwargs)
-                await message.add_reaction("☑️")
+                if last and last.webhook_id and last.content == content:
+                    return None
+                message = await webhook.send(wait=True, content=content, **kwargs)
+                try:
+                    await message.add_reaction("☑️")
+                except:
+                    pass
             except:
                 pass
             if delete_after:
@@ -105,12 +106,16 @@ class Event:
 
         else:
             if last:
-                last.edit(delete_after=delete_after, **kwargs)
+                await last.edit(delete_after=delete_after, content=content, **kwargs)
             else:
                 try:
-                    await self.message.reply(delete_after=delete_after, **kwargs)
+                    await self.message.reply(
+                        delete_after=delete_after, content=content, **kwargs
+                    )
                 except:
-                    await self.message.channel.send(delete_after=delete_after, **kwargs)
+                    await self.message.channel.send(
+                        delete_after=delete_after, content=content, **kwargs
+                    )
 
     async def oneword(self, record, last: Optional[Message]):
         words: int = record["words"]

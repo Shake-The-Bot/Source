@@ -72,7 +72,10 @@ class TextPaginator:
         if self.message is None:
             raise Exception("May not be called before sending the message.")
         for emoji in self.reactions:
-            await self.message.add_reaction(emoji)
+            try:
+                await self.message.add_reaction(emoji)
+            except:
+                pass
 
     async def send(self) -> None:
         self.message = await self.ctx.chat(
