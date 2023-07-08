@@ -901,8 +901,9 @@ class Front(FrontPageSource):
 
         if m := member or fallback:
             for activity in filter(lambda a: a.type.value == 4, m.activities):
-                embed.description = "„" + activity.name + "“"
-                break
+                if hasattr(activity, 'name'):
+                    embed.description = "„" + activity.name + "“"
+                    break
 
             emojis = menu.bot.emojis.status
             emoji = {
