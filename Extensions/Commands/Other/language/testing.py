@@ -9,17 +9,7 @@ from typing import Union
 from discord import PartialEmoji
 from polib import pofile
 
-from Classes import (
-    MISSING,
-    Locale,
-    ShakeCommand,
-    ShakeEmbed,
-    TextFormat,
-    _,
-    gettext_translations,
-    localedir,
-    locales,
-)
+from Classes import MISSING, Locale, ShakeCommand, ShakeEmbed, TextFormat, _
 from Classes.accessoires import ListMenu, ListPageSource
 
 ########
@@ -45,10 +35,10 @@ class L:
         "bettername",
     }
 
-    def __init__(self, locale: str) -> None:
+    def __init__(self, directory: str, locale: str) -> None:
         po = None
         with suppress(OSError):
-            po = pofile(path.join(localedir, locale, "LC_MESSAGES", "shake.po"))
+            po = pofile(path.join(directory, locale, "LC_MESSAGES", "shake.po"))
         DC_EXCEPTION = {"sr-SP": "sr"}
         metadata = getattr(po, "metadata", {})
         crw_lang = metadata.pop("X_Crowdin_Language", "")  # ''  /  None
@@ -101,7 +91,7 @@ class command(ShakeCommand):
             embed.description += "\n" + _(
                 "Use {command} to get a list of all available languages"
             ).format(command="</language list>")
-        elif not locale in locales:
+        elif not locale in self.bot.i18n.locales:
             embed = ShakeEmbed.to_error(
                 self.ctx,
                 description=_(
@@ -126,10 +116,10 @@ class command(ShakeCommand):
 
     async def list(self):
         items = [
-            L(x)
+            L(self.bot.i18n.directory, x)
             for x in set(
                 x
-                for x, y in gettext_translations.items()
+                for x, y in self.bot.i18n.translations.items()
                 if isinstance(y, GNUTranslations)
             )
         ]
@@ -144,7 +134,7 @@ class command(ShakeCommand):
                 current=current,
                 title=_("Available Translations"),
                 description=_(
-                    "There are currently translations for `{languages}` languages \nand your current language is **{current}**.\n\n{_}Don't you see your language or is incomplete?{_} \nThen come help us out on [Crowdin]({link})!"
+                    "There are currently translations for `{languages}` languages \nand your current language is **{current}**.\n\n{_}Don't you see your language or is it incomplete?{_} \nThen come help us out on [Crowdin]({link})!"
                     ""
                 ).format(
                     languages=len(items),

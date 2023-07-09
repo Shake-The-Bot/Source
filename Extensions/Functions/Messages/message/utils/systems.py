@@ -5,7 +5,8 @@ from typing import Dict, List
 from asyncpg import Pool, Record
 from discord import Member, Message, PartialEmoji, TextChannel
 
-from Classes import ShakeBot, ShakeEmbed, _, i18n
+from Classes import ShakeBot, ShakeEmbed, _
+from Classes.i18n import current
 
 
 ########
@@ -63,7 +64,7 @@ class aboveme:
         locale = (
             await self.bot.locale.get_guild_locale(self.message.guild.id) or "en-US"
         )
-        i18n.current.set(locale)
+        current.set(locale)
         # selber benutzer
         if (record["user_id"] == self.member.id) and not (
             await self.bot.is_owner(self.member)
@@ -190,7 +191,7 @@ class oneword:
         locale = (
             await self.bot.locale.get_guild_locale(self.message.guild.id) or "en-US"
         )
-        i18n.current.set(locale)
+        current.set(locale)
         # selber benutzer
         if (record["user_id"] == self.member.id) and not (
             await self.bot.is_owner(self.member)
@@ -325,7 +326,7 @@ class counting:
         locale = (
             await self.bot.locale.get_guild_locale(self.message.guild.id) or "en-US"
         )
-        i18n.current.set(locale)
+        current.set(locale)
         self.streak = record["streak"]
         self.best_streak = record["best_streak"]
 

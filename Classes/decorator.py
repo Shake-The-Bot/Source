@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from ast import AsyncFunctionDef, Call, ClassDef, Expr, Name, Str, parse
 from functools import wraps
+from inspect import cleandoc, getsource
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -12,16 +14,17 @@ from typing import (
     Union,
 )
 
-from discord import Permissions, utils
+from discord import Interaction, Permissions, utils
 from discord.ext.commands import Command, Context, MissingPermissions, check
 from discord.ext.commands._types import BotT, Check
 from typing_extensions import ParamSpec
 
 from Classes.exceptions import NotVoted
+from Classes.i18n import current
 from Classes.useful import votecheck
 
 if TYPE_CHECKING:
-    from Classes.helpful import ShakeContext
+    from Classes.helpful import ShakeBot, ShakeContext
 
 __all__ = ("event_check", "has_voted", "extras", "has_permissions")
 
@@ -160,3 +163,60 @@ def extras(
         return inner
     else:
         return inner(func)
+
+
+def setlocale(guild: Optional[bool] = False) -> Check[Any]:
+    async def predicate(
+        ctx: Optional[Context] = None, interaction: Optional[Interaction] = None
+    ) -> bool:
+        if isinstance(interaction, Interaction):
+            if interaction.command:
+                ctx = await Context.from_interaction(ctx)
+            else:
+                return False
+
+        bot: ShakeBot = ctx.bot
+
+        locale = (
+            await bot.locale.get_guild_locale(ctx.guild.id, default="en-US")
+            if guild
+            else await bot.locale.get_user_locale(ctx.author.id, default="en-US")
+        )
+        current.set(locale)
+        return True
+
+    return check(predicate)
+
+
+def i18n_docstring(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    src = getsource(func)
+    try:
+        parsed_tree = parse(src)
+    except IndentationError:
+        parsed_tree = parse("class Foo:\n" + src)
+        assert isinstance(parsed_tree.body[0], ClassDef)
+        function_body: ClassDef = parsed_tree.body[0]
+        assert isinstance(function_body.body[0], AsyncFunctionDef)
+        tree: AsyncFunctionDef = function_body.body[0]
+    else:
+        assert isinstance(parsed_tree.body[0], AsyncFunctionDef)
+        tree = parsed_tree.body[0]
+
+    if not isinstance(tree.body[0], Expr):
+        return func
+
+    gettext_call = tree.body[0].value
+    if not isinstance(gettext_call, Call):
+        return func
+
+    if not isinstance(gettext_call.func, Name) or gettext_call.func.id != "_":
+        return func
+
+    assert len(gettext_call.args) == 1
+    assert isinstance(gettext_call.args[0], Str)
+
+    func.__doc__ = cleandoc(gettext_call.args[0].s)
+    return func
+
+
+locale_doc = i18n_docstring

@@ -8,7 +8,7 @@ from discord.app_commands import guild_only
 from discord.ext.commands import command, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
-from Classes.checks import extras
+from Classes.decorator import extras
 
 from ..other import Other
 from . import repl, testing

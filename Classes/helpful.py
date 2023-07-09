@@ -29,7 +29,8 @@ from discord.player import AudioPlayer
 from discord.ui import View
 from PIL import Image, ImageDraw, ImageFont
 
-from Classes.i18n import Locale, _, mo
+from Classes.i18n import Client as i18nClient
+from Classes.i18n import Locale, _
 from Classes.tomls import Config, Emojis, config, emojis
 from Classes.types import Regex, TextFormat, TracebackType
 from Classes.useful import MISSING, source_lines
@@ -539,10 +540,10 @@ class BotBase(AutoShardedBot):
         return ctx
 
     async def setup_hook(self):
+        self.i18n = i18nClient()
         self._session = ClientSession()
         self.locale: Locale = Locale(self)
         self.reddit: Reddit = Reddit()
-        mo()
         self.lines: int = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
         await self.load_extensions()
