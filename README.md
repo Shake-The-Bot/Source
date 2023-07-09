@@ -34,7 +34,7 @@ I'm a multi purpose Discord-Bot which helps you to manage your Server with tempv
 
 ---
 
-## **Warning** Self hosting
+## :warning: Self hosting
 
 -   Please do not host me yourself. At least not now! My code is massively outdated and mostly only works platform specific.
 
