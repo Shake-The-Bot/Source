@@ -9,7 +9,15 @@ from typing import Union
 from discord import PartialEmoji
 from polib import pofile
 
-from Classes import MISSING, Locale, ShakeCommand, ShakeEmbed, TextFormat, _
+from Classes import (
+    MISSING,
+    Locale,
+    ShakeCommand,
+    ShakeEmbed,
+    TextFormat,
+    _,
+    translations,
+)
 from Classes.accessoires import ListMenu, ListPageSource
 
 ########
@@ -111,20 +119,18 @@ class command(ShakeCommand):
                     )
                 ),
             )
-            locale = name
         return embed, locale
 
     async def list(self):
         items = [
-            L(self.bot.i18n.directory, x)
+            L(directory=self.bot.i18n.directory, locale=x)
             for x in set(
-                x
-                for x, y in self.bot.i18n.translations.items()
-                if isinstance(y, GNUTranslations)
+                x for x, y in translations.items() if isinstance(y, GNUTranslations)
             )
         ]
         current = L(
-            await self.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
+            directory=self.bot.i18n.directory,
+            locale=await self.bot.locale.get_user_locale(self.ctx.author.id) or "en-US",
         )
         menu = ListMenu(
             ctx=self.ctx,

@@ -20,6 +20,10 @@ default: str = "en-US"
 translations = dict()
 
 
+current: ContextVar[str] = ContextVar("current", default=default)
+current.set(default)
+
+
 class Client:
     default: str
     domain: str
@@ -33,17 +37,13 @@ class Client:
         pass
 
     @property
-    def translations(self) -> dict:
-        return translations
-
-    @property
     def locales(
         self,
     ) -> frozenset[str]:
         return frozenset(
             map(
                 path.basename,
-                filter(path.isdir, glob(path.join(getcwd(), "Locales", "*"))),
+                filter(path.isdir, glob(path.join(getcwd(), self.directory, "*"))),
             )
         ) | {self.default}
 
@@ -63,15 +63,13 @@ class Client:
         return data_files
 
     def translate(self) -> None:
-        translations = {
-            locale: translation(
+        for locale in self.locales:
+            translations[locale] = translation(
                 self.domain,
                 languages=(locale,),
                 localedir=self.directory,
                 fallback=True,
             )
-            for locale in self.locales
-        }
 
         translations[default] = NullTranslations()
 
@@ -83,9 +81,7 @@ class Client:
         return translations.get(locale, translations[default]).gettext(*args, **kwargs)
 
 
-current: ContextVar[str] = ContextVar("current", default=default)
 _ = Client.use
-current.set(default)
 
 
 class Locale:

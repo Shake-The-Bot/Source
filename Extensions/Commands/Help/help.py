@@ -844,12 +844,12 @@ class Front(FrontPageSource):
             ),
         )
         if self.index in [1, 2]:
-            embed.description = _(
-                cleandoc(
+            embed.description = cleandoc(
+                _(
                     """Hello and welcome to my help page {emoji}
                 Type `{prefix}help <command/category>` to get more information on a\ncommand/category."""
-                )
-            ).format(emoji="", prefix=menu.ctx.clean_prefix)
+                ).format(emoji="", prefix=menu.ctx.clean_prefix)
+            )
             embed.add_field(
                 name=_("Support Server"),
                 inline=False,
@@ -865,30 +865,30 @@ class Front(FrontPageSource):
             embed.add_field(
                 name=_("Who am I?"),
                 inline=False,
-                value=_(
-                    cleandoc(
+                value=cleandoc(
+                    _(
                         """{user}, which is partially intended for the public.
                     Written with only `{lines}` lines of code. Please be nice"""
-                    )
-                ).format(
-                    user=menu.ctx.bot.user.mention,
-                    lines="{0:,}".format(menu.ctx.bot.lines),
+                    ).format(
+                        user=menu.ctx.bot.user.mention,
+                        lines="{0:,}".format(menu.ctx.bot.lines),
+                    ),
                 ),
             )
         elif self.index == 1:
             embed.add_field(
                 name=_("What am I for?"),
                 inline=False,
-                value=_(
-                    cleandoc(
+                value=cleandoc(
+                    _(
                         """I am a functional all-in-one bot that will simplify setting up your server for you!
 
                     I have been created {created_at} & 
                     I have functions like voting, level system, music, moderation & much more. 
                     You can get more information by using the dropdown menu below.
                     dropdown menu."""
-                    )
-                ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
+                    ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
+                ),
             )
         elif self.index == 2:
             entries = (
@@ -903,16 +903,17 @@ class Front(FrontPageSource):
                 ("[A|B]", _("Stands for the argument can be __**either A or B**__.")),
                 (
                     f"[{_('argument')}]…",
-                    _(
-                        cleandoc(
+                    cleandoc(
+                        _(
                             """Stands for the fact that you can use multiple arguments.
 
-                    Now that you know the basics, you should still know that...
-                    __**You don't include the parentheses!**__"""
+                        Now that you know the basics, you should still know that...
+                        __**You don't include the parentheses!**__"""
                         )
                     ),
                 ),
             )
+
             embed.add_field(
                 name=_("How do I use the bot?"),
                 value=_("Reading the bot structure is pretty easy."),
