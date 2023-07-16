@@ -50,8 +50,8 @@ class aboveme_extension(Community):
     ):
         _(
             """Setup the whole AboveMe game in seconds
-            Get more information about the aboveme game with /aboveme info"""
-        )
+            Get more information about the aboveme game with {command}"""
+        ).format(command="/aboveme info")
 
         if ctx.testing:
             try:

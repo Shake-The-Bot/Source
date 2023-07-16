@@ -243,10 +243,8 @@ class HelpPaginatedCommand:
         await menu.send(ephemeral=True)
 
     async def cog_help(self, cog):
-        locale = (
-            await self.ctx.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
-        )
-        await self.ctx.bot.locale.set_user_locale(self.ctx.author.id, locale)
+        locale = await self.ctx.bot.i18n.get_user(self.ctx.author.id, default="en-US")
+        await self.ctx.bot.i18n.set_user(self.ctx.author.id, locale)
 
         commands = await self.commands()
 
@@ -560,8 +558,8 @@ class CategorySource(ListPageSource):
 
         signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
         help = (
-            _(item.help).split("\n", 1)[0]
-            if item.help
+            _(item.callback.__doc__).split("\n", 1)[0]
+            if item.callback.__doc__
             else _("No help given... (You should report this)")
         )
         embed.add_field(
@@ -576,13 +574,11 @@ class CategorySource(ListPageSource):
     ):
         config = configurations(self.bot)
         menu.items = items
-        locale = await self.bot.locale.get_user_locale(menu.ctx.author.id) or "en-US"
-        await self.bot.locale.set_user_locale(menu.ctx.author.id, locale)
         embed = ShakeEmbed.default(
             menu.ctx,
             title=self.group.title,
             description=self.group.description + "\n\u200b",
-        )  # discord.Colour(0xA8B9CD))
+        )
         embed.set_author(
             name=_("Page {current}/{max} ({entries} commands)").format(
                 current=menu.page + 1,
@@ -844,12 +840,10 @@ class Front(FrontPageSource):
             ),
         )
         if self.index in [1, 2]:
-            embed.description = cleandoc(
-                _(
-                    """Hello and welcome to my help page {emoji}
-                Type `{prefix}help <command/category>` to get more information on a\ncommand/category."""
-                ).format(emoji="", prefix=menu.ctx.clean_prefix)
-            )
+            embed.description = _(
+                "Hello and welcome to my help page\nType `{prefix}help <command/category>` to get more information on a command/category."
+            ).format(prefix=menu.ctx.clean_prefix)
+
             embed.add_field(
                 name=_("Support Server"),
                 inline=False,
@@ -865,30 +859,21 @@ class Front(FrontPageSource):
             embed.add_field(
                 name=_("Who am I?"),
                 inline=False,
-                value=cleandoc(
-                    _(
-                        """{user}, which is partially intended for the public.
-                    Written with only `{lines}` lines of code. Please be nice"""
-                    ).format(
-                        user=menu.ctx.bot.user.mention,
-                        lines="{0:,}".format(menu.ctx.bot.lines),
-                    ),
+                value=_(
+                    "I am Shake, a bot that is partially intended for the public.\nWritten with only {lines} lines of code. Please be nice"
+                ).format(
+                    lines=TextFormat.codeblock("{0:,}".format(menu.ctx.bot.lines)),
                 ),
             )
         elif self.index == 1:
             embed.add_field(
                 name=_("What am I for?"),
                 inline=False,
-                value=cleandoc(
-                    _(
-                        """I am a functional all-in-one bot that will simplify setting up your server for you!
-
-                    I have been created {created_at} & 
-                    I have functions like voting, level system, music, moderation & much more. 
-                    You can get more information by using the dropdown menu below.
-                    dropdown menu."""
-                    ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
-                ),
+                value=_(
+                    """I am a functional all-in-one bot that will simplify setting up your server for you!
+                    I have been created at {created_at} & I have functions like games, utilities, gimmicks & much more. 
+                    You can get more information by using the dropdown menu below."""
+                ).format(created_at=format_dt(menu.ctx.bot.user.created_at, "F")),
             )
         elif self.index == 2:
             entries = (

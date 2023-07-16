@@ -144,7 +144,7 @@ def extras(
     .. code-block:: python3
 
         @commands.hybrid_command()
-        @extras(owner=True)
+        @extras(beta=True)
         async def my_beta_command(ctx: ShakeContext) -> None:
             await ctx.send('I am a beta command!')
     """
@@ -174,14 +174,12 @@ def setlocale(guild: Optional[bool] = False) -> Check[Any]:
                 ctx = await Context.from_interaction(ctx)
             else:
                 return False
-
         bot: ShakeBot = ctx.bot
 
-        locale = (
-            await bot.locale.get_guild_locale(ctx.guild.id, default="en-US")
-            if guild
-            else await bot.locale.get_user_locale(ctx.author.id, default="en-US")
-        )
+        if guild:
+            locale = await bot.i18n.get_guild(ctx.guild.id, default="en-US")
+        else:
+            locale = await bot.i18n.get_user(ctx.author.id, default="en-US")
         current.set(locale)
         return True
 

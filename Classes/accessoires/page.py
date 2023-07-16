@@ -60,8 +60,8 @@ class ShakePages(ui.View):
         return embed
 
     async def _get_from_page(self, item: Any) -> Tuple[Dict[str, Any], File]:
-        locale = await self.bot.locale.get_user_locale(self.ctx.author.id) or "en-US"
-        await self.bot.locale.set_user_locale(self.ctx.author.id, locale)
+        locale = await self.bot.i18n.get_user(self.ctx.author.id, default="en-US")
+        await self.bot.i18n.set_user(self.ctx.author.id, locale)
 
         value, file = await maybe_coroutine(self.source.format_page, self, item)
         if isinstance(value, dict):

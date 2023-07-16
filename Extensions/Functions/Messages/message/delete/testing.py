@@ -128,7 +128,7 @@ class Event:
         message = (
             str(word)
             if bool(webhook)
-            else _("{user} deleted their word. The word was {word}!").format(
+            else _("The word from {user} got deleted. The word was {word}!").format(
                 user=self.message.author.mention,
                 word=TextFormat.codeblock(word),
             )
@@ -145,7 +145,9 @@ class Event:
         message = (
             str(phrase)
             if bool(webhook)
-            else _("{user} deleted their phrase. The phrase was „{phrase}“!").format(
+            else _(
+                "The phrase from {user} got deleted. The phrase was „{phrase}“!"
+            ).format(
                 user=self.message.author.mention, phrase=TextFormat.codeblock(phrase)
             )
         )
@@ -157,12 +159,14 @@ class Event:
         count: int = record.get("count", MISSING) or 0
         direction: bool = record.get("direction", True)
         webhook = record.get("webhook", False)
-
+        if start := record.get("start", None):
+            if count == start:
+                return
         message = (
             str(count)
             if bool(webhook)
             else _(
-                "{user} deleted their count of {count}. The next number is {next}!"
+                "The count of {count} from {user} got deleted. The next number is {next}!"
             ).format(
                 user=self.message.author.mention,
                 count=TextFormat.codeblock(count),

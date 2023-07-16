@@ -144,13 +144,9 @@ class ListPageSource(menus.ListPageSource):
 
     async def format_page(self, menu: page.menus, items: list[Any]):
         file = None
-        details = (f" 〈 {menu.page + 1} / {self.maximum} 〉") if self.maximum > 1 else ""
-        title = self.title + (details if self.description else "")
-        description = (
-            self.description
-            if self.description
-            else ("**" + details + "**" if details else "")
-        )
+        # details = (f" 〈 {menu.page + 1} / {self.maximum} 〉") if self.maximum > 1 else ""
+        title = self.title  # + (details if self.description else "")
+        description = self.description
         embed = ShakeEmbed().default(
             ctx=self.ctx,
             colour=self.bot.config.embed.colour,

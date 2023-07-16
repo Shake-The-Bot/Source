@@ -70,6 +70,8 @@ __all__ = (
 
 
 class ShakeContext(Context):
+    """lmao"""
+
     channel: VoiceChannel | TextChannel | Thread | DMChannel
     command: Command[Any, ..., Any]
     message: Message
@@ -390,7 +392,6 @@ class BotBase(AutoShardedBot):
         owner_ids = options.pop("owner_ids")
         self.shake_id, *_ = owner_ids
         self.cache.setdefault("pages", dict())
-        self.cache.setdefault("locales", dict())
         self.cache.setdefault("_data_batch", list())
         self.cache.setdefault(
             "testing", {1036952232719024129: None, 1103300342856286260: None}
@@ -540,9 +541,8 @@ class BotBase(AutoShardedBot):
         return ctx
 
     async def setup_hook(self):
-        self.i18n = i18nClient()
+        self.i18n = i18nClient(self, domain="shake", directory="Locales")
         self._session = ClientSession()
-        self.locale: Locale = Locale(self)
         self.reddit: Reddit = Reddit()
         self.lines: int = source_lines()
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
@@ -553,6 +553,12 @@ class BotBase(AutoShardedBot):
         if ctx.command is None:
             return
 
+        if getattr(ctx.command, "parent", None):
+            group: Group = ctx.command.parent
+            name = group.qualified_name
+        else:
+            name = ctx.command.qualified_name
+
         self.cache["_data_batch"].append(
             {
                 "guild": None if ctx.guild is None else ctx.guild.id,
@@ -560,7 +566,7 @@ class BotBase(AutoShardedBot):
                 "author": ctx.author.id,
                 "used": ctx.message.created_at.isoformat(),
                 "prefix": ctx.prefix,
-                "command": ctx.command.qualified_name,
+                "command": name,
                 "failed": ctx.command_failed,
                 "app_command": ctx.interaction is not None,
             }
@@ -622,7 +628,8 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         instance.set_footer(
-            text=f"Requested by {author} • via Shake", icon_url=bot.user.avatar.url
+            text=_("Requested by {user} • via Shake").format(user=author),
+            icon_url=bot.user.avatar.url,
         )
         # instance.add_field(name='\u200b', value=bot.config.embed.footer.format(author), inline=False)
         return instance

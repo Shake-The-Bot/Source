@@ -8,13 +8,13 @@ from discord.ext.commands import guild_only, has_permissions, hybrid_command, is
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..moderation import Moderation
+from ..other import Other
 from . import sudo, testing
 
 
 ########
 #
-class sudo_extension(Moderation):
+class sudo_extension(Other):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:

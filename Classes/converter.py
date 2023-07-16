@@ -5,6 +5,7 @@ import re
 from ast import literal_eval
 from datetime import datetime, timezone
 from difflib import get_close_matches
+from os import walk
 from typing import Any, List, Literal, Optional, Self, Tuple
 
 import parsedatetime
@@ -13,8 +14,9 @@ from discord import TextChannel
 from discord.app_commands import AppCommand, AppCommandGroup, Command, CommandTree
 from discord.ext.commands import *
 
-from .i18n import _
-from .types import Types
+from Classes.i18n import _
+from Classes.types import Types
+from Classes.useful import get_file_paths
 
 units = parsedatetime.pdtLocales["en_US"].units
 units["minutes"].append("mins")
@@ -24,7 +26,7 @@ __all__ = (
     "DurationDelta",
     "ValidArg",
     "ValidKwarg",
-    "ValidCog",
+    "ValidExt",
     "CleanChannels",
     "Age",
     "Regex",
@@ -305,31 +307,34 @@ class Slash:
         return None
 
 
-class ValidCog(Converter):
+classes = get_file_paths("Classes")
+
+
+class ValidExt(Converter):
     """Tries to find a matching extension and returns it
 
     Triggers a BadArgument error if you specify the extensions "load", "unload" or "reload",
-    because they are excluded before this function
+    because they are excluded from this function
     """
 
     # extension: str = (ext[:-9] if ext.endswith('.__init__') else ext).split('.')[-1] # Extensions.Commands.Other.reload.__init__ -> reload
     async def convert(self, ctx: Context, argument: str) -> str:
-        def validation(final: str):
-            if any(_ in str(final) for _ in ["load", "unload", "reload"]):
-                raise BadArgument(
-                    message=str(final) + " is not a valid module to work with"
-                )
-            return final
-
         if command := ctx.bot.get_command(argument):
             file = inspect.getfile(command.cog.__class__).removesuffix(".py")
             path = file.split("/")
             Extensions = path.index("Extensions")
             build = path[Extensions:]
-            return validation(".".join(build))
+            return ValidExt.validation(".".join(build))
+
+        elif "classes" in argument.lower() and (
+            matches := get_close_matches(argument, classes)
+        ):
+            return ValidExt.validation(
+                ".".join(matches[0].split("/")).removesuffix(".py")
+            )
 
         elif argument in ctx.bot.config.client.extensions:
-            return validation(argument)
+            return ValidExt.validation(argument)
 
         elif len(parts := re.split(r"[./]", argument)) > 1:
             build = list(filter(lambda x: not x in ["__init__", "py"], parts))
@@ -342,36 +347,44 @@ class ValidCog(Converter):
                     [_ for _ in ctx.bot.config.client.extensions if fallback in _]
                     or get_close_matches(fallback, ctx.bot.config.client.extensions)
                 ):
-                    return validation(matches[0])
+                    return ValidExt.validation(matches[0])
                 raise BadArgument(message="Specified module has an incorrect structure")
 
             extension = ".".join(build[Extensions:]) + ".__init__"
 
             if extension in ctx.bot.config.client.extensions:
-                return validation(extension)
+                return ValidExt.validation(extension)
 
             elif matches := (
                 [_ for _ in ctx.bot.config.client.extensions if extension in _]
                 or get_close_matches(extension, ctx.bot.config.client.extensions)
             ):
-                return validation(matches[0])
+                return ValidExt.validation(matches[0])
 
         else:
             shortened = [
                 _.split(".")[-1].lower() for _ in ctx.bot.config.client.extensions
             ]
             if argument.lower() in shortened:
-                return validation(
+                return ValidExt.validation(
                     ctx.bot.config.client.extensions[shortened.index(argument)]
                 )
             elif matches := get_close_matches(argument.lower(), shortened):
-                return validation(
+                return ValidExt.validation(
                     ctx.bot.config.client.extensions[shortened.index(matches[0])]
                 )
 
         raise BadArgument(
             message="Specify either the module name or the path to the module"
         )
+
+    @staticmethod
+    def validation(final: str):
+        if any(_ in str(final) for _ in ["load", "unload", "reload"]):
+            raise BadArgument(
+                message=str(final) + " is not a valid module to work with"
+            )
+        return final
 
 
 #

@@ -32,13 +32,13 @@ class Event:
             cleandoc(
                 _(
                     """Hello! You are required to complete a captcha before entering the server.
-            __**NOTE:**__ This is **not** Case Sensitive.
+            NOTE: This is not Case Sensitive.
 
-            **Why?**
+            Why?
             This is to protect the server against
             targeted attacks using automated user accounts.
             
-            **Your Captcha:**"""
+            Your Captcha:"""
                 )
             ),
         )

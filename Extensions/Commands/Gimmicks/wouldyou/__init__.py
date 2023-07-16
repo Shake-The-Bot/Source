@@ -34,7 +34,7 @@ class wouldyou_extension(Gimmicks):
     async def wouldyou(
         self,
         ctx: ShakeContext,
-        utility: Literal["useful", "useless"] = "useless",
+        utility: Literal["useful", "useless"] = "useful",
         voting: Optional[bool] = True,
         rather: Optional[bool] = False,
     ) -> None:

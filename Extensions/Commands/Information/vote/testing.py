@@ -2,7 +2,7 @@
 #
 from discord import File, PartialEmoji, ui
 
-from Classes import ShakeCommand, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
 
 
 ########
@@ -18,21 +18,22 @@ class command(ShakeCommand):
             name=_("{emoji} The benefit of supporting Shake with Voting").format(
                 emoji=self.bot.emojis.dot
             ),
-            value=_(
-                """> _Supporting the Bot with a Vote will keep the motivation for the development of Shake, increases it's visibility and helps others discover Shake too._
-
-                **Thanks for every vote!!**
-                """
+            value=TextFormat.blockquotes(
+                TextFormat.italics(
+                    _(
+                        "Supporting the Bot with a Vote will keep the motivation for the development of Shake, increases it's visibility and helps others discover Shake too."
+                    )
+                )
             ),
         )
         embed.add_field(
             inline=False,
             name=_("{emoji} Sites I am listed at").format(emoji=self.bot.emojis.dot),
-            value=_(
-                """**[Vote for Shake on Top.gg]({topgg})**
-                **[Vote for Shake on Discordbotlist.com]({discordbotlist})**
-                **[Vote for Shake on discord-botlist.eu]({botlisteu})**
-                **[Vote for Shake on infinitybots.gg]({infinitybots})**"""
+            value=TextFormat.bold(
+                """[Top.gg]({topgg})
+                [Discordbotlist.com]({discordbotlist})
+                [discord-botlist.eu]({botlisteu})
+                [infinitybots.gg]({infinitybots})"""
             ).format(
                 topgg=self.bot.config.other.topgg.vote,
                 discordbotlist=self.bot.config.other.discordbotlist.vote,
@@ -40,12 +41,13 @@ class command(ShakeCommand):
                 infinitybots=self.bot.config.other.infinitybots.vote,
             ),
         )
+
         embed.add_field(
             inline=False,
             name=_("{emoji} Other related links").format(emoji=self.bot.emojis.dot),
-            value=_(
-                """**[Shake on Discord Bots]({discordbots})**
-                **[Shake's Server on Discords]({discords})**"""
+            value=TextFormat.bold(
+                """[Discord Bots]({discordbots})
+                [Discords]({discords})"""
             ).format(
                 discordbots=self.bot.config.other.discordbots.link,
                 discords=self.bot.config.other.discords.link,

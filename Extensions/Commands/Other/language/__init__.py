@@ -1,38 +1,74 @@
 ############
 #
+from gettext import GNUTranslations
 from importlib import reload
 from typing import Optional
 
 from discord import PartialEmoji
 from discord.ext.commands import MissingPermissions, guild_only, hybrid_group
+from discord.ext.tasks import loop
+from polib import pofile
 
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from Classes import (
+    Locale,
+    ShakeBot,
+    ShakeContext,
+    Testing,
+    _,
+    locale_doc,
+    setlocale,
+    translations,
+)
 
 from ..other import Other
 from . import language as lang
 from . import testing
 
-
 ########
 #
+
+EXCEPTION = {"sr-SP": "sr"}
+
+
 class language_extension(Other):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
+        self.locales = list()
+
         try:
             reload(lang)
         except:
             pass
 
+        self.fetch.start()
+
     @property
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="\N{EARTH GLOBE EUROPE-AFRICA}")
 
-    @hybrid_group(name="language")
+    async def cog_unload(self) -> None:
+        self.fetch.stop()
+
+    @loop(minutes=60)
+    async def fetch(self):
+        locales = dict()
+
+        for name, translation in translations.items():
+            # if not isinstance(translation, GNUTranslations):
+            #     continue
+
+            locale = Locale(bot=self.bot, locale=name)
+            assert not locale.exists is False
+            locales[name] = locale
+
+        self.locales = locales
+
+    @hybrid_group(name="language", aliases=["lang"], invoke_without_command=True)
     @guild_only()
     @setlocale()
     @locale_doc
-    async def language(self, ctx: ShakeContext):
-        return
+    async def language(self, ctx: ShakeContext, language: str):
+        return await self.set(ctx, language=language)
 
     @language.command(name="list")
     @guild_only()
@@ -57,7 +93,7 @@ class language_extension(Other):
         do = testing if ctx.testing else lang
 
         try:
-            await do.command(ctx=ctx).list()
+            await do.command(ctx=ctx).list(locales=self.locales)
 
         except:
             if ctx.testing:
@@ -97,14 +133,18 @@ class language_extension(Other):
             if server == True:
                 if missing := [
                     perm
-                    for perm, value in {"administrator": True}.items()
+                    for perm, value in {"manage_guild": True}.items()
                     if getattr(ctx.permissions, perm) != value
                 ]:
                     raise MissingPermissions(missing)
-                await do.command(ctx=ctx).guild_locale(locale=language)
+                await do.command(ctx=ctx).set_locale(
+                    name=language, locales=self.locales, guild=True
+                )
 
             else:
-                await do.command(ctx=ctx).user_locale(locale=language)
+                await do.command(ctx=ctx).set_locale(
+                    name=language, locales=self.locales
+                )
 
         except:
             if ctx.testing:
@@ -143,10 +183,15 @@ class language_extension(Other):
                     if getattr(ctx.permissions, perm) != value
                 ]:
                     raise MissingPermissions(missing)
-                await do.command(ctx=ctx).guild_locale(locale="en-US")
+                await do.command(ctx=ctx).set_locale(
+                    name=ctx.bot.i18n.default, locales=self.locales, guild=True
+                )
 
             else:
-                await do.command(ctx=ctx).user_locale(locale="en-US")
+                await do.command(ctx=ctx).set_locale(
+                    name=ctx.bot.i18n.default,
+                    locales=self.locales,
+                )
 
         except:
             if ctx.testing:

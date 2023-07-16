@@ -2,11 +2,11 @@
 #
 import platform
 from datetime import timedelta
+from math import ceil
 from platform import python_version
 from time import time
 from typing import Any, Dict, List, Tuple
 
-import cpuinfo
 from discord import __version__ as discord_version
 from discord.ext.commands import Command
 from discord.utils import format_dt
@@ -38,7 +38,7 @@ from Classes.useful import human_join
 
 
 class command(ShakeCommand):
-    commands: List[Tuple[str, int]]
+    commands: Dict[str, int]
     bot: ShakeBot
     ctx: ShakeContext
 
@@ -198,10 +198,8 @@ class CommandsSource(ListPageSource):
     commands: Dict[str, int]
     ctx: ShakeContext
 
-    def __init__(self, ctx, commands: List[Tuple[str, int]], *args, **kwargs):
-        self.commands = dict(
-            [(command, uses) for command, uses in commands if uses > 1]
-        )
+    def __init__(self, ctx, commands: Dict[str, int], *args, **kwargs):
+        self.commands = commands
         super().__init__(
             ctx,
             items=list(self.commands.keys()),
@@ -216,7 +214,7 @@ class CommandsSource(ListPageSource):
     def format_page(
         self, menu: CategoricalMenu, items: List[Command], **kwargs: Any
     ) -> ShakeEmbed:
-        n = len(items) // 2
+        n = int(round((len(items) // 2) + 0.5))
         first_half, sec_half = (items[:n], items[n:])
 
         embed = ShakeEmbed()

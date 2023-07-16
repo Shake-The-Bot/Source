@@ -54,7 +54,7 @@ class roll_extension(Gimmicks):
 
         do = testing if ctx.testing else roll
         try:
-            await do.command(ctx=ctx, start=start or 5, end=end or 6).__await__()
+            await do.command(ctx=ctx, start=start, end=end).__await__()
 
         except:
             if ctx.testing:

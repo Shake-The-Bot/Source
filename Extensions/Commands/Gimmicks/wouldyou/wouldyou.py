@@ -1,5 +1,6 @@
 ############
 #
+from asyncio import sleep
 from random import choice, sample
 from typing import Literal, Optional
 
@@ -58,13 +59,10 @@ class command(ShakeCommand):
 
 
 class VoteView(ui.View):
-    ctx: ShakeContext
-    bot: ShakeBot
-
     def __init__(self, ctx: ShakeContext, voting: bool, key: str):
         super().__init__(timeout=20)
-        self.ctx = ctx
-        self.bot = ctx.bot
+        self.ctx: ShakeContext = ctx
+        self.bot: ShakeBot = ctx.bot
         self.key: str = key
         self.voting: bool = voting
         self.no = set()
@@ -138,6 +136,9 @@ class VoteView(ui.View):
             self.remove_item(self.send_yes)
             self.remove_item(self.send_no)
         self.message = await self.ctx.chat(embed=self.embed, view=self)
+        await sleep(60 * 15 - 10)
+        if not super().__stopped.done():
+            await self.on_timeout()
 
     @ui.button(
         emoji=PartialEmoji(name="hook", id=1092840629047922688),
@@ -185,7 +186,7 @@ class RatherView(ui.View):
         self.u1: set = set([x for x in users1 if x not in users2])
         self.u2: set = set([x for x in users2 if x not in users1])
 
-        self.total: int = len(set(self.u1 + self.u2))
+        self.total: int = len(self.u1 | self.u2)
 
         self.percentage1: int = round((len(self.u1) / (self.total or 1)) * 100)
         self.percentage2: int = round((len(self.u2) / (self.total or 1)) * 100)
@@ -239,6 +240,9 @@ class RatherView(ui.View):
             self.remove_item(self.send_yes)
             self.remove_item(self.send_no)
         self.message = await self.ctx.chat(embed=self.embed, view=self)
+        await sleep(60 * 15 - 10)
+        if not super().__stopped.done():
+            await self.on_timeout()
 
     @ui.button(emoji="1️⃣", style=ButtonStyle.blurple, row=1)
     async def send_yes(self, interaction: Interaction, button: ui.Button):

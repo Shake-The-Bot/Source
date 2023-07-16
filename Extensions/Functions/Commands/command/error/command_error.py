@@ -10,6 +10,15 @@ from discord.ext.commands import Command, errors
 from Classes import ShakeBot, ShakeContext, ShakeEmbed, Slash, _
 from Classes.exceptions import *
 
+arguments = (
+    errors.MissingRequiredArgument,
+    errors.MissingRequiredAttachment,
+    errors.TooManyArguments,
+    errors.BadUnionArgument,
+    errors.BadLiteralArgument,
+    errors.UserInputError,
+)
+
 
 ########
 #
@@ -17,6 +26,9 @@ class Event:
     def __init__(self, ctx: ShakeContext | Interaction, error):
         self.ctx: ShakeContext | Interaction = ctx
         self.error: errors.CommandError = error
+        self.raisable: bool = False
+        self.original = getattr(self.error, "original", None) or self.error
+        self.testing = isinstance(self.original, Testing)
 
     async def __await__(self):
         if isinstance(self.ctx, Interaction):
@@ -28,81 +40,70 @@ class Event:
         else:
             self.bot = self.ctx.bot
 
-        await self.bot.register_command(self.ctx)
+        if isinstance(self.ctx, ShakeContext) and not self.ctx.done:
+            await self.bot.register_command(self.ctx)
+
         if not self.ctx in self.bot.cache["context"]:
             self.bot.cache["context"].append(self.ctx)
-        original = getattr(self.error, "original", self.error)
-        raisable: bool = False
 
-        self.testing = isinstance(original, Testing)
+        if isinstance(self.original, errors.CommandNotFound):
+            return await self.command_not_found(self.ctx)
 
-        if isinstance(original, errors.CommandNotFound):
-            await self.command_not_found(self.ctx)
-            return
-
-        elif isinstance(original, errors.BotMissingPermissions):
-            description = getattr(original, "message", None) or _(
+        elif isinstance(self.original, errors.BotMissingPermissions):
+            description = getattr(self.original, "message", None) or _(
                 "I am missing [`{permissions}`](https://support.discord.com/hc/en-us/articles/206029707) permission(s) to run this command."
-            ).format(permissions=", ".join(original.missing_permissions))
+            ).format(permissions=", ".join(self.original.missing_permissions))
 
-        if isinstance(original, (errors.BadArgument)):
-            description = getattr(original, "message", None) or _(
+        elif isinstance(self.original, (errors.BadArgument)):
+            description = getattr(self.original, "message", None) or _(
                 "You typed in some bad arguments, try {command}"
             ).format(command=self.ctx.prefix + "help")
 
-        elif isinstance(
-            original,
-            (
-                errors.MissingRequiredArgument,
-                errors.MissingRequiredAttachment,
-                errors.TooManyArguments,
-                errors.BadUnionArgument,
-                errors.BadLiteralArgument,
-                errors.UserInputError,
-            ),
-        ):
-            description = getattr(original, "message", None) or _(
+        elif isinstance(self.original, arguments):
+            description = getattr(self.original, "message", None) or _(
                 "You did something wrong with the arguments, try {command}"
             ).format(command=self.ctx.prefix + "help")
 
-        elif isinstance(original, (errors.GuildNotFound,)):
-            description = getattr(original, "message", None) or _(
+        elif isinstance(self.original, (errors.GuildNotFound,)):
+            description = getattr(self.original, "message", None) or _(
                 "I cannot see the server `{argument}` because it does not exist or I am not a member of it."
-            ).format(argument=original.argument)
+            ).format(argument=self.original.argument)
 
-        elif isinstance(original, errors.CommandInvokeError):
-            if isinstance(original, Forbidden):
+        elif isinstance(self.original, errors.CommandInvokeError):
+            if isinstance(self.original, Forbidden):
                 return  # TODO
 
-            elif isinstance(original, NotFound):
-                description = _(f"This type of entity does not exist: {original.text}")
+            elif isinstance(self.original, NotFound):
+                description = _(
+                    f"This type of object does not exist: {self.original.text}"
+                )
 
-            elif isinstance(original, HTTPException):
-                raisable = True
+            elif isinstance(self.original, HTTPException):
+                self.raisable = True
                 description = _(
                     "Somehow, an unexpected error occurred. Try again later?"
                 )
 
-        elif isinstance(original, errors.CommandOnCooldown):
+        elif isinstance(self.original, errors.CommandOnCooldown):
             description = _("You can use this command in {retry} seconds.").format(
-                retry="{0:.0f}".format(original.retry_after)
+                retry="{0:.0f}".format(self.original.retry_after)
             )
 
-        elif isinstance(original, errors.NotOwner):
+        elif isinstance(self.original, errors.NotOwner):
             description = _(
                 "Only the bot owner can run the command `{command}`."
             ).format(command=self.ctx.command.name)
 
-        elif isinstance(original, errors.MissingPermissions):
+        elif isinstance(self.original, errors.MissingPermissions):
             description = _(
                 "You are missing `{permission}` permission(s) to run this command."
-            ).format(permission=", ".join(original.missing_permissions))
+            ).format(permission=", ".join(self.original.missing_permissions))
 
         else:
-            raisable = True
+            self.raisable = True
             description = _("Something wrong happened")
 
-        await self.send(description, raisable)
+        await self.send(description)
         return
 
     async def command_not_found(self, ctx: ShakeContext):
@@ -134,11 +135,10 @@ class Event:
                     ).format(invoked=invoked, closest=cmd.app_command.mention)
                     break
 
-        await self.send(description)
-        return
+        return await self.send(description)
 
-    async def send(self, description, raisable: bool = False):
-        if raisable:
+    async def send(self, description):
+        if self.raisable:
             try:
                 dumped = await self.bot.dump(
                     f"{''.join(format_exception(self.error.__class__, self.error, self.error.__traceback__))}"
@@ -158,9 +158,12 @@ class Event:
 
         embed = (
             ShakeEmbed.to_success(self.ctx, description=dumped)
-            if raisable and self.testing
+            if self.raisable and self.testing
             else ShakeEmbed.to_error(self.ctx, description=description)
         )
+
+        if self.raisable and not self.testing:
+            embed.set_footer(text=_("The error was reported to the Shake-Team!"))
 
         if isinstance(self.ctx, Interaction):
             if self.ctx.response.is_done():
@@ -169,23 +172,6 @@ class Event:
                 await self.ctx.response.send_message(embed=embed, ephemeral=True)
         else:
             await self.ctx.chat(embed=embed, ephemeral=True)
-
-        if raisable and not self.testing:
-            embed = ShakeEmbed.to_success(
-                self.ctx,
-                description=_(
-                    "The {type} {error} was reported to the Shake-Team!"
-                ).format(
-                    type=self.error.__class__.__name__,
-                    error=""
-                    if self.error.__class__.__name__.lower().endswith("error")
-                    else _("error"),
-                ),
-            )
-            if isinstance(self.ctx, Interaction):
-                await self.ctx.followup.send(embed=embed, ephemeral=True)
-            else:
-                await self.ctx.chat(embed=embed, ephemeral=True)
 
 
 #

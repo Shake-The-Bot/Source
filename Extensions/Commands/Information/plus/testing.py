@@ -2,7 +2,7 @@
 #
 from discord import PartialEmoji, ui
 
-from Classes import ShakeCommand, ShakeEmbed, _
+from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
 
 
 ########
@@ -33,11 +33,12 @@ class command(ShakeCommand):
             name=_("{emoji} Helpful links for understanding Patreon").format(
                 emoji=self.bot.emojis.dot
             ),
-            value=_(
-                """**[What is Patreon?](https://support.patreon.com/hc/articles/204606315-What-is-Patreon-)**
-                **[What currencies does Patreon support?](https://support.patreon.com/hc/articles/360039589091-Patreon-s-supported-currencies)**
-                **[How do I connect Discord to Patreon?](https://support.patreon.com/hc/articles/212052266-How-do-I-connect-Discord-to-Patreon-Patron-)**
-                """
+            value=TextFormat.bold(
+                _(
+                    """[What is Patreon?](https://support.patreon.com/hc/articles/204606315-What-is-Patreon-)
+                [What currencies does Patreon support?](https://support.patreon.com/hc/articles/360039589091-Patreon-s-supported-currencies)
+                [How do I connect Discord to Patreon?](https://support.patreon.com/hc/articles/212052266-How-do-I-connect-Discord-to-Patreon-Patron-)"""
+                )
             ),
         )
         embed.set_image(

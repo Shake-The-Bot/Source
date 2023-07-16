@@ -9,10 +9,12 @@ from discord import (
     Guild,
     HTTPException,
     Interaction,
+    Message,
     PartialEmoji,
     SelectOption,
     TextChannel,
     TextStyle,
+    Webhook,
 )
 from discord.app_commands import AppCommandChannel
 from discord.components import SelectOption
@@ -40,6 +42,11 @@ class Directions(Enum):
     down = False
 
 
+class MessageTypes(Enum):
+    webhook = Webhook
+    botuser = Message
+
+
 class Permission(Enum):
     allow = True
     deny = False
@@ -51,6 +58,7 @@ class CountingMenu(ForwardingMenu):
     direction: Directions = MISSING
     numbers: Permission = MISSING
     math: Permission = MISSING
+    message_type: MessageTypes = MISSING
     react: Permission = MISSING
     channel: Optional[TextChannel] = MISSING
 
@@ -64,6 +72,7 @@ class CountingMenu(ForwardingMenu):
             Direction(self),
             Number(self),
             Math(self),
+            MessageType(self),
             React(self),
             finish,
         ]
@@ -283,6 +292,62 @@ class Math(ForwardingSource):
         return {"embed": embed}
 
 
+class MessageType(ForwardingSource):
+    view: CountingMenu
+    item = Select(
+        options=[
+            SelectOption(
+                label="Get responses via custom Webhook",
+                description=None,
+                value=MessageTypes.webhook.name,
+            ),
+            SelectOption(
+                label="Get responses via Shake",
+                description=None,
+                value=MessageTypes.botuser.name,
+            ),
+        ],
+        placeholder="Decide between these two options...",
+        row=1,
+    )
+
+    def __init__(self, view: CountingMenu) -> None:
+        self.item.callback = self.__call__
+        super().__init__(
+            view=view,
+            previous=Math,
+            next=React,
+            items=[self.item, view.previous, view.cancel],
+        )
+
+    async def callback(self, interaction: Interaction, value: MessageTypes):
+        self.view.message_type = MessageTypes[value].value
+
+        await self.view.show_source(source=self.next(self.view), rotation=1)
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def message(self) -> dict:
+        embed = ShakeEmbed()
+        embed.set_author(name=_("Counting bot responses"))
+        embed.title = _("Decide in which way I should response to fails, edits, etc.")
+
+        points = [
+            _(
+                "You can let me send the responses via webhooks that will make the whole thing look more natural"
+            ),
+            _(
+                "You can also let me send all messages as a user, to create an easier overview of the actions."
+            ),
+        ]
+        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+
+        embed.set_footer(
+            text=_("You can go back here in the setup to change settings..")
+        )
+        return {"embed": embed}
+
+
 class React(ForwardingSource):
     view: CountingMenu
     react: Permission
@@ -307,7 +372,7 @@ class React(ForwardingSource):
         self.item.callback = self.__call__
         super().__init__(
             view=view,
-            previous=Math,
+            previous=MessageType,
             next=MISSING,
             items=[self.item, view.previous, view.cancel],
         )
@@ -331,7 +396,7 @@ class React(ForwardingSource):
             _(
                 "You can allow me reactions so that users know directly whether posts are accepted as correct."
             ),
-            _("You can also deny me reactions to suppress the spam of reactions."),
+            _("You can also deny my reactions to suppress the spam of reactions."),
         ]
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
@@ -491,10 +556,8 @@ class command(ShakeCommand):
 
         rules = [
             _("One person can't count numbers in a row (others are required)."),
-            _("No botting, if you have fail to often, you'll get muted."),
-            _(
-                "If you break the count, the count will reset to a calculated checkpoint."
-            ),
+            _("No botting, if you have failed to often, you'll get muted."),
+            _("If you break the count, the count will reset to the start."),
         ]
 
         embed.add_field(
@@ -513,7 +576,7 @@ class command(ShakeCommand):
         embed.add_field(
             name=_("How to configure the game?"),
             value=_(
-                "Customize all kind of properties for Counting by using the the command {command}!"
+                "Customize all kind of properties for Counting by using the command {command}!"
             ).format(command=configure),
             inline=False,
         )
@@ -553,11 +616,12 @@ class command(ShakeCommand):
 
         return await self.ctx.chat(
             _(
-                "The stats of the Counting-Game in {channel} has been succsessfully configured."
+                "The stats of the Counting-Game in {channel} has been successfully configured."
             ).format(channel=channel.mention)
         )
 
     async def score(self, type: str) -> None:
+        await self.ctx.defer()
         try:
             type = UserGuild[type.lower()].value
         except KeyError:
@@ -605,6 +669,7 @@ class command(ShakeCommand):
         numbers = menu.numbers
         math = menu.math
         react = menu.react
+        message_type = menu.message_type
 
         if menu.timeouted or any(
             _ is MISSING
@@ -640,6 +705,23 @@ class command(ShakeCommand):
                     await message.edit(embed=embed, view=None)
                     return False
 
+        if message_type == MessageTypes.webhook.value:
+            try:
+                webhook = await channel.create_webhook(
+                    name=self.bot.user.name, avatar=None
+                )
+            except (HTTPException, Forbidden):
+                embed = embed.to_error(
+                    self.ctx,
+                    description=_(
+                        "I could not create a webhook in the TextChannel! Aborting..."
+                    ),
+                )
+                await message.edit(embed=embed, view=None)
+                return False
+        else:
+            webhook = None
+
         async with self.ctx.db.acquire() as connection:
             query = "SELECT * FROM counting WHERE channel_id = $1"
             record = await connection.fetchrow(query, channel.id)
@@ -647,7 +729,7 @@ class command(ShakeCommand):
                 embed = embed.to_error(
                     self.ctx,
                     description=_(
-                        "In {channel} is alredy a Counting game set up. Aborting..."
+                        "In {channel} is already a Counting game set up. Aborting..."
                     ).format(channel=channel.mention),
                 )
                 await message.edit(embed=embed, view=None)
@@ -655,8 +737,8 @@ class command(ShakeCommand):
 
             query = """
                 INSERT INTO counting 
-                (channel_id, guild_id, goal, direction, count, start, numbers, math, react) 
-                VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8) 
+                (channel_id, guild_id, goal, direction, webhook, count, start, numbers, math, react) 
+                VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9) 
                 ON CONFLICT DO NOTHING"""
 
             await connection.execute(
@@ -665,6 +747,7 @@ class command(ShakeCommand):
                 self.ctx.guild.id,
                 goal,
                 direction,
+                webhook.url if webhook else None,
                 0 if direction else start + 1,
                 numbers,
                 math,
@@ -673,11 +756,11 @@ class command(ShakeCommand):
 
         embed = embed.to_success(
             ctx=self.ctx,
-            description=_("{game} is succsessfully set up in {channel}!").format(
+            description=_("{game} is successfully set up in {channel}!").format(
                 game="Counting", channel=channel.mention
             ),
         )
-        embed.set_footer(text=_("Note: you can freely edit the text channel now"))
+        embed.set_footer(text=_("Note: You can freely edit the text channel now."))
 
         await message.edit(
             embed=embed,

@@ -151,7 +151,7 @@ class React(ForwardingSource):
             _(
                 "You can allow me reactions so that users know directly whether posts are accepted as correct."
             ),
-            _("You can also deny me reactions to suppress the spam of reactions."),
+            _("You can also deny my reactions to suppress the spam of reactions."),
         ]
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
@@ -198,6 +198,7 @@ class Page(ListPageSource):
 
 class command(ShakeCommand):
     async def score(self, type: str) -> None:
+        await self.ctx.defer()
         try:
             type = UserGuild[type.lower()].value
         except KeyError:
@@ -284,7 +285,7 @@ class command(ShakeCommand):
                 embed = embed.to_error(
                     self.ctx,
                     description=_(
-                        "In {channel} is alredy a Counting game set up. Aborting..."
+                        "In {channel} is already a Counting game set up. Aborting..."
                     ).format(channel=channel.mention),
                 )
                 await message.edit(embed=embed, view=None)
@@ -295,11 +296,11 @@ class command(ShakeCommand):
 
         embed = embed.to_success(
             ctx=self.ctx,
-            description=_("{game} is succsessfully set up in {channel}!").format(
+            description=_("{game} is successfully set up in {channel}!").format(
                 game="AboveMe", channel=channel.mention
             ),
         )
-        embed.set_footer(text=_("Note: you can freely edit the text channel now"))
+        embed.set_footer(text=_("Note: You can freely edit the text channel now."))
 
         await message.edit(
             embed=embed,

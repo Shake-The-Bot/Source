@@ -1,11 +1,13 @@
 ############
 #
 from importlib import reload
+from typing import Optional
 
-from discord import PartialEmoji
-from discord.ext.commands import guild_only, hybrid_command
+from discord import PartialEmoji, TextChannel
+from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command
+from discord.ext.commands.converter import GuildChannelConverter
 
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
 from ..information import Information
 from . import channelinfo, testing
@@ -13,9 +15,16 @@ from . import channelinfo, testing
 
 ########
 #
-class channelinfo_extension(Information):
-    def __init__(self, bot: ShakeBot):
+class channel_extension(Information):
+    """
+    server_cog
+    """
+
+    def __init__(self, bot) -> None:
         super().__init__(bot=bot)
+        self.load()
+
+    def load(self) -> None:
         try:
             reload(channelinfo)
         except:
@@ -23,16 +32,14 @@ class channelinfo_extension(Information):
 
     @property
     def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name="\N{INPUT SYMBOL FOR LATIN SMALL LETTERS}")
+        return PartialEmoji(name="ℹ️")
 
-    @hybrid_command(
-        name="channelinfo",
-        aliases=["ci"],
-    )
+    @hybrid_command(name="channelinfo", aliases=["ci"])
     @guild_only()
     @setlocale()
+    @extras(beta=True)
     @locale_doc
-    async def channelinfo(self, ctx: ShakeContext, *, characters: str) -> None:
+    async def channelinfo(self, ctx: ShakeContext, channel: Optional[str] = None):
         _(
             """Get information about a specific channel.
             
@@ -40,8 +47,8 @@ class channelinfo_extension(Information):
 
             Parameters
             -----------
-            guild: Optional[str]
-                the guild name or id to get information about"""
+            channel: Optional[str]
+                the channel mention, name or id to get information about"""
         )
 
         if ctx.testing:
@@ -54,8 +61,16 @@ class channelinfo_extension(Information):
         do = testing if ctx.testing else channelinfo
 
         try:
-            await do.command(ctx=ctx, characters=characters).__await__()
+            channel = await GuildChannelConverter().convert(
+                ctx, str(channel or ctx.channel.id)
+            )
+        except ChannelNotFound:
+            raise ChannelNotFound(
+                _("Either this channel does not exist or I cant see it.")
+            )
 
+        try:
+            await do.command(ctx=ctx, channel=channel).__await__()
         except:
             if ctx.testing:
                 raise Testing
@@ -63,7 +78,7 @@ class channelinfo_extension(Information):
 
 
 async def setup(bot: ShakeBot):
-    await bot.add_cog(channelinfo_extension(bot))
+    await bot.add_cog(channel_extension(bot))
 
 
 #

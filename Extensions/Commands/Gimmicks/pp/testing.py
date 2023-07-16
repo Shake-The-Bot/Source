@@ -20,7 +20,7 @@ class command(ShakeCommand):
             self.ctx,
         )
         embed.set_author(
-            name=_("Peepee lenght"),
+            name=_("Peepee length"),
             icon_url="https://discord.com/assets/f1426431eb7c60fb8c072f90acb07ceb.svg",
         )
 

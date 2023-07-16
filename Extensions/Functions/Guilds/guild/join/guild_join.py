@@ -55,13 +55,12 @@ class Event:
             else:
                 with suppress(HTTPException, NotFound):
                     await webhook.send(
-                        "{emoji} Joined `{name}`. I'm now in {guilds} guilds (+{users} users).".format(
+                        "{emoji} Joined `{name}`. I'm now in {guilds} guilds.".format(
                             emoji=PartialEmoji(
                                 animated=True, name="blobjoin", id=1058033663675207820
                             ),
                             name=guild_name,
                             guilds=len(self.bot.guilds),
-                            users=self.guild.member_count,
                         )
                     )
 

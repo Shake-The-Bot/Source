@@ -9,7 +9,7 @@ from zlib import decompressobj
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import ShakeCommand, ShakeEmbed, Types, _
+from Classes import ShakeCommand, ShakeEmbed, TextFormat, Types, _
 
 T = TypeVar("T")
 ########
@@ -178,10 +178,14 @@ class command(ShakeCommand):
         output = []
         if total_uses is None:
             return await self.ctx.chat("Keine Einträge")
-        output.append(_("**Total uses**: {total_uses}").format(total_uses=total_uses))
+        output.append(
+            TextFormat.bold(_("Total uses: {total_uses}").format(total_uses=total_uses))
+        )
 
         if records:
-            output.append(_("**Top {top} member**:").format(top=len(records)))
+            output.append(
+                TextFormat.bold(_("Top {top} member:").format(top=len(records)))
+            )
             for rank, (user_id, count) in enumerate(records, 1):
                 user = self.bot.get_user(user_id) or (
                     await self.bot.fetch_user(user_id)

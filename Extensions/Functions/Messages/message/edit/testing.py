@@ -161,6 +161,9 @@ class Event:
         direction: bool = record.get("direction", True)
         if not cleanup(self.after.content.strip()) == str(count):
             webhook = record.get("webhook", False)
+            if start := record.get("start", None):
+                if count == start:
+                    return
             content = (
                 str(count)
                 if bool(webhook)

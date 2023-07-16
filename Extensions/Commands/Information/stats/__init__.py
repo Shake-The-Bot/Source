@@ -1,7 +1,7 @@
 ############
 #
 from importlib import reload
-from typing import List, Tuple
+from typing import Dict, Tuple
 
 from asyncpg.exceptions import PostgresConnectionError
 from discord import PartialEmoji
@@ -25,7 +25,7 @@ class stats_extension(Information):
             pass
         self.fetch.add_exception_type(PostgresConnectionError)
         self.fetch.start()
-        self.commands: List[Tuple[str, int]] = list()
+        self.commands: Dict[Tuple[str, int]] = dict()
 
     async def cog_unload(self):
         await self.fetch()
@@ -37,13 +37,20 @@ class stats_extension(Information):
 
     @loop(seconds=60.0)
     async def fetch(self) -> None:
+        self.commands.clear()
+
         query = """SELECT command, COUNT(*) AS "uses" FROM commands GROUP BY command ORDER BY "uses" DESC;"""
-        self.commands: List[Tuple[str, int]] = [
-            (command, uses)
-            for command, uses in await self.bot.pool.fetch(query)
-            if hasattr(self.bot.get_command(command), "extras")
-            and not self.bot.get_command(command).extras.get("owner", False)
-        ]
+
+        for name, uses in await self.bot.pool.fetch(query):
+            if not uses > 1:
+                continue
+            command = self.bot.get_command(name)
+            if not command:
+                continue
+            extras = getattr(command.callback, "extras", None)
+            if extras and (extras.get("owner", None) or extras.get("hidden", None)):
+                continue
+            self.commands[name] = uses
 
     @hybrid_command(name="stats", aliases=["about", "info", "botinfo", "bot"])
     @guild_only()

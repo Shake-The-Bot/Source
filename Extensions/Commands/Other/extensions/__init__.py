@@ -10,7 +10,7 @@ from Classes import (
     ShakeBot,
     ShakeContext,
     Testing,
-    ValidCog,
+    ValidExt,
     _,
     extras,
     locale_doc,
@@ -49,7 +49,7 @@ class extensions_extension(Other):
         ctx: ShakeContext,
         command: Literal["load", "unload", "reload"],
         *,
-        extension: Greedy[ValidCog]
+        extension: Greedy[ValidExt]
     ):
         _(
             """Reloads, unloads or loads extensions/commands of the bot
@@ -59,7 +59,7 @@ class extensions_extension(Other):
             command: Literal[load, unload, reload]
                 re- un- or loading the <extensions>
 
-            extension: Greedy[ValidCog]
+            extension: Greedy[ValidExt]
                 the extension(s) you want to re- un- or load"""
         )
         if ctx.testing:

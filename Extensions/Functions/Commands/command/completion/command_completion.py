@@ -2,7 +2,7 @@
 #
 from random import random
 
-from Classes import ShakeBot, ShakeContext, _
+from Classes import ShakeBot, ShakeContext, TextFormat, _
 
 
 ########
@@ -11,7 +11,7 @@ class Event:
     def __init__(self, ctx: ShakeContext, bot: ShakeBot):
         self.bot: ShakeBot = bot
         self.ctx: ShakeContext = ctx
-        self.bot.cache["used_commands"].setdefault(self.ctx.author.id, 0)
+        self.bot.cache["used_commands"].setdefault(self.ctx.author.id, set())
 
     async def __await__(self):
         await self.bot.register_command(self.ctx)
@@ -20,14 +20,16 @@ class Event:
             self.ctx.done = True
 
         if self.ctx.command and not self.ctx.command.extras.get("owner", False):
-            self.bot.cache["used_commands"][self.ctx.author.id] += 1
+            self.bot.cache["used_commands"][self.ctx.author.id].add(self.ctx.command)
 
-            if self.bot.cache["used_commands"][self.ctx.author.id] >= 10:
+            if len(self.bot.cache["used_commands"][self.ctx.author.id]) >= 10:
                 if random() < (6 / 100):
-                    content = _(
-                        "{_}Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or **share** me to your friends!{_}"
-                    ).format(votelink=self.bot.config.other.vote, _="*")
-                    await self.ctx.chat(content=content, forced=True)
+                    content = TextFormat.italics(
+                        _(
+                            "Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or share me to your friends!"
+                        ).format(votelink=self.bot.config.other.vote, _="*")
+                    )
+                    await self.ctx.send(content=content, forced=True)
 
 
 #

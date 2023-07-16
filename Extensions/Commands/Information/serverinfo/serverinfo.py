@@ -39,45 +39,6 @@ class command(ShakeCommand):
         super().__init__(ctx)
         self.guild: Guild = guild
 
-    def channelinfo(
-        self,
-    ) -> Dict[str, str]:
-        information = dict()
-        emojis = (self.bot.emojis.hook, self.bot.emojis.cross)
-        information[_("Categories") + ":"] = (
-            "`" + str((len(self.guild.categories))) + "`"
-        )
-        information[_("Text Channels") + ":"] = (
-            "`"
-            + str(
-                len(
-                    [channel for channel in self.guild.text_channels if channel.is_news]
-                )
-            )
-            + "`"
-        )
-        information[_("Voice Channels") + ":"] = (
-            "`" + str(len(self.guild.voice_channels)) + "`"
-        )
-        information[_("Stages") + ":"] = "`" + str(len(self.guild.stage_channels)) + "`"
-        information[_("Forums") + ":"] = "`" + str(len(self.guild.forums)) + "`"
-        information[_("Threads") + ":"] = "`" + str(len(self.guild.threads)) + "`"
-        information[_("Rules Channel") + ":"] = emojis[bool(self.guild.rules_channel)]
-        information[_("Announcements") + ":"] = (
-            "`"
-            + str(
-                len(
-                    [
-                        channel
-                        for channel in self.guild.text_channels
-                        if not channel.is_news
-                    ]
-                )
-            )
-            + "`"
-        )
-        return information
-
     async def __await__(self):
         select = CategoricalSelect(self.ctx, source=SourceSource)
         menu = Menu(ctx=self.ctx, source=Front(), guild=self.guild, select=select)
@@ -174,7 +135,9 @@ class RolesSource(ListPageSource):
                 if not role.colour == Colour.default()
                 else _("Default"),
             }
-            text = "\n".join(f"**{key}** {value}" for key, value in infos.items())
+            text = "\n".join(
+                f"{TextFormat.bold(key)} {value}" for key, value in infos.items()
+            )
             embed.add_field(name=f"` {i}. ` " + name, value=text, inline=True)
             if ii % 2 == 0:
                 embed.add_field(name=f"\u200b", value="\u200b", inline=True)
@@ -273,7 +236,7 @@ class EmojisSource(ListPageSource):
                 else emoji.user,
             }
             text = "\n".join(
-                f"**{key}** {value}"
+                f"{TextFormat.bold(key)} {value}"
                 for key, value in infos.items()
                 if all([key is not None, value is not None])
             )
@@ -595,7 +558,7 @@ class ActivitiesSource(ListPageSource):
         for type, name in items:
             people = self.counter[(type, name)]
             i = self.places.index(people) + 1
-            _type = Translated.ActitiyType.get(str(type.name), str(type.name))
+            _type = str(type.name)
 
             to_long = len(str(name)) > 31
 
@@ -607,7 +570,7 @@ class ActivitiesSource(ListPageSource):
                 + _("Top {index} Activity ({type})").format(
                     _="`", index="`" + str(i) + "`", type=_type
                 ),
-                value="**({}):** ".format(people) + _name,
+                value="({}): ".format(TextFormat.bold(people)) + _name,
             )
             if (items.index((type, name)) + 1) % 2 == 0:
                 embed.add_field(name=f"\u200b", value="\u200b", inline=True)
@@ -645,16 +608,14 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.blockquotes(format_dt(guild.created_at, style="F")),
+            value=TextFormat.multiblockquotes(
+                TextFormat.join(
+                    format_dt(guild.created_at, "F"),
+                    "(" + format_dt(guild.created_at, "R") + ")",
+                )
+            ),
+            inline=False,
         )
-        region = Counter(
-            (
-                channel.rtc_region if not channel.rtc_region is None else "en-US"
-                for channel in guild.voice_channels + guild.stage_channels
-            )
-        ).most_common(1)
-        result = region[0][0] if bool(region) else "en-US"
-        embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
 
         bots = len([member for member in guild.members if member.bot])
         status = Counter(str(member.status) for member in guild.members)
@@ -667,13 +628,44 @@ class Front(FrontPageSource):
                 str(emojis.offline) + TextFormat.codeblock(status["offline"]),
             ]
         )
+        members = TextFormat.underline(
+            TextFormat.bold(len(set(m for m in guild.members if not m.bot)))
+        )
         embed.add_field(
             name=_("Members"),
             value=TextFormat.multiblockquotes(
-                f'__**{len(set(m for m in guild.members if not m.bot))}**__ (+{bots} {_("Bots")})\n{statuses}'
+                f'{members} (+{bots} {_("Bots")})\n{statuses}'
             ),
             inline=False,
         )
+
+        if guild.me:
+            embed.add_field(
+                name=_("Servers's position"),
+                value=TextFormat.blockquotes(
+                    TextFormat.bold(
+                        "#"
+                        + str(
+                            sum(
+                                g.me.joined_at < guild.me.joined_at
+                                for g in ctx.bot.guilds
+                            )
+                            + 1
+                        )
+                        + " / "
+                        + str(len(ctx.bot.guilds))
+                    )
+                ),
+            )
+
+        region = Counter(
+            (
+                channel.rtc_region if not channel.rtc_region is None else "en-US"
+                for channel in guild.voice_channels + guild.stage_channels
+            )
+        ).most_common(1)
+        result = region[0][0] if bool(region) else "en-US"
+        embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
 
         more: Dict[str, str] = {
             _("ID"): f"`{guild.id}`",
@@ -689,7 +681,10 @@ class Front(FrontPageSource):
         embed.add_field(
             name=_("More Information"),
             value=TextFormat.multiblockquotes(
-                "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
+                "\n".join(
+                    f"{TextFormat.bold(k)}: {TextFormat.bold(v)}"
+                    for k, v in more.items()
+                )
             ),
             inline=False,
         )

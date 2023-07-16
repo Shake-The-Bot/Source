@@ -101,7 +101,7 @@ class Handler(FileSystemEventHandler):
         return ctx, reloadable
 
     async def modified(self, event: DirModifiedEvent | FileModifiedEvent):
-        """A private background function to reload `testing.py` **command** files when they are used in ptb cases"""
+        """A private background function to reload `testing.py` **command** files when they are used in public test build cases"""
         if not isinstance(event, FileModifiedEvent):
             return
 

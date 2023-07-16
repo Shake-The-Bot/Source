@@ -16,7 +16,9 @@ from discord import (
     VoiceState,
 )
 
-from Classes import ShakeBot, ShakeEmbed, _
+from Classes import ShakeBot, ShakeEmbed
+
+_ = str
 
 
 class Event:

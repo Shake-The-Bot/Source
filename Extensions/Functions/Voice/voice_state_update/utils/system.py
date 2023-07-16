@@ -14,7 +14,9 @@ from discord import (
     utils,
 )
 
-from Classes import ShakeBot, _
+from Classes import ShakeBot
+
+_ = str
 
 
 class TempVoice:
@@ -68,7 +70,7 @@ class TempVoice:
         )
         if not self.check(self.member, channels, record):
             return _(
-                "{emoji} **Invalid**! You are not in a valid temporary voice channel."
+                "{emoji} Invalid! You are not in a valid temporary voice channel."
             ).format(emoji=self.bot.emojis.cross)
         self.channel = self.bot.get_channel(
             record["channel_id"]
@@ -79,7 +81,7 @@ class TempVoice:
         if self.channel is None and not channel:
             await interaction.response.send_message(
                 content=_(
-                    "{emoji} **Invalid**! You are not in a valid temporary voice channel."
+                    "{emoji} **Invalid! You are not in a valid temporary voice channel."
                 ).format(emoji=self.bot.emojis.cross),
                 ephemeral=True,
             )
@@ -693,7 +695,7 @@ class TempVoice:
             await self.interaction.response.send_message(
                 ephemeral=True,
                 content=_(
-                    "{emoji} Selected user is alredy owner of a temporary channel!"
+                    "{emoji} Selected user is already owner of a temporary channel!"
                 ).format(emoji=self.bot.emojis.cross),
             )
             return True

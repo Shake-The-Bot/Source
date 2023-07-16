@@ -4,20 +4,20 @@ from typing import Any, Dict, Optional
 
 from discord.ext.commands.errors import ExtensionError
 
-from Classes import ExtensionMethods, ShakeCommand, ShakeEmbed, TextFormat, cogshandler
-from Classes.converter import ValidCog
+from Classes import ExtensionMethods, ShakeCommand, ShakeEmbed, TextFormat, extshandler
+from Classes.converter import ValidExt
 
 
 ########
 #
 class command(ShakeCommand):
-    def __init__(self, ctx, method: ExtensionMethods, extension: ValidCog):
+    def __init__(self, ctx, method: ExtensionMethods, extension: ValidExt):
         super().__init__(ctx)
         self.method: ExtensionMethods = method
         self.extension: str = extension
 
     async def __await__(self):
-        handling: Dict[str, Any] = await cogshandler(
+        handling: Dict[str, Any] = await extshandler(
             ctx=self.ctx, method=self.method, extensions=self.extension
         )
 
@@ -46,9 +46,7 @@ class command(ShakeCommand):
                 value="\n".join(successes),
             )
         emoji = "☑️" if failures < len(handling) / 2 else "❌"
-        embed.description = TextFormat.bold(
-            f"{emoji} {len(handling.keys()) - failures} / {len(handling.keys())} extensions successfully {self.method.name.lower()}ed."
-        )
+        embed.description = "\u200b"
         return await self.ctx.chat(embed=embed)
 
 

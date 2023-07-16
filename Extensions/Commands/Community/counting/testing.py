@@ -396,7 +396,7 @@ class React(ForwardingSource):
             _(
                 "You can allow me reactions so that users know directly whether posts are accepted as correct."
             ),
-            _("You can also deny me reactions to suppress the spam of reactions."),
+            _("You can also deny my reactions to suppress the spam of reactions."),
         ]
         embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
 
@@ -556,10 +556,8 @@ class command(ShakeCommand):
 
         rules = [
             _("One person can't count numbers in a row (others are required)."),
-            _("No botting, if you have fail to often, you'll get muted."),
-            _(
-                "If you break the count, the count will reset to a calculated checkpoint."
-            ),
+            _("No botting, if you have failed to often, you'll get muted."),
+            _("If you break the count, the count will reset to the start."),
         ]
 
         embed.add_field(
@@ -578,7 +576,7 @@ class command(ShakeCommand):
         embed.add_field(
             name=_("How to configure the game?"),
             value=_(
-                "Customize all kind of properties for Counting by using the the command {command}!"
+                "Customize all kind of properties for Counting by using the command {command}!"
             ).format(command=configure),
             inline=False,
         )
@@ -618,11 +616,12 @@ class command(ShakeCommand):
 
         return await self.ctx.chat(
             _(
-                "The stats of the Counting-Game in {channel} has been succsessfully configured."
+                "The stats of the Counting-Game in {channel} has been successfully configured."
             ).format(channel=channel.mention)
         )
 
     async def score(self, type: str) -> None:
+        await self.ctx.defer()
         try:
             type = UserGuild[type.lower()].value
         except KeyError:
@@ -730,7 +729,7 @@ class command(ShakeCommand):
                 embed = embed.to_error(
                     self.ctx,
                     description=_(
-                        "In {channel} is alredy a Counting game set up. Aborting..."
+                        "In {channel} is already a Counting game set up. Aborting..."
                     ).format(channel=channel.mention),
                 )
                 await message.edit(embed=embed, view=None)
@@ -757,11 +756,11 @@ class command(ShakeCommand):
 
         embed = embed.to_success(
             ctx=self.ctx,
-            description=_("{game} is succsessfully set up in {channel}!").format(
+            description=_("{game} is successfully set up in {channel}!").format(
                 game="Counting", channel=channel.mention
             ),
         )
-        embed.set_footer(text=_("Note: you can freely edit the text channel now"))
+        embed.set_footer(text=_("Note: You can freely edit the text channel now."))
 
         await message.edit(
             embed=embed,

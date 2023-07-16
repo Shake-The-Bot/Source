@@ -4,6 +4,7 @@ import hashlib
 from ast import BinOp, Expression, PyCF_ALLOW_TOP_LEVEL_AWAIT, parse
 from base64 import b64encode
 from hmac import new
+from importlib import reload
 from inspect import isawaitable
 from math import ceil
 from os import getcwd, listdir
@@ -11,9 +12,9 @@ from os import urandom as _urandom
 from os.path import isdir, isfile
 from random import choice as rchoice
 from re import I, escape, sub
+from sys import modules
 from time import time
 from typing import *
-from typing import Any
 from urllib.parse import quote
 
 from aiohttp import ClientSession
@@ -27,7 +28,7 @@ from Classes.tomls import config
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes.converter import ValidCog
+    from Classes.converter import ValidExt
     from Classes.helpful import ShakeContext
     from Classes.types import ExtensionMethods
 
@@ -36,8 +37,9 @@ __all__ = (
     "source_lines",
     "get_signature",
     "votecheck",
+    "get_file_paths",
     "dump",
-    "cogshandler",
+    "extshandler",
     "MISSING",
     "evaluate",
     "string_is_calculation",
@@ -118,30 +120,6 @@ def human_join(
 """     Text     """
 
 
-def string(
-    text: str,
-    *format: str,
-    front: Optional[List[str] | bool] = None,
-    end: Optional[List[str] | bool] = None,
-    iterate: bool = True,
-):
-    front = (
-        ""
-        if front is False
-        else "".join(front)
-        if not iterate and front
-        else "".join(format)
-    )
-    end = (
-        ""
-        if end is False
-        else "".join(end)
-        if not iterate and end
-        else "".join(reversed(format))
-    )
-    return f"{front}{str(text)}{end}"
-
-
 # outdated
 def high_level_function():
     with open("...") as mfile:  # loop for files
@@ -187,30 +165,40 @@ def string_is_calculation(string):
     return True
 
 
+def files(origin: str) -> Iterator[int]:
+    for following in listdir(origin):
+        x: str = f"{origin}/{following}"
+
+        if isdir(x):
+            yield from files(x)
+
+        if not isfile(x):
+            continue
+
+        if x.endswith((".py")) and not x.startswith("."):
+            yield x
+
+
+def get_file_paths(origin: str) -> int:
+    return list(files(origin))
+
+
 def source_lines(path: Optional[str] = None) -> int:
     path = path or getcwd()
 
-    def _iterate_source_line_counts(_path: str) -> Iterator[int]:
-        for file in listdir(_path):
-            __path: str = f"{_path}/{file}"
+    def summed(path):
+        paths = files(path)
+        for path in paths:
+            with open(path, encoding="utf8") as f:
+                yield len(
+                    [
+                        line
+                        for line in f.readlines()
+                        if not line.strip().startswith("#") and not "import" in line
+                    ]
+                )
 
-            if isdir(__path):
-                yield from _iterate_source_line_counts(__path)
-
-            if not isfile(__path):
-                continue
-
-            if file.endswith((".py")) and not file.startswith("."):
-                with open(__path, encoding="utf8") as f:
-                    yield len(
-                        [
-                            line
-                            for line in f.readlines()
-                            if not line.strip().startswith("#") and not "import" in line
-                        ]
-                    )
-
-    return sum(_iterate_source_line_counts(path))
+    return sum(summed(path))
 
 
 def calc(expression):
@@ -249,15 +237,24 @@ async def votecheck(ctx: Optional[Context | Interaction] = MISSING):
             raise
 
 
-async def cogshandler(ctx: Context, extensions: list[str], method: Enum) -> None:
+async def extshandler(ctx: Context, extensions: list[str], method: Enum) -> None:
     extensions: List[str] = [extensions] if isinstance(extensions, str) else extensions
 
-    async def handle(method: ExtensionMethods, extension: ValidCog) -> str:
+    async def handle(method: ExtensionMethods, extension: ValidExt) -> str:
         function = method.value
         error = None
 
         try:
             await function(ctx.bot, extension)
+
+        except NoEntryPointError:
+            try:
+                if extension in modules.keys():
+                    reload(modules[extension])
+                else:
+                    __import__(extension)
+            except (ImportError, SyntaxError) as error:
+                return error
 
         except ExtensionNotLoaded as error:
             if method is method.reload:
@@ -277,12 +274,16 @@ async def cogshandler(ctx: Context, extensions: list[str], method: Enum) -> None
 
         return None
 
-    return {extension: await handle(method, extension) for extension in extensions}
+    return {
+        "/" + extension.replace(".", "/") + ".py": await handle(method, extension)
+        for extension in extensions
+    }
 
 
 async def dump(
     content: str, session: ClientSession, lang: Optional[str] = "txt"
 ) -> Optional[str]:
+    prefix = "Bearer "
     async with session.post(
         "https://hastepaste.com/api/create",
         data=f"raw=false&text={quote(content)}",
@@ -298,7 +299,7 @@ async def dump(
     async with session.post(
         "https://hastebin.com/documents",
         data=content,
-        headers={"Authorization": config.other.hastebin.token},
+        headers={"Authorization": prefix + config.other.hastebin.token},
     ) as post:
         if 200 <= post.status < 400:
             text = await post.text()

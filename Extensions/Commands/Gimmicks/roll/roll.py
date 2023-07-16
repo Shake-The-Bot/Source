@@ -25,13 +25,13 @@ class command(ShakeCommand):
         self.start: int = start
 
     async def __await__(self):
-        rolled = randint(self.start, self.end)
+        rolled = randint(min(self.start, self.end), max(self.start, self.end))
 
         if 0 < rolled < 10:
             rolled = getattr(self.bot.emojis.dice, numbers.get(rolled), MISSING)
             assert not rolled is MISSING
 
-        return await self.ctx.chat(embed=rolled)
+        return await self.ctx.chat(rolled)
 
 
 #

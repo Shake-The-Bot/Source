@@ -53,7 +53,7 @@ class CategoricalSelect(ui.Select):
         **kwargs: Any,
     ):
         super().__init__(
-            placeholder=_("Choose a Category..."),
+            placeholder=_("Choose a category..."),
             min_values=1,
             max_values=1,
             row=0,
@@ -78,6 +78,9 @@ class CategoricalSelect(ui.Select):
     @categories.setter
     def categories(self, value: Any):
         self.__categories = value
+        if not bool(value):
+            self.disabled = True
+            self.placeholder = _("No categories to choose...")
 
     def getter(self, group: Group, attribute: str):
         if not hasattr(group, attribute):

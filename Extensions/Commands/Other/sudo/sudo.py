@@ -30,6 +30,8 @@ class command(ShakeCommand):
         new_channel = self.channel or self.ctx.channel
         msg.channel = new_channel
         msg.author = self.user
-        msg.content = self.ctx.prefix + self.command + " " + self.args
+        msg.content = self.ctx.prefix + self.command
+        if self.args:
+            msg.content += " " + self.args
         new_ctx = await self.bot.get_context(msg, cls=type(self.ctx))
         await self.bot.invoke(new_ctx)

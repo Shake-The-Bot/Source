@@ -1,22 +1,17 @@
-############
-#
-from contextlib import suppress
-from gettext import GNUTranslations
-from inspect import cleandoc
-from os import path
-from typing import Union
+from __future__ import annotations
+
+from typing import List
 
 from discord import PartialEmoji
-from polib import pofile
 
 from Classes import (
     MISSING,
     Locale,
+    Localization,
     ShakeCommand,
     ShakeEmbed,
     TextFormat,
     _,
-    translations,
 )
 from Classes.accessoires import ListMenu, ListPageSource
 
@@ -24,81 +19,78 @@ from Classes.accessoires import ListMenu, ListPageSource
 #
 
 
-class L:
-    locale: str
-    authors: str
-    flag: str
-    language: str
-    two_letters_code: str
-    locale_with_underscore: str
-
-    __slots__ = {
-        "locale",
-        "authors",
-        "flag",
-        "language",
-        "two_letters_code",
-        "locale_with_underscore",
-        "first_two_letters",
-        "bettername",
-    }
-
-    def __init__(self, directory: str, locale: str) -> None:
-        po = None
-        with suppress(OSError):
-            po = pofile(path.join(directory, locale, "LC_MESSAGES", "shake.po"))
-        DC_EXCEPTION = {"sr-SP": "sr"}
-        metadata = getattr(po, "metadata", {})
-        crw_lang = metadata.pop("X_Crowdin_Language", "")  # ''  /  None
-        self.authors = [", ".join(metadata.pop("Last-Translator", "").split())] or []
-        self.two_letters_code = metadata.pop(
-            "Language", crw_lang[:2] or locale[:2]
-        ).lower()  # if crw_lang else
-        self.first_two_letters = metadata.pop(
-            "Language", crw_lang[3:] or locale[3:]
-        ).lower()  # if crw_lang else
-        self.language = Locale.available.get(locale, {}).get(
-            "language", None
-        ) or metadata.pop(
-            "Language-Team", None
-        )  # .replace(two_letters_code, y.get(two_letters_code, two_letters_code))
-        self.flag: str = ":flag_{}:".format(
-            DC_EXCEPTION.get(locale, self.first_two_letters)
-        )
-        self.locale_with_underscore = (
-            (
-                (crw_lang.lower() + "_" + crw_lang.upper())
-                if len(crw_lang) == 2
-                else (crw_lang)
-            ).replace("-", "_")
-            if crw_lang
-            else None
-        )
-        self.locale = locale
-        self.bettername = Locale.available.get(locale, {}).get("_", None) or None
-
-    def __str__(self) -> str:
-        return self.locale
-
-
 class command(ShakeCommand):
-    def get_locale_by_name(self, name: str) -> str:
-        for locale in Locale.available:
-            language = Locale.available[locale]["language"]
-            simplified = Locale.available[locale]["simplified"]
-            if name.lower() in [x.lower() for x in [language, locale] + simplified]:
-                return locale
+    def get_locale_by_name(self, name: str, locales: dict[str, Locale]) -> str:
+        locs = dict((locale.locale.lower(), locale) for locale in locales.values())
+        if found := locs.get(name.lower(), MISSING):
+            return found.locale
+        languages = dict(
+            (locale.language.lower(), locale) for locale in locales.values()
+        )
+        if found := languages.get(name.lower(), MISSING):
+            return found.locale
+        simples = dict(
+            (locale.simplified.lower(), locale) for locale in locales.values()
+        )
+        if found := simples.get(name.lower(), MISSING):
+            return found.locale
+
+        all_two_letters = dict(
+            (locale.two_letters.lower(), locale) for locale in locales.values()
+        )
+        unique_two_letters = dict(
+            (two, locale)
+            for two, locale in all_two_letters.items()
+            if not list(all_two_letters.keys()).count(two) > 1
+        )
+        if found := unique_two_letters.get(name.lower(), MISSING):
+            return found.locale
+
         return None
 
-    def check(self, name: str) -> ShakeEmbed | bool:
-        locale = self.get_locale_by_name(name)
+    async def list(self, locales: dict[str, Locale]):
+        locale = await self.bot.i18n.get_user(self.ctx.author.id, default="en-US")
+        current: Locale = locales.get(locale)
+
+        menu = ListMenu(
+            ctx=self.ctx,
+            source=PageSource(
+                ctx=self.ctx,
+                items=list(locales.values()),
+                title=_("Available Translations"),
+                description=TextFormat.join(
+                    _(
+                        "There are currently translations for `{languages}` languages\nand your current language is {current}.".format(
+                            languages=TextFormat.codeblock(len(locales.keys())),
+                            current=TextFormat.bold(current.language),
+                        )
+                    ),
+                    TextFormat.italics(
+                        _(
+                            "Don't you see your language or is it incomplete?\nThen come help us out on [Crowdin]({link})!"
+                        ).format(
+                            link=self.bot.config.other.crowdin.url,
+                        )
+                    ),
+                    splitter="\n\n",
+                ),
+            ),
+        )
+        await menu.setup()
+        await menu.send(ephemeral=True)
+
+    async def set_locale(self, name, locales: dict[str, Locale], guild: bool = False):
+        await self.ctx.defer()
+        locale = self.get_locale_by_name(name, locales)
         if locale is None:
-            embed = ShakeEmbed.to_error(
-                self.ctx, description=_("Your given language is not valid.")
+            description = TextFormat.join(
+                _("Your given language is not valid."),
+                _("Use {command} to get a list of all available languages").format(
+                    command=TextFormat.codeblock("/language list")
+                ),
+                splitter="\n",
             )
-            embed.description += "\n" + _(
-                "Use {command} to get a list of all available languages"
-            ).format(command="</language list>")
+            embed = ShakeEmbed.to_error(self.ctx, description=description)
         elif not locale in self.bot.i18n.locales:
             embed = ShakeEmbed.to_error(
                 self.ctx,
@@ -108,86 +100,47 @@ class command(ShakeCommand):
             )
             embed.description += "\n" + _(
                 "Try to contribute [here]({link}) if you want to!"
-            ).format(link="https://github.com/Shake-Developement/Locales/")
+            ).format(link=self.bot.config.other.crowdin.url)
             locale = None
         else:
+            if guild:
+                await self.bot.i18n.set_guild(self.ctx.guild.id, locale)
+            else:
+                await self.bot.i18n.set_guild(self.ctx.author.id, locale)
+
             embed = ShakeEmbed.to_success(
                 self.ctx,
                 description=_("{name} was successfully set as language!").format(
                     name=TextFormat.quote(
-                        Locale.available[locale]["language"].capitalize()
+                        Localization.available[locale]["language"].capitalize()
                     )
                 ),
             )
-        return embed, locale
-
-    async def list(self):
-        items = [
-            L(directory=self.bot.i18n.directory, locale=x)
-            for x in set(
-                x for x, y in translations.items() if isinstance(y, GNUTranslations)
-            )
-        ]
-        current = L(
-            directory=self.bot.i18n.directory,
-            locale=await self.bot.locale.get_user_locale(self.ctx.author.id) or "en-US",
-        )
-        menu = ListMenu(
-            ctx=self.ctx,
-            source=PageSource(
-                ctx=self.ctx,
-                items=items,
-                current=current,
-                title=_("Available Translations"),
-                description=_(
-                    "There are currently translations for `{languages}` languages \nand your current language is **{current}**.\n\n{_}Don't you see your language or is it incomplete?{_} \nThen come help us out on [Crowdin]({link})!"
-                    ""
-                ).format(
-                    languages=len(items),
-                    link=self.bot.config.other.crowdin,
-                    current=current.language,
-                    _="_",
-                ),
-            ),
-        )
-        await menu.setup()
-        await menu.send(ephemeral=True)
-
-    async def user_locale(self, locale):
-        await self.ctx.defer()
-        embed, locale = self.check(locale)
-        if locale:
-            await self.bot.locale.set_user_locale(self.ctx.author.id, locale)
-        await self.ctx.chat(embed=embed)
-        return
-
-    async def guild_locale(self, locale):
-        await self.ctx.defer()
-        embed, locale = self.check(locale)
-        if locale:
-            await self.bot.locale.set_guild_locale(self.ctx.guild.id, locale)
         await self.ctx.chat(embed=embed)
         return
 
 
 class PageSource(ListPageSource):
-    def add_field(self, embed, item: L):
-        tick = (
-            str(PartialEmoji(name="left", id=1033551843210579988))
-            if str(item) == str(self.kwargs.get("current", MISSING))
-            else ""
-        )
+    def add_field(self, embed, item: Locale):
+        index = TextFormat.codeblock(f" {self.items.index(item) + 1}. ")
+        split = "\N{EM DASH}"
+
+        specified = item.specific
+        if specified:
+            language = TextFormat.codeblock(specified.capitalize())
+        else:
+            language = item.language.capitalize()
+
+        if str(item) == str(self.kwargs.get("current", MISSING)):
+            tick = str(PartialEmoji(name="left", id=1033551843210579988))
+        else:
+            tick = ""
+
         embed.add_field(
             inline=False,
-            name="` {index}. ` {flag} \N{EM DASH} {language} {emoji}".format(
-                index=self.items.index(item) + 1,
-                flag=getattr(item, "flag", ""),
-                language=item.bettername or item.language,
-                emoji=tick,
-            ),
-            value="""{usage} to set this language""".format(
-                authors=", ".join(item.authors) or "`/`",
-                usage=f"`/language set {item.locale}`",
+            name=f"{index} {item.flag} {split} {TextFormat.codeblock(language)} {split} {item.simplified} {tick}",
+            value=TextFormat.multicodeblock(
+                "/language set {locale}".format(locale=item.locale)
             ),
         )
 
