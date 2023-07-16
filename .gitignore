@@ -16,8 +16,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-## C extensions
-*.so
 
 ## Distribution / packaging
 .Python
@@ -64,7 +62,6 @@ cover/
 
 ## Translations
 *.mo
-*.pot
 
 ## PyBuilder
 .pybuilder/
@@ -79,10 +76,6 @@ ipython_config.py
 
 ## PEP 582
 __pypackages__/
-
-## Celery stuff
-celerybeat-schedule
-celerybeat.pid
 
 ## SageMath parsed files
 *.sage.py
