@@ -30,9 +30,9 @@ I'm a multi purpose Discord-Bot which helps you to manage your Server with tempv
 -   Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
     Please make sure to update tests as appropriate.
 
-## :warning: Self hosting
+## Self hosting
 
--   Please do not host me yourself. At least not now! My code is massively outdated and mostly only works platform specific.
+-   :warning: Please don't. At least not now! My code is massively outdated and mostly only works platform specific.
 
 ## License
 
