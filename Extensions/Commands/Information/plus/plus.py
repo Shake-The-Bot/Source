@@ -2,7 +2,7 @@
 #
 from discord import PartialEmoji, ui
 
-from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
+from Classes import Format, ShakeCommand, ShakeEmbed, _
 
 
 ########
@@ -33,7 +33,7 @@ class command(ShakeCommand):
             name=_("{emoji} Helpful links for understanding Patreon").format(
                 emoji=self.bot.emojis.dot
             ),
-            value=TextFormat.bold(
+            value=Format.bold(
                 _(
                     """[What is Patreon?](https://support.patreon.com/hc/articles/204606315-What-is-Patreon-)
                 [What currencies does Patreon support?](https://support.patreon.com/hc/articles/360039589091-Patreon-s-supported-currencies)
@@ -54,7 +54,7 @@ class Button(ui.View):
         button = ui.Button(
             emoji=PartialEmoji(animated=True, name="heartflow", id=952690616859512912),
             label=_("Add Shake to your server"),
-            url=self.bot.config.other.authentication,
+            url=self.bot.config.bot.authentication,
         )
         self.add_item(button)
 

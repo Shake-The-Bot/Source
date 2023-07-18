@@ -9,10 +9,10 @@ from Classes import (
     MISSING,
     AboveMeBatch,
     CountingBatch,
+    Format,
     OneWordBatch,
     ShakeBot,
     ShakeEmbed,
-    TextFormat,
     _,
     cleanup,
     current,
@@ -39,7 +39,7 @@ class Event:
         self.channel = message.channel
         self.content = message.content
         self.message = message
-        self.game = OneWord
+        self.game = "OneWord"
 
     async def __await__(self):
         ctx = await self.bot.get_context(self.message)
@@ -71,7 +71,7 @@ class Event:
             if self.channel.id in records:
                 if (not self.message.content) or bool(self.message.attachments):
                     embed = ShakeEmbed(timestamp=None)
-                    embed.description = TextFormat.bold(
+                    embed.description = Format.bold(
                         _(
                             "You should not write anything other than messages with text content!"
                         )
@@ -208,19 +208,19 @@ class OneWord:
         delete = bad_reaction = passed = False
 
         if not await self.member_check(user_id, member, testing):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("""You are not allowed show off multiple words in a row.""")
             )
             delete = bad_reaction = True
 
         elif not await self.syntax_check(content):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("your message should contain only one word or punctuation marks.")
             )
             delete = bad_reaction = True
 
         elif not await self.words_check(content, words):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("Your word should not already be in the sentance.")
             )
             delete = bad_reaction = True
@@ -228,7 +228,7 @@ class OneWord:
         else:
             passed = True
             if await self.finisher_check(content):
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _("You've finally finished the sentence")
                 )
                 phrase = " ".join(words)
@@ -248,9 +248,7 @@ class OneWord:
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
-            "used": str(
-                time.replace(tzinfo=timezone.utc).isoformat() if passed else used
-            ),
+            "used": str((time if passed else used).replace(tzinfo=timezone.utc).isoformat()),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,
@@ -379,12 +377,12 @@ class AboveMe:
         passed = False
 
         if not await self.member_check(user_id, member, testing):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("""You are not allowed show off multiple numbers in a row.""")
             )
 
         elif not await self.syntax_check(content):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _(
                     "Your message should start with „{trigger}“ and should make sense."
                 ).format(
@@ -393,9 +391,7 @@ class AboveMe:
             )
 
         elif not await self.phrase_check(content, phrases):
-            embed.description = TextFormat.bold(
-                _("Your message should be something new")
-            )
+            embed.description = Format.bold(_("Your message should be something new"))
 
         else:
             passed = True
@@ -518,7 +514,7 @@ class Counting:
 
         if not await self.syntax_check(content, math):
             if numbers:
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _("You can't use anything but arithmetic here.")
                 )
                 delete = True
@@ -529,7 +525,7 @@ class Counting:
         elif not await self.member_check(
             testing=testing, user_id=user_id, member=member
         ):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("You are not allowed to count multiple numbers in a row.")
             )
             bad_reaction = 1
@@ -542,7 +538,7 @@ class Counting:
                 self._auto_spam_count[member.id] += 1
 
             if self._auto_spam_count[member.id] >= 5:
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _("You failed to often. No stats have been changed!!")
                 )
                 del self._auto_spam_count[member.id]
@@ -553,29 +549,29 @@ class Counting:
                     s = _("The streak of {streak} was broken!")
                     if streak > best:
                         s = _("You've topped your best streak with {streak} numbers 🔥")
-                    s = s.format(streak=TextFormat.codeblock(f" {streak} "))
+                    s = s.format(streak=Format.codeblock(f" {streak} "))
                 else:
                     s = ""
 
                 if count == start:
-                    embed.description = TextFormat.bold(
+                    embed.description = Format.bold(
                         _(
                             "Incorrect number! The next number remains {start}. {streak}"
                         ).format(
-                            start=TextFormat.codeblock(f" {start + influence} "),
+                            start=Format.codeblock(f" {start + influence} "),
                             streak=s,
                         )
                     )
                     bad_reaction = 2
                 else:
-                    embed.description = TextFormat.bold(
+                    embed.description = Format.bold(
                         _(
                             "{user} ruined it at {count}. The next number is {start}. {streak}"
                         ).format(
                             user=member.mention,
-                            count=TextFormat.underline(count + influence),
+                            count=Format.underline(count + influence),
                             streak=s,
-                            start=TextFormat.codeblock(f" {start + influence} "),
+                            start=Format.codeblock(f" {start + influence} "),
                         )
                     )
                     bad_reaction = 1
@@ -588,13 +584,13 @@ class Counting:
 
             if goal and count + 1 >= goal:
                 reached = True
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _(
                         "You've reached your goal of {goal} {emoji} Congratulations!"
                     ).format(goal=goal, emoji="<a:tadaa:1038228851173625876>")
                 )
             elif direction is False and count - 1 <= 0:
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _(
                         "You've reached the end of the numbers until 0 {emoji} Congratulations!"
                     ).format(emoji="<a:tadaa:1038228851173625876>")

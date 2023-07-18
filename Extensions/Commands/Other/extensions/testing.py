@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from discord.ext.commands.errors import ExtensionError
 
-from Classes import ExtensionMethods, ShakeCommand, ShakeEmbed, TextFormat, extshandler
+from Classes import ExtensionMethods, Format, ShakeCommand, ShakeEmbed, extshandler
 from Classes.converter import ValidExt
 
 
@@ -21,7 +21,7 @@ class command(ShakeCommand):
             ctx=self.ctx, method=self.method, extensions=self.extension
         )
 
-        embed = ShakeEmbed()
+        embed = ShakeEmbed.default(ctx=self.ctx)
 
         failures: int = 0
         successes = list()
@@ -29,13 +29,12 @@ class command(ShakeCommand):
             error: Optional[ExtensionError] = (
                 getattr(handle, "original", handle) if handle else None
             )
-
-            ext = f"`{extension}`"
-            name = f"` {i}. ` {ext}"
+            ext = ".../ " + extension.replace(".", "/") + ".py"
+            name = Format.multicodeblock(ext)
             if error:
                 failures += 1
                 value = "{}".format(str(error).replace(extension, ext))
-                embed.add_field(name="❌ " + name, value=value)
+                embed.add_field(name="❌ " + ext, value=value)
             else:
                 successes.append(name)
 
@@ -45,8 +44,6 @@ class command(ShakeCommand):
                 name=f"{self.method.name.lower().capitalize()}ed",
                 value="\n".join(successes),
             )
-        emoji = "☑️" if failures < len(handling) / 2 else "❌"
-        embed.description = "\u200b"
         return await self.ctx.chat(embed=embed)
 
 

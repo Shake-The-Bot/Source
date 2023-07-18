@@ -6,7 +6,7 @@ from inspect import cleandoc
 
 from discord import Forbidden, Guild, HTTPException, Member
 
-from Classes import ShakeBot, ShakeEmbed, TextFormat, _
+from Classes import Format, ShakeBot, ShakeEmbed, _
 from Classes.helpful import Captcha
 
 
@@ -59,7 +59,7 @@ class Event:
 
         with suppress(Forbidden, HTTPException):
             embed = ShakeEmbed()
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _(
                     "{emoji} {prefix} Thank you! You have been verified in guild `{guild}`"
                 ).format(

@@ -8,6 +8,7 @@ from discord import (
     File,
     ForumChannel,
     Guild,
+    Interaction,
     StageChannel,
     TextChannel,
     Thread,
@@ -19,7 +20,7 @@ from discord.enums import Status
 from discord.ext import menus
 from discord.utils import format_dt
 
-from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, _
+from Classes import MISSING, ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, _
 from Classes.accessoires import (
     CategoricalMenu,
     CategoricalSelect,
@@ -29,7 +30,8 @@ from Classes.accessoires import (
     SourceSource,
     page,
 )
-from Classes.types import TextFormat, Translated, Types
+from Classes.helpful import ShakeContext
+from Classes.types import Format, Translated, Types
 from Classes.useful import MISSING, human_join
 
 TYPES = Union[
@@ -56,8 +58,25 @@ class command(ShakeCommand):
                 categories[TextChannelsSource(ctx=self.ctx, category=self.channel)] = 1
             if bool(self.channel.voice_channels + self.channel.stage_channels):
                 categories[VoiceChannelsSource(ctx=self.ctx, category=self.channel)] = 1
+        elif isinstance(self.channel, Thread):
+            front = ThreadSource(self.ctx, self.channel)
+            if isinstance(self.channel.parent, ForumChannel):
+                pass
+            elif isinstance(self.channel.parent, TextChannel):
+                categories[
+                    TextChannelSource(
+                        self.ctx,
+                        channel=self.channel.parent,
+                        title=_("Parents Channel"),
+                    )
+                ] = 1
+
         elif isinstance(self.channel, TextChannel):
-            front = TextChannelFront()
+            front = TextChannelSource(self.ctx, self.channel)
+        elif isinstance(self.channel, StageChannel):
+            front = StageChannelSource(self.ctx, self.channel)
+        elif isinstance(self.channel, VoiceChannel):
+            front = VoiceChannelSource(self.ctx, self.channel)
         else:
             front = Front()
 
@@ -74,15 +93,15 @@ class Menu(CategoricalMenu):
         self,
         ctx: ShakeContext,
         source: menus.PageSource,
-        channel: GuildChannel,
+        channel,
         select: Optional[CategoricalSelect] = None,
         front: Optional[FrontPageSource] = None,
     ):
-        self.channel: GuildChannel = channel
+        self.channel: GuildChannel | Thread = channel
         super().__init__(ctx, source=source, select=select, front=front)
 
     def embed(self, embed: ShakeEmbed):
-        embed.set_author(name=self.channel.name)
+        embed.set_author(name=Format.join("Channelinfo", "„" + self.channel.name + "“"))
         return embed
 
 
@@ -102,8 +121,8 @@ class CategoryFront(FrontPageSource):
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(category.created_at, "F"),
                     "(" + format_dt(category.created_at, "R") + ")",
                 )
@@ -121,7 +140,7 @@ class CategoryFront(FrontPageSource):
             )
         ).most_common(1)
         result = region[0][0] if bool(region) else _("No region supporting channels")
-        embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
+        embed.add_field(name=_("Region"), value=Format.blockquotes(result))
 
         more: Dict[str, str] = {
             _("ID"): f"`{category.id}`",
@@ -129,7 +148,7 @@ class CategoryFront(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
             ),
             inline=False,
@@ -161,7 +180,7 @@ class TextChannelsSource(ListPageSource):
         items: List[TextChannel],
         **kwargs: Any,
     ) -> ShakeEmbed:
-        embed, File = TextChannelFront().channel(menu=menu, channel=items)
+        embed, File = TextChannelSource().channel(menu=menu, channel=items)
         embed.title = str(items.name)
         embed.set_footer(
             text=_("Page {page}/{pages} (Total of {items} Channels)").format(
@@ -209,26 +228,119 @@ class VoiceChannelsSource(ListPageSource):
 """ TextChannel """
 
 
-class TextChannelFront(FrontPageSource):
-    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
-        return self.channel(menu, menu.channel)
+class TextChannelSource(ItemPageSource):
+    item: TextChannel
 
-    def channel(self, menu: Menu, channel: TextChannel):
+    def __init__(
+        self,
+        ctx: ShakeContext,
+        channel: Optional[TextChannel] = None,
+        label: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            ctx=ctx, item=channel, label=label or _("Channel overview"), title=title
+        )
+
+    def format_page(self, menu: Menu, page: Any) -> Tuple[ShakeEmbed, File]:
         # TODO: slowmode info
         ctx = menu.ctx
 
         embed = ShakeEmbed.default(
             ctx,
+            title=self.title or _("General Overview"),
+            description="„" + self.item.topic + "“" if self.item.topic else None,
+        )
+        recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
+        embed.set_thumbnail(url=getattr(self.item.guild.icon, "url", recovery))
+
+        embed.add_field(
+            name=_("Created"),
+            value=Format.multiblockquotes(
+                Format.join(
+                    format_dt(self.item.created_at, "F"),
+                    "(" + format_dt(self.item.created_at, "R") + ")",
+                    splitter="\n",
+                )
+            ),
+        )
+
+        embed.add_field(
+            name=_("NSFW"),
+            value=Format.blockquotes(
+                (menu.bot.emojis.no, menu.bot.emojis.yes)[self.item.nsfw]
+            ),
+        )
+
+        embed.add_field(
+            name=_("Channel's server"),
+            value=Format.multiblockquotes(Format.multicodeblock(self.item.guild.name)),
+            inline=False,
+        )
+        if self.item.category:
+            embed.add_field(
+                name=_("Channel's category"),
+                value=Format.multiblockquotes(
+                    Format.multicodeblock(self.item.category.name)
+                ),
+            )
+
+        embed.add_field(
+            name=_("Channel's position"),
+            value=Format.multiblockquotes(
+                Format.multicodeblock(
+                    "#"
+                    + str(self.item.position)
+                    + " / "
+                    + str(len(self.item.guild.channels)),
+                    "css",
+                )
+            ),
+        )
+
+        more: Dict[str, str] = {
+            _("ID"): f"`{self.item.id}`",
+        }
+
+        embed.add_field(
+            name=_("More Information"),
+            value=Format.multiblockquotes(
+                "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
+            ),
+            inline=False,
+        )
+        return embed, None
+
+
+class ThreadSource(ItemPageSource):
+    item: Thread
+
+    def __init__(
+        self,
+        ctx: ShakeContext,
+        thread: Thread,
+        label: Optional[str] = None,
+    ):
+        super().__init__(ctx=ctx, item=thread, label=label or _("Thread overview"))
+
+    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
+        ctx = menu.ctx
+        channel = menu.channel
+
+        embed = ShakeEmbed.default(
+            ctx,
             title=_("General Overview"),
-            description="„" + channel.topic + "“" if channel.topic else None,
+            description="„" + channel.parent.topic + "“"
+            if channel.parent.topic
+            else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(channel.guild.icon, "url", recovery))
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(channel.created_at, "F"),
                     "(" + format_dt(channel.created_at, "R") + ")",
                     splitter="\n",
@@ -238,30 +350,106 @@ class TextChannelFront(FrontPageSource):
 
         embed.add_field(
             name=_("NSFW"),
-            value=TextFormat.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[channel.nsfw]
+            value=Format.blockquotes(
+                (menu.bot.emojis.no, menu.bot.emojis.yes)[channel.parent.nsfw]
             ),
         )
 
         embed.add_field(
-            name=_("Channel's server"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(channel.guild.name)
+            name=_("Threads's server"),
+            value=Format.multiblockquotes(Format.multicodeblock(channel.guild.name)),
+            inline=False,
+        )
+        if channel.parent.category:
+            embed.add_field(
+                name=_("Threads's category"),
+                value=Format.multiblockquotes(
+                    Format.multicodeblock(channel.parent.category.name)
+                ),
+            )
+
+        more: Dict[str, str] = {
+            _("ID"): f"`{channel.id}`",
+        }
+
+        embed.add_field(
+            name=_("More Information"),
+            value=Format.multiblockquotes(
+                "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
+            ),
+            inline=False,
+        )
+        return embed, None
+
+
+""" VoiceChannel """
+
+
+class VoiceChannelSource(ItemPageSource):
+    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
+        return self.channel(menu, menu.channel)
+
+    def channel(self, menu: Menu, channel: VoiceChannel):
+        # TODO: slowmode info
+        ctx = menu.ctx
+
+        embed = ShakeEmbed.default(
+            ctx,
+            title=_("General Overview"),
+            # description="„" + channel.topic + "“" if channel.topic else None,
+        )
+        recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
+        embed.set_thumbnail(url=getattr(channel.guild.icon, "url", recovery))
+
+        embed.add_field(
+            name=_("Created"),
+            value=Format.multiblockquotes(
+                Format.join(
+                    format_dt(channel.created_at, "F"),
+                    "(" + format_dt(channel.created_at, "R") + ")",
+                    splitter="\n",
+                )
             ),
             inline=False,
         )
 
         embed.add_field(
-            name=_("Channel's category"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(channel.category.name)
-            ),
+            name=_("Bitrate"),
+            value=Format.multiblockquotes(Format.multicodeblock(channel.bitrate)),
         )
 
         embed.add_field(
+            name=_("User limit"),
+            value=Format.multiblockquotes(
+                Format.multicodeblock(
+                    channel.user_limit if bool(channel.user_limit) else "/"
+                )
+            ),
+        )
+
+        region = channel.rtc_region if not channel.rtc_region is None else "en-US"
+        embed.add_field(
+            name=_("Region"),
+            value=Format.multiblockquotes(Format.multicodeblock(region)),
+        )
+
+        embed.add_field(
+            name=_("Channel's server"),
+            value=Format.multiblockquotes(Format.multicodeblock(channel.guild.name)),
+            inline=False,
+        )
+        if channel.category:
+            embed.add_field(
+                name=_("Channel's category"),
+                value=Format.multiblockquotes(
+                    Format.multicodeblock(channel.category.name)
+                ),
+            )
+
+        embed.add_field(
             name=_("Channel's position"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(
+            value=Format.multiblockquotes(
+                Format.multicodeblock(
                     "#"
                     + str(channel.position)
                     + " / "
@@ -277,7 +465,95 @@ class TextChannelFront(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
+                "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
+            ),
+            inline=False,
+        )
+        return embed, None
+
+
+class StageChannelSource(ItemPageSource):
+    def format_page(self, menu: page.menus, page: Any) -> Tuple[ShakeEmbed, File]:
+        return self.channel(menu, menu.channel)
+
+    def channel(self, menu: Menu, channel: StageChannel):
+        # TODO: slowmode info
+        ctx = menu.ctx
+
+        embed = ShakeEmbed.default(
+            ctx,
+            title=_("General Overview"),
+            # description="„" + channel.topic + "“" if channel.topic else None,
+        )
+        recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
+        embed.set_thumbnail(url=getattr(channel.guild.icon, "url", recovery))
+
+        embed.add_field(
+            name=_("Created"),
+            value=Format.multiblockquotes(
+                Format.join(
+                    format_dt(channel.created_at, "F"),
+                    "(" + format_dt(channel.created_at, "R") + ")",
+                    splitter="\n",
+                )
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name=_("Bitrate"),
+            value=Format.multiblockquotes(Format.multicodeblock(channel.bitrate)),
+        )
+
+        embed.add_field(
+            name=_("User limit"),
+            value=Format.multiblockquotes(
+                Format.multicodeblock(
+                    channel.user_limit if bool(channel.user_limit) else "/"
+                )
+            ),
+        )
+
+        region = channel.rtc_region if not channel.rtc_region is None else "en-US"
+        embed.add_field(
+            name=_("Region"),
+            value=Format.multiblockquotes(Format.multicodeblock(region)),
+        )
+
+        embed.add_field(
+            name=_("Channel's server"),
+            value=Format.multiblockquotes(Format.multicodeblock(channel.guild.name)),
+            inline=False,
+        )
+        if channel.category:
+            embed.add_field(
+                name=_("Channel's category"),
+                value=Format.multiblockquotes(
+                    Format.multicodeblock(channel.category.name)
+                ),
+            )
+
+        embed.add_field(
+            name=_("Channel's position"),
+            value=Format.multiblockquotes(
+                Format.multicodeblock(
+                    "#"
+                    + str(channel.position)
+                    + " / "
+                    + str(len(channel.guild.channels)),
+                    "css",
+                )
+            ),
+        )
+
+        more: Dict[str, str] = {
+            _("ID"): f"`{channel.id}`",
+        }
+
+        embed.add_field(
+            name=_("More Information"),
+            value=Format.multiblockquotes(
                 "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
             ),
             inline=False,
@@ -290,7 +566,7 @@ class TextChannelFront(FrontPageSource):
 
 class Front(FrontPageSource):
     def format_page(self, menu: Menu, items: Any):
-        return self.guild(menu.ctx, menu.guild), None
+        return self.guild(menu.ctx, menu.channel.guild), None
 
     def guild(self, ctx: ShakeContext, guild: Guild):
         embed = ShakeEmbed.default(
@@ -303,7 +579,7 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.blockquotes(format_dt(guild.created_at, style="F")),
+            value=Format.blockquotes(format_dt(guild.created_at, style="F")),
         )
         region = Counter(
             filter(
@@ -315,25 +591,25 @@ class Front(FrontPageSource):
             )
         ).most_common(1)
         result = region[0][0] if bool(region) else _("No region supporting channels")
-        embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
+        embed.add_field(name=_("Region"), value=Format.blockquotes(result))
 
         bots = len([member for member in guild.members if member.bot])
         status = Counter(str(member.status) for member in guild.members)
         emojis = ctx.bot.emojis.status
         statuses = "︱".join(
             [
-                str(emojis.online) + TextFormat.codeblock(status["online"]),
-                str(emojis.idle) + TextFormat.codeblock(status["idle"]),
-                str(emojis.dnd) + TextFormat.codeblock(status["dnd"]),
-                str(emojis.offline) + TextFormat.codeblock(status["offline"]),
+                str(emojis.online) + Format.codeblock(status["online"]),
+                str(emojis.idle) + Format.codeblock(status["idle"]),
+                str(emojis.dnd) + Format.codeblock(status["dnd"]),
+                str(emojis.offline) + Format.codeblock(status["offline"]),
             ]
         )
-        members = TextFormat.underline(
-            TextFormat.bold(len(set(m for m in guild.members if not m.bot)))
+        members = Format.underline(
+            Format.bold(len(set(m for m in guild.members if not m.bot)))
         )
         embed.add_field(
             name=_("Members"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 f'{members} (+{bots} {_("Bots")})\n{statuses}'
             ),
             inline=False,
@@ -352,7 +628,7 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 "\n".join(f"**{k}:** **{v}**" for k, v in more.items())
             ),
             inline=False,
@@ -363,4 +639,5 @@ class Front(FrontPageSource):
 
 
 category = CategoryFront | TextChannelsSource | VoiceChannelsSource
-text = TextChannelFront
+text = TextChannelSource | ThreadSource
+voice = StageChannelSource | VoiceChannelSource

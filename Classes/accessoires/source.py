@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 from discord import ButtonStyle, File, Interaction, PartialEmoji, ui
 from discord.ext import menus
 
-from Classes import MISSING, ShakeContext, ShakeEmbed, TextFormat, _
+from Classes import MISSING, Format, ShakeContext, ShakeEmbed, _
 from Classes.accessoires import page
 
 if TYPE_CHECKING:
@@ -241,7 +241,7 @@ class ForwardingFinishSource(ForwardingSource):
 
     def message(self) -> dict:
         embed = ShakeEmbed(timestamp=None)
-        embed.description = TextFormat.bold(
+        embed.description = Format.bold(
             _("Please confirm your selection to exit the menu.")
         )
         return {"embed": embed}

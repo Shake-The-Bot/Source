@@ -10,9 +10,10 @@ from typing import Any, List, Literal, Optional, Self, Tuple
 
 import parsedatetime
 from dateutil.relativedelta import relativedelta
-from discord import TextChannel
+from discord import TextChannel, Thread, abc, utils
 from discord.app_commands import AppCommand, AppCommandGroup, Command, CommandTree
 from discord.ext.commands import *
+from discord.ext.commands.converter import _get_from_guilds
 
 from Classes.i18n import _
 from Classes.types import Types
@@ -27,6 +28,7 @@ __all__ = (
     "ValidArg",
     "ValidKwarg",
     "ValidExt",
+    "GuildChannelConverter",
     "CleanChannels",
     "Age",
     "Regex",
@@ -44,17 +46,6 @@ class ValidArg:
         if "=" in argument:
             return None
         return argument
-
-
-class RtfmKey(Converter):
-    """convert into a valid key"""
-
-    async def convert(cls, ctx: Context, argument: Optional[str] = None) -> List[str]:
-        return (
-            argument
-            if not argument is None and argument in Types.RtfmPage.value
-            else None
-        )
 
 
 class ValidKwarg(Converter):
@@ -385,6 +376,61 @@ class ValidExt(Converter):
                 message=str(final) + " is not a valid module to work with"
             )
         return final
+
+
+class GuildChannelConverter(IDConverter[abc.GuildChannel | Thread]):
+    """Converts to a :class:`~discord.abc.GuildChannel`.
+
+    All lookups are via the local guild. If in a DM context, then the lookup
+    is done by the global cache.
+
+    The lookup strategy is as follows (in order):
+
+    1. Lookup by ID.
+    2. Lookup by mention.
+    3. Lookup by name.
+
+    .. versionadded:: 2.3
+    """
+
+    async def convert(self, ctx: Context, argument: str) -> abc.GuildChannel | Thread:
+        return self._resolve_channel(
+            ctx, argument, "channels", abc.GuildChannel | Thread
+        )
+
+    @staticmethod
+    def _resolve_channel(ctx: Context, argument: str, attribute: str, type):
+        bot = ctx.bot
+
+        match = IDConverter._get_id_match(argument) or re.match(
+            r"<#([0-9]{15,20})>$", argument
+        )
+        result = None
+        guild = ctx.guild
+
+        if match is None:
+            # not a mention
+            if guild:
+                iterable = getattr(guild, attribute)
+                result = utils.get(iterable, name=argument)
+            if not result:
+
+                def check(c):
+                    return isinstance(c, type) and c.name == argument
+
+                result = utils.find(check, bot.get_all_channels())  # type: ignore
+        else:
+            channel_id = int(match.group(1))
+            if guild:
+                # guild.get_channel returns an explicit union instead of the base class
+                result = guild.get_channel(channel_id) or guild.get_thread(channel_id)  # type: ignore
+            if not result:
+                result = _get_from_guilds(bot, "get_channel", channel_id)
+
+        if not isinstance(result, type):
+            raise ChannelNotFound(argument)
+
+        return result
 
 
 #

@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import redirect_stderr, redirect_stdout
 from io import BytesIO, StringIO
 from textwrap import indent
@@ -5,18 +6,22 @@ from time import time
 from traceback import format_exc
 from typing import Any
 
+import aiohttp
+import discord
 from discord import HTTPException, Message
 
 from Classes import (
+    Format,
     ShakeCommand,
     ShakeEmbed,
-    TextFormat,
     async_compile,
     cleanup,
     get_syntax_error,
+    helpful,
     maybe_await,
     safe_output,
     stdoutable,
+    useful,
 )
 
 ############
@@ -33,6 +38,12 @@ class command(ShakeCommand):
         self.env: dict[str, Any] = env
         self.env.update(
             {
+                "aiohttp": aiohttp,
+                "asyncio": asyncio,
+                "discord": discord,
+                "helpful": helpful,
+                "useful": useful,
+                "Format": Format,
                 "self": self,
                 "bot": self.bot,
                 "ctx": self.ctx,
@@ -75,7 +86,7 @@ class command(ShakeCommand):
                         code = async_compile(cleaned, "<repl session>", "eval")
                     except SyntaxError as e:
                         error = cleanup(safe_output(self.ctx, get_syntax_error(e)))
-                        return await self.ctx.send(TextFormat.multicodeblock(error))
+                        return await self.ctx.send(Format.multicodeblock(error))
                     else:
                         executor = eval
 
@@ -98,7 +109,7 @@ async def func():
                 exec(code, self.env)
             except SyntaxError as e:
                 error = cleanup(safe_output(self.ctx, get_syntax_error(e)))
-                return await self.ctx.send(TextFormat.multicodeblock(error))
+                return await self.ctx.send(Format.multicodeblock(error))
 
         start = time() * 1000
         exception = result = None
@@ -125,13 +136,12 @@ async def func():
             msg = "\n".join(str(_) for _ in (result, stdouted, stderred) if bool(_))
 
         finally:
-            end = time() * 1000
-            completed = end - start
+            completed = time() * 1000 - start
 
         embed = ShakeEmbed()
         embed.title = f"Real-eval-print loop process done"
-        embed.description = TextFormat.multicodeblock(formatted, "py")
-        embed.set_footer(text=f"{completed:.3f}ms")
+        embed.description = Format.multicodeblock(formatted, "py")
+        embed.set_footer(text=f"{completed:.0f}ms")
         fields = {
             "Stdout": stdouted,
             "Stderr": stderred,
@@ -143,8 +153,9 @@ async def func():
                 embed.add_field(
                     name=name,
                     inline=False,
-                    value=TextFormat.multicodeblock(
-                        cleanup(safe_output(self.ctx, str(value))), "py"
+                    value=Format.multicodeblock(
+                        cleanup(safe_output(self.ctx, str(value).replace("`", "´"))),
+                        "py",
                     ),
                 )
 

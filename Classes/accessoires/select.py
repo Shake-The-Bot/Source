@@ -117,7 +117,7 @@ class CategoricalSelect(ui.Select):
             description = d.split("\n", 1)[0] if d else None
 
             self.add_option(
-                label=label or "<LABEL NOT FOUND>",
+                label=label or "LABEL NOT FOUND",
                 value=value,
                 description=description if self.describe and describe else None,
                 emoji=emoji,
@@ -128,18 +128,20 @@ class CategoricalSelect(ui.Select):
         assert self.categories is not None
         value = self.values[0]
         if value == "ShakeBack":
-            if isinstance(self.view.source, FrontPageSource):
+            front = self.view.front() if callable(self.view.front) else self.view.front
+            if (
+                isinstance(self.view.source, FrontPageSource)
+                or self.view.source == front
+            ):
                 if self.view.page == 0:
                     await interaction.response.defer()
                     await utils.maybe_coroutine(
                         self.view.on_stop, interaction=interaction
                     )
                 else:
-                    await self.view.rebind(
-                        self.view.front(), 0, interaction=interaction
-                    )
+                    await self.view.rebind(front, 0, interaction=interaction)
             else:
-                await self.view.rebind(self.view.front(), interaction=interaction)
+                await self.view.rebind(front, interaction=interaction)
         else:
             group = self.find.get(value, MISSING)
             items = self.categories.get(group, MISSING)

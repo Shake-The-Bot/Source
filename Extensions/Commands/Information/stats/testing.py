@@ -15,11 +15,11 @@ from psutil import Process, cpu_percent, virtual_memory
 
 from Classes import (
     MISSING,
+    Format,
     ShakeBot,
     ShakeCommand,
     ShakeContext,
     ShakeEmbed,
-    TextFormat,
     _,
     __version__,
 )
@@ -80,36 +80,36 @@ class BotSource(ItemPageSource):
         embed.title = _("Bot Info")
 
         uptime = format_dt(menu.bot.started, "R")
-        embed.add_field(name=_("Started"), value=TextFormat.blockquotes(uptime))
+        embed.add_field(name=_("Started"), value=Format.blockquotes(uptime))
         embed.add_field(
             name=_("Ping"),
-            value=TextFormat.bold(
-                TextFormat.blockquotes(round(menu.bot.latency * 1000)) + "ms"
+            value=Format.bold(
+                Format.blockquotes(round(menu.bot.latency * 1000)) + "ms"
             ),
         )
         embed.add_field(
             name=_("Lines of Code"),
-            value=TextFormat.bold(TextFormat.blockquotes(menu.bot.lines)),
+            value=Format.bold(Format.blockquotes(menu.bot.lines)),
         )
 
         embed.add_field(
             name=_("Servers"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(len(menu.bot.guilds), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(len(menu.bot.guilds), "css")
             ),
         )
 
         embed.add_field(
             name=_("Users"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(len(menu.bot.users), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(len(menu.bot.users), "css")
             ),
         )
 
         embed.add_field(
             name=_("Commands"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(len(menu.bot.commands), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(len(menu.bot.commands), "css")
             ),
         )
 
@@ -137,22 +137,22 @@ class SystemSource(ItemPageSource):
 
         embed.add_field(
             name=_("Bot"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock("Shake v " + str(__version__), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock("Shake v " + str(__version__), "css")
             ),
         )
 
         embed.add_field(
             name=_("Python version"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(python_version(), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(python_version(), "css")
             ),
         )
 
         embed.add_field(
             name=_("Library version"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock("discord.py " + discord_version, "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock("discord.py " + discord_version, "css")
             ),
         )
 
@@ -173,20 +173,18 @@ class SystemSource(ItemPageSource):
 
         embed.add_field(
             name=_("Memory Usage"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(memory_usage, "css")
-            ),
+            value=Format.multiblockquotes(Format.multicodeblock(memory_usage, "css")),
         )
         cpu = " | ".join([str(_) for _ in (cpu_usage, cpu_time)])
         embed.add_field(
             name=_("CPU Usage"),
-            value=TextFormat.multiblockquotes(TextFormat.multicodeblock(cpu, "css")),
+            value=Format.multiblockquotes(Format.multicodeblock(cpu, "css")),
         )
 
         embed.add_field(
             name=_("Plattform"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(platform.system(), "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(platform.system(), "css")
             ),
             inline=False,
         )
@@ -224,7 +222,7 @@ class CommandsSource(ListPageSource):
                 [
                     "` {}. ` {} - {}".format(
                         list(self.commands.keys()).index(command) + 1,
-                        TextFormat.bold(self.commands[command]),
+                        Format.bold(self.commands[command]),
                         command,
                     )
                     for command in first_half
@@ -237,7 +235,7 @@ class CommandsSource(ListPageSource):
                 [
                     "` {}. ` {} - {}".format(
                         list(self.commands.keys()).index(command) + 1,
-                        TextFormat.bold(self.commands[command]),
+                        Format.bold(self.commands[command]),
                         command,
                     )
                     for command in sec_half
@@ -258,44 +256,38 @@ class Front(FrontPageSource):
         embed.title = _("Shake Statistics Overview")
 
         links = [
-            TextFormat.hyperlink(
-                _("Support Server Link"), menu.bot.config.other.server
-            ),
-            TextFormat.hyperlink(
-                _("Shake Invition Link"), menu.bot.config.other.authentication
+            Format.hyperlink(_("Support Server Link"), menu.bot.config.bot.server),
+            Format.hyperlink(
+                _("Shake Invition Link"), menu.bot.config.bot.authentication
             ),
         ]
 
-        embed.description = "\n".join(
-            [TextFormat.list(TextFormat.bold(_)) for _ in links]
-        )
+        embed.description = "\n".join([Format.list(Format.bold(_)) for _ in links])
 
         if bool(owners):
             embed.add_field(
                 name=_("Developer"),
-                value=TextFormat.multiblockquotes(
-                    TextFormat.multicodeblock(" - ".join(owners), "css")
+                value=Format.multiblockquotes(
+                    Format.multicodeblock(" - ".join(owners), "css")
                 ),
                 inline=False,
             )
 
         embed.add_field(
             name=_("Bot name"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(menu.bot.user, "css")
-            ),
+            value=Format.multiblockquotes(Format.multicodeblock(menu.bot.user, "css")),
         )
         embed.add_field(
             name=_("Bot ID"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(menu.bot.user.id, "css")
+            value=Format.multiblockquotes(
+                Format.multicodeblock(menu.bot.user.id, "css")
             ),
         )
 
         created_at = format_dt(menu.bot.user.created_at, "F")
         embed.add_field(
             name=_("Bot creation"),
-            value=TextFormat.blockquotes(created_at),
+            value=Format.blockquotes(created_at),
             inline=False,
         )
 

@@ -26,7 +26,7 @@ from Classes.accessoires import (
     ListPageSource,
     SourceSource,
 )
-from Classes.types import TextFormat, Types
+from Classes.types import Format, Types
 from Classes.useful import MISSING
 from Extensions.Commands.Information.serverinfo.serverinfo import Front as SiFront
 
@@ -181,15 +181,15 @@ class RolesSource(ListPageSource):
             name = "@" + (role.name[0:15] + "[...]" if to_long else role.name)
             is_member: bool = menu.ctx.author in self.guild.members
             infos = {
-                "ID:": TextFormat.codeblock(role.id),
+                "ID:": Format.codeblock(role.id),
                 _("Created") + ":": str(format_dt(role.created_at, "f")),
                 _("Mention") + ":": role.mention if is_member else "@" + role.name,
-                _("Colour") + ":": TextFormat.codeblock(str(role.colour))
+                _("Colour") + ":": Format.codeblock(str(role.colour))
                 if not role.colour == Colour.default()
                 else _("Default"),
             }
             text = "\n".join(
-                f"{TextFormat.bold(key)} {value}" for key, value in infos.items()
+                f"{Format.bold(key)} {value}" for key, value in infos.items()
             )
             embed.add_field(name=f"` {i}. ` " + name, value=text, inline=True)
             if ii % 2 == 0:
@@ -247,7 +247,7 @@ class AssetsSource(ListPageSource):
         )
         for formattype in formattypes:
             listed.append(
-                TextFormat.hyperlink(
+                Format.hyperlink(
                     str(formattype).upper(),
                     items.replace(size=1024, format=f"{formattype}").url,
                 )
@@ -332,8 +332,8 @@ class PositionSource(ItemPageSource):
 
         embed.add_field(
             name=_("Member's position").format(member=self.member.name),
-            value=TextFormat.blockquotes(
-                TextFormat.bold(
+            value=Format.blockquotes(
+                Format.bold(
                     "#"
                     + str(
                         sum(
@@ -349,8 +349,8 @@ class PositionSource(ItemPageSource):
         )
         embed.add_field(
             name=_("Joined on"),
-            value=TextFormat.blockquotes(
-                TextFormat.bold(format_dt(self.member.joined_at, style="F"))
+            value=Format.blockquotes(
+                Format.bold(format_dt(self.member.joined_at, style="F"))
             ),
         )
 
@@ -362,7 +362,7 @@ class PositionSource(ItemPageSource):
 
         embed.add_field(
             name="\u200b",
-            value=TextFormat.multicodeblock(
+            value=Format.multicodeblock(
                 "\n".join(
                     [
                         (
@@ -417,8 +417,8 @@ class BadgesSource(ItemPageSource):
             flags.add(("subscriber", True))
 
         embed.description = "\n".join(
-            TextFormat.list(
-                TextFormat.join(
+            Format.list(
+                Format.join(
                     str(self.ctx.bot.get_emoji_local("badges", property)),
                     *list(
                         x.capitalize() for x in str(property).replace("_", " ").split()
@@ -495,11 +495,11 @@ class CountingSource(ItemPageSource):
 
         embed = ShakeEmbed(title=_("Counting stats"))
 
-        embed.description = TextFormat.bold(
+        embed.description = Format.bold(
             _("{user} scored a total of {score} valid counts (#{placement})").format(
                 user=self.user.mention,
                 score=self.score,
-                placement=TextFormat.join(
+                placement=Format.join(
                     str(self.placement), placements.get(self.placement, "")
                 ),
             )
@@ -507,12 +507,10 @@ class CountingSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total passed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.passed, self.sum))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.passed, self.sum))),
                         "css",
                     )
                 )
@@ -521,12 +519,10 @@ class CountingSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total failed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.failed, self.sum))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.failed, self.sum))),
                         "css",
                     )
                 )
@@ -535,17 +531,17 @@ class CountingSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total rate"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(str(round(self.rate, 2)) + "%", "css")
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(str(round(self.rate, 2)) + "%", "css")
                 )
             ),
         )
 
         embed.add_field(
             name=_("Total last played"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(self.latest.replace(tzinfo=timezone.utc), "F"),
                     "("
                     + format_dt(self.latest.replace(tzinfo=timezone.utc), "R")
@@ -557,9 +553,7 @@ class CountingSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total highest count"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(self.highest, "css")
-            ),
+            value=Format.multiblockquotes(Format.multicodeblock(self.highest, "css")),
         )
 
         embed.set_footer(text=_("Information can update with time"))
@@ -619,11 +613,11 @@ class OneWordSource(ItemPageSource):
         score: int = self.passed - self.failed
         rate: float = self.passed * 100 / summed
 
-        embed.description = TextFormat.bold(
+        embed.description = Format.bold(
             _("{user} scored a total of {score} valid counts (#{placement})").format(
                 user=self.user.mention,
                 score=score,
-                placement=TextFormat.join(
+                placement=Format.join(
                     str(self.placement), placements.get(self.placement, "")
                 ),
             )
@@ -631,12 +625,10 @@ class OneWordSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total passed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.passed, summed))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.passed, summed))),
                         "css",
                     )
                 )
@@ -645,12 +637,10 @@ class OneWordSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total failed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.failed, summed))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.failed, summed))),
                         "css",
                     )
                 )
@@ -659,17 +649,15 @@ class OneWordSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total rate"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(str(round(rate, 2)) + "%", "css")
-                )
+            value=Format.multiblockquotes(
+                Format.bold(Format.multicodeblock(str(round(rate, 2)) + "%", "css"))
             ),
         )
 
         embed.add_field(
             name=_("Total last played"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(self.latest.replace(tzinfo=timezone.utc), "F"),
                     "("
                     + format_dt(self.latest.replace(tzinfo=timezone.utc), "R")
@@ -738,11 +726,11 @@ class AboveMeSource(ItemPageSource):
         score: int = self.passed - self.failed
         rate: float = self.passed * 100 / summed
 
-        embed.description = TextFormat.bold(
+        embed.description = Format.bold(
             _("{user} scored a total of {score} valid phrases (#{placement})").format(
                 user=self.user.mention,
                 score=score,
-                placement=TextFormat.join(
+                placement=Format.join(
                     str(self.placement), placements.get(self.placement, "")
                 ),
             )
@@ -750,12 +738,10 @@ class AboveMeSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total passed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.passed, summed))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.passed, summed))),
                         "css",
                     )
                 )
@@ -764,12 +750,10 @@ class AboveMeSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total failed"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(
-                        TextFormat.join(
-                            "/".join(str(_) for _ in (self.failed, summed))
-                        ),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.multicodeblock(
+                        Format.join("/".join(str(_) for _ in (self.failed, summed))),
                         "css",
                     )
                 )
@@ -778,17 +762,15 @@ class AboveMeSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total rate"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.bold(
-                    TextFormat.multicodeblock(str(round(rate, 2)) + "%", "css")
-                )
+            value=Format.multiblockquotes(
+                Format.bold(Format.multicodeblock(str(round(rate, 2)) + "%", "css"))
             ),
         )
 
         embed.add_field(
             name=_("Total last played"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(self.latest.replace(tzinfo=timezone.utc), "F"),
                     "("
                     + format_dt(self.latest.replace(tzinfo=timezone.utc), "R")
@@ -800,9 +782,7 @@ class AboveMeSource(ItemPageSource):
 
         embed.add_field(
             name=_("Total longest sentance"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.multicodeblock(self.longest, "css")
-            ),
+            value=Format.multiblockquotes(Format.multicodeblock(self.longest, "css")),
             inline=False,
         )
 
@@ -839,7 +819,7 @@ class PermissionsSource(ListPageSource):
         embed = ShakeEmbed(title=_("Members server permissions"))
 
         embed.description = "\n".join(
-            TextFormat.list(
+            Format.list(
                 " ".join(
                     list(
                         _.capitalize()
@@ -890,7 +870,7 @@ class ActivitiesSource(ItemPageSource):
 
         self.item: Dict[ActivityType, Tuple[ActivityTypes, ...]]
         for type, activities in self.item.items():
-            type = TextFormat.join(
+            type = Format.join(
                 str(type.name).capitalize(),
                 "...",
             )
@@ -899,8 +879,8 @@ class ActivitiesSource(ItemPageSource):
                 if isinstance(activity, Spotify):
                     values.append(
                         _("to {name} by {author} on Spotify").format(
-                            name=TextFormat.bold(activity.title),
-                            author=TextFormat.bold(", ".join(activity.artists)),
+                            name=Format.bold(activity.title),
+                            author=Format.bold(", ".join(activity.artists)),
                         )
                     )
                 else:
@@ -909,7 +889,7 @@ class ActivitiesSource(ItemPageSource):
             embed.add_field(
                 name=type,
                 value="\n".join(
-                    TextFormat.list(TextFormat.join("...", value)) for value in values
+                    Format.list(Format.join("...", value)) for value in values
                 ),
                 inline=False,
             )
@@ -932,22 +912,22 @@ class Front(FrontPageSource):
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(user.avatar, "url", recovery))
 
-        # embed.add_field(name=_("Joined Discord"), value=TextFormat.blockquotes(format_dt(user.created_at, style="F")))
+        # embed.add_field(name=_("Joined Discord"), value=Format.blockquotes(format_dt(user.created_at, style="F")))
         embed.add_field(
             name=_("Bot"),
-            value=TextFormat.blockquotes(
+            value=Format.blockquotes(
                 (menu.bot.emojis.no, menu.bot.emojis.yes)[user.bot]
             ),
         )
         embed.add_field(
             name=_("Discord System"),
-            value=TextFormat.blockquotes(
+            value=Format.blockquotes(
                 (menu.bot.emojis.no, menu.bot.emojis.yes)[user.system]
             ),
         )
         embed.add_field(
             name=_("Member"),
-            value=TextFormat.blockquotes(
+            value=Format.blockquotes(
                 (menu.bot.emojis.no, menu.bot.emojis.yes)[bool(member)]
             ),
         )
@@ -979,16 +959,16 @@ class Front(FrontPageSource):
             )
             embed.add_field(
                 name=_("Status"),
-                value=TextFormat.blockquotes(TextFormat.bold(status)) + " " + emoji,
+                value=Format.blockquotes(Format.bold(status)) + " " + emoji,
             )
             if member:
                 embed.add_field(
                     name=_("Top Role"),
-                    value=TextFormat.blockquotes(member.top_role.mention),
+                    value=Format.blockquotes(member.top_role.mention),
                 )
                 embed.add_field(
                     name=_("Server Owner"),
-                    value=TextFormat.blockquotes(
+                    value=Format.blockquotes(
                         (menu.bot.emojis.no, menu.bot.emojis.yes)[
                             member == member.guild.owner
                         ]
@@ -997,8 +977,8 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(user.created_at, "F"),
                     "(" + format_dt(user.created_at, "R") + ")",
                 )
@@ -1017,14 +997,14 @@ class Front(FrontPageSource):
         ] or [(menu.bot.emojis.no, menu.bot.emojis.yes)[False]]
 
         more: Dict[str, str] = {
-            (_("Display name"), ":"): TextFormat.codeblock(user.global_name),
-            (_("#Tag"), ":"): TextFormat.codeblock(
+            (_("Display name"), ":"): Format.codeblock(user.global_name),
+            (_("#Tag"), ":"): Format.codeblock(
                 _("Migrated to username")
                 if user.discriminator == "0"
                 else user.discriminator
             ),
-            (_("ID"), ":"): TextFormat.codeblock(user.id),
-            (_("Shared Servers"), ":"): TextFormat.codeblock(
+            (_("ID"), ":"): Format.codeblock(user.id),
+            (_("Shared Servers"), ":"): Format.codeblock(
                 len(user.mutual_guilds) if hasattr(user, "mutual_guilds") else _("None")
             ),
             (_("Badges"), ":"): " ".join(badges),
@@ -1032,9 +1012,9 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 "\n".join(
-                    TextFormat.bold(str(k) + str(s) + " " + str(v))
+                    Format.bold(str(k) + str(s) + " " + str(v))
                     for (k, s), v in more.items()
                 )
             ),

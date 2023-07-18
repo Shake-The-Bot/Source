@@ -21,7 +21,7 @@ from discord.components import SelectOption
 from discord.ui import Button, ChannelSelect, Modal, Select, TextInput
 from discord.utils import MISSING
 
-from Classes import MISSING, ShakeCommand, ShakeEmbed, Slash, TextFormat, UserGuild, _
+from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
 from Classes.accessoires import (
     ForwardingFinishSource,
     ForwardingMenu,
@@ -121,7 +121,7 @@ class Channel(ForwardingSource):
                 "Alternatively, you have the option to have a new text channel created for it."
             ),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -171,12 +171,12 @@ class Direction(ForwardingSource):
         points = [
             _(
                 "You can start counting at the number 1 and continue {game} in ascending order."
-            ).format(game=TextFormat.bold("Counting")),
+            ).format(game=Format.bold("Counting")),
             _(
                 "Alternatively, you can specify a starting point from which {game} starts in descending order."
-            ).format(game=TextFormat.bold("Counting")),
+            ).format(game=Format.bold("Counting")),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -226,10 +226,10 @@ class Number(ForwardingSource):
         points = [
             _("You can allow text messages so that members can comment to each other."),
             _("You can deny text messages so that {game} remains clearer.").format(
-                game=TextFormat.bold("Counting")
+                game=Format.bold("Counting")
             ),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -282,9 +282,9 @@ class Math(ForwardingSource):
             ),
             _(
                 "You can deny mathematical calculations so that {game} remains clearer."
-            ).format(game=TextFormat.bold("Counting")),
+            ).format(game=Format.bold("Counting")),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings.")
@@ -340,7 +340,7 @@ class MessageType(ForwardingSource):
                 "You can also let me send all messages as a user, to create an easier overview of the actions."
             ),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -398,7 +398,7 @@ class React(ForwardingSource):
             ),
             _("You can also deny my reactions to suppress the spam of reactions."),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -506,9 +506,9 @@ class Page(ListPageSource):
         embed.description = "\n".join(
             [
                 "{} {}, {}".format(
-                    TextFormat.bold("#" + str(items.index(item) + 1)),
-                    TextFormat.codeblock(item.name),
-                    TextFormat.bold(self.from_dict[item]),
+                    Format.bold("#" + str(items.index(item) + 1)),
+                    Format.codeblock(item.name),
+                    Format.bold(self.from_dict[item]),
                 )
                 for item in items
             ]
@@ -529,13 +529,13 @@ class command(ShakeCommand):
         cmd, configure = await slash.get_sub_command(counting)
 
         embed = ShakeEmbed()
-        embed.title = TextFormat.blockquotes(_("Welcome to „Counting“"))
+        embed.title = Format.blockquotes(_("Welcome to „Counting“"))
         embed.set_author(
             name=_("Thanks for your interest about the game in this awesome place!"),
             icon_url=PartialEmoji(name="wumpus", id=1114674858706616422).url,
         )
         embed.description = "\n".join(
-            TextFormat.list(_)
+            Format.list(_)
             for _ in [
                 _(
                     "The Counting Game is a fun and interactive game where "
@@ -562,7 +562,7 @@ class command(ShakeCommand):
 
         embed.add_field(
             name=_("The rules are simple"),
-            value="\n".join(TextFormat.list(_) for _ in rules),
+            value="\n".join(Format.list(_) for _ in rules),
             inline=False,
         )
 
@@ -642,9 +642,9 @@ class command(ShakeCommand):
             for _id, score in counters
         }
         title = (
-            TextFormat.italics(_("CURRENT SERVER SCORES"))
+            Format.italics(_("CURRENT SERVER SCORES"))
             if is_guild
-            else TextFormat.italics(_("CURRENT USER SCORES"))
+            else Format.italics(_("CURRENT USER SCORES"))
         )
         source = Page(
             self.ctx,

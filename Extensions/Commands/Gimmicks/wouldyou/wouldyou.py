@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 from discord import ButtonStyle, Colour, Interaction, PartialEmoji, ui
 
-from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, TextFormat
+from Classes import Format, ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed
 
 from .utils.wouldyous import useful, useless
 
@@ -114,10 +114,10 @@ class VoteView(ui.View):
                 inline=False,
                 index=1,
                 value=value.format(
-                    procent=TextFormat.bold(procent),
-                    total=TextFormat.bold(self.total),
-                    yes=TextFormat.bold(len(self.yes)),
-                    no=TextFormat.bold(len(self.no)),
+                    procent=Format.bold(procent),
+                    total=Format.bold(self.total),
+                    yes=Format.bold(len(self.yes)),
+                    no=Format.bold(len(self.no)),
                     key=self.key,
                     emoji=emoji,
                 ),
@@ -220,11 +220,11 @@ class RatherView(ui.View):
                     if self.total != 0
                     else ("{emoji} No one would take any {key}?")
                 ).format(
-                    procent=TextFormat.bold(self.procent + "%"),
-                    users=TextFormat.bold(self.users),
+                    procent=Format.bold(self.procent + "%"),
+                    users=Format.bold(self.users),
                     emoji=emoji,
                     power=self.power,
-                    total=TextFormat.bold(self.total),
+                    total=Format.bold(self.total),
                     key=self.key,
                 ),
             )

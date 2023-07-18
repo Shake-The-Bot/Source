@@ -28,6 +28,10 @@ class Event:
         self.error: errors.CommandError = error
         self.raisable: bool = False
         self.original = getattr(self.error, "original", None) or self.error
+        if self.error.args:
+            self.message = "\n".join(self.error.args)
+        else:
+            self.message = None
         self.testing = isinstance(self.original, Testing)
 
     async def __await__(self):
@@ -50,22 +54,22 @@ class Event:
             return await self.command_not_found(self.ctx)
 
         elif isinstance(self.original, errors.BotMissingPermissions):
-            description = getattr(self.original, "message", None) or _(
+            description = self.message or _(
                 "I am missing [`{permissions}`](https://support.discord.com/hc/en-us/articles/206029707) permission(s) to run this command."
             ).format(permissions=", ".join(self.original.missing_permissions))
 
         elif isinstance(self.original, (errors.BadArgument)):
-            description = getattr(self.original, "message", None) or _(
+            description = self.message or _(
                 "You typed in some bad arguments, try {command}"
             ).format(command=self.ctx.prefix + "help")
 
         elif isinstance(self.original, arguments):
-            description = getattr(self.original, "message", None) or _(
+            description = self.message or _(
                 "You did something wrong with the arguments, try {command}"
             ).format(command=self.ctx.prefix + "help")
 
         elif isinstance(self.original, (errors.GuildNotFound,)):
-            description = getattr(self.original, "message", None) or _(
+            description = self.message or _(
                 "I cannot see the server `{argument}` because it does not exist or I am not a member of it."
             ).format(argument=self.original.argument)
 

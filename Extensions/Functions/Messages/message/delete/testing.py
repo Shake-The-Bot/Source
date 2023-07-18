@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional, Tuple
 from discord import Guild, Message, TextChannel, Webhook
 from discord.ext.commands import CooldownMapping
 
-from Classes import MISSING, ShakeBot, ShakeEmbed, TextFormat, _
+from Classes import MISSING, Format, ShakeBot, ShakeEmbed, _
 
 Literals = Literal["AboveMe", "Counting", "OneWord"]
 SystemType = Tuple[Optional[ShakeEmbed], bool, bool]
@@ -130,7 +130,7 @@ class Event:
             if bool(webhook)
             else _("The word from {user} got deleted. The word was {word}!").format(
                 user=self.message.author.mention,
-                word=TextFormat.codeblock(word),
+                word=Format.codeblock(word),
             )
         )
 
@@ -147,9 +147,7 @@ class Event:
             if bool(webhook)
             else _(
                 "The phrase from {user} got deleted. The phrase was „{phrase}“!"
-            ).format(
-                user=self.message.author.mention, phrase=TextFormat.codeblock(phrase)
-            )
+            ).format(user=self.message.author.mention, phrase=Format.codeblock(phrase))
         )
 
         await self.chat(webhook_url=webhook, last=last, content=message)
@@ -169,8 +167,8 @@ class Event:
                 "The count of {count} from {user} got deleted. The next number is {next}!"
             ).format(
                 user=self.message.author.mention,
-                count=TextFormat.codeblock(count),
-                next=TextFormat.codeblock(count + (+1 if direction is True else -1)),
+                count=Format.codeblock(count),
+                next=Format.codeblock(count + (+1 if direction is True else -1)),
             )
         )
 

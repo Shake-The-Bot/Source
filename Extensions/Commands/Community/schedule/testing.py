@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction, Message, PartialEmoji, SelectOptio
 from discord.ui import Button, Item, Select
 from discord.utils import maybe_coroutine
 
-from Classes import ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, TextFormat, _
+from Classes import Format, ShakeBot, ShakeCommand, ShakeContext, ShakeEmbed, _
 from Classes.accessoires import ForwardingMenu, ForwardingSource
 
 previousemoji = PartialEmoji(name="left", id=1033551843210579988)
@@ -97,7 +97,11 @@ class ScheduleMenu(ForwardingMenu):
     async def start(self, interaction: Interaction):
         embed = ShakeEmbed()
         embed.title = _("Repetition")
-        embed.description = TextFormat.bold(_("Decide to only get alerted once or choose the interval between the alerts!"))
+        embed.description = Format.bold(
+            _(
+                "Decide to only get alerted once or choose the interval between the alerts!"
+            )
+        )
 
         self.update(1)
         await self.message.edit(embed=embed, view=self)
@@ -133,8 +137,12 @@ class Interval(ForwardingSource):
     async def message(self) -> dict:
         embed = ShakeEmbed()
         embed.title = _("Repetition")
-        embed.description = TextFormat.bold(_("Decide to only get alerted once or choose the interval between the alerts!"))
-        return {'embed': embed}
+        embed.description = Format.bold(
+            _(
+                "Decide to only get alerted once or choose the interval between the alerts!"
+            )
+        )
+        return {"embed": embed}
 
 
 class Duration(ForwardingSource):
@@ -165,8 +173,8 @@ class Duration(ForwardingSource):
 
     async def message(self) -> dict:
         embed = ShakeEmbed()
-        embed.description = TextFormat.bold(_("Second step: Choose the duration"))
-        return {'embed': embed}
+        embed.description = Format.bold(_("Second step: Choose the duration"))
+        return {"embed": embed}
 
 
 class Type(ForwardingSource):
@@ -189,8 +197,8 @@ class Type(ForwardingSource):
 
     async def message(self) -> dict:
         embed = ShakeEmbed()
-        embed.description = TextFormat.bold(_("Third step: Choose the Message Type"))
-        return {'embed': embed}
+        embed.description = Format.bold(_("Third step: Choose the Message Type"))
+        return {"embed": embed}
 
 
 class UntilModal:
@@ -205,7 +213,11 @@ class command(ShakeCommand):
     """"""
 
     async def create(self):
-        embed = ShakeEmbed(description=TextFormat.bold(_("Before continuing you must click on the Setup button.")))
+        embed = ShakeEmbed(
+            description=Format.bold(
+                _("Before continuing you must click on the Setup button.")
+            )
+        )
         menu = ScheduleMenu(ctx=self.ctx)
         menu.setup()
         message = await menu.send(embed=embed)

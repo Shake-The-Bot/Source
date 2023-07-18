@@ -16,10 +16,10 @@ from discord.ui import Button, ChannelSelect, Select
 
 from Classes import (
     MISSING,
+    Format,
     ShakeCommand,
     ShakeContext,
     ShakeEmbed,
-    TextFormat,
     UserGuild,
     _,
 )
@@ -95,7 +95,7 @@ class Channel(ForwardingSource):
                 "Alternatively, you have the option to have a new text channel created for it."
             ),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -153,7 +153,7 @@ class React(ForwardingSource):
             ),
             _("You can also deny my reactions to suppress the spam of reactions."),
         ]
-        embed.description = "\n".join(list(TextFormat.list(_) for _ in points))
+        embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
             text=_("You can go back here in the setup to change settings..")
@@ -186,9 +186,9 @@ class Page(ListPageSource):
         embed.description = "\n".join(
             [
                 "{} {}, {}".format(
-                    TextFormat.bold("#" + str(items.index(item) + 1)),
-                    TextFormat.codeblock(item.name),
-                    TextFormat.bold(self.from_dict[item]),
+                    Format.bold("#" + str(items.index(item) + 1)),
+                    Format.codeblock(item.name),
+                    Format.bold(self.from_dict[item]),
                 )
                 for item in items
             ]
@@ -220,9 +220,9 @@ class command(ShakeCommand):
         }
 
         title = (
-            TextFormat.italics(_("CURRENT SERVER SCORES"))
+            Format.italics(_("CURRENT SERVER SCORES"))
             if is_guild
-            else TextFormat.italics(_("CURRENT USER SCORES"))
+            else Format.italics(_("CURRENT USER SCORES"))
         )
 
         source = Page(

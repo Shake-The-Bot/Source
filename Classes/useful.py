@@ -220,7 +220,7 @@ async def votecheck(ctx: Optional[Context | Interaction] = MISSING):
     user: Member = getattr(ctx, "author", getattr(ctx, "user", MISSING))
     bot: ShakeBot = getattr(ctx, "bot", getattr(ctx, "client", MISSING))
 
-    header = {"Authorization": config.other.topgg.token}
+    header = {"Authorization": config.auth.topgg.token}
     params = {"userId": user.id}
 
     async with bot.session as session:
@@ -274,49 +274,59 @@ async def extshandler(ctx: Context, extensions: list[str], method: Enum) -> None
 
         return None
 
-    return {
-        "/" + extension.replace(".", "/") + ".py": await handle(method, extension)
-        for extension in extensions
-    }
+    return {extension: await handle(method, extension) for extension in extensions}
 
 
 async def dump(
     content: str, session: ClientSession, lang: Optional[str] = "txt"
 ) -> Optional[str]:
     prefix = "Bearer "
-    async with session.post(
-        "https://hastepaste.com/api/create",
-        data=f"raw=false&text={quote(content)}",
-        headers={
-            "User-Agent": "Shake",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    ) as post:
-        if 200 <= post.status < 400:
-            text = await post.text()
-            return text
-
-    async with session.post(
-        "https://hastebin.com/documents",
-        data=content,
-        headers={"Authorization": prefix + config.other.hastebin.token},
-    ) as post:
-        if 200 <= post.status < 400:
-            text = await post.text()
-            return f"https://hastebin.com/share/{text[8:-2]}"
-
-    async with session.post("https://api.mystb.in/paste", data=content) as post:
-        if 200 <= post.status < 400:
-            return "https://mystb.in/" + (await post.json())["pastes"][0]["id"]
-
-    async with session.post(
-        "https://bin.readthedocs.fr/new", data={"code": content, "lang": lang}
-    ) as post:
-        if 200 <= post.status < 400:
-            text = post.url
-            return text
-
-    raise NoDumpingSpots("All tried hosts did not work")
+    try:
+        try:
+            async with session.post(
+                "https://hastepaste.com/api/create",
+                data=f"raw=false&text={quote(content)}",
+                headers={
+                    "User-Agent": "Shake",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            ) as post:
+                if not 200 <= post.status < 400:
+                    raise
+                text = await post.text()
+                return text
+        except:
+            try:
+                async with session.post(
+                    "https://hastebin.com/documents",
+                    data=content,
+                    headers={"Authorization": prefix + config.auth.hastebin.token},
+                ) as post:
+                    if not 200 <= post.status < 400:
+                        raise
+                    text = await post.text()
+                    return f"https://hastebin.com/share/{text[8:-2]}"
+            except:
+                try:
+                    async with session.post(
+                        "https://api.mystb.in/paste", data=content
+                    ) as post:
+                        if not 200 <= post.status < 400:
+                            raise
+                        return (
+                            "https://mystb.in/" + (await post.json())["pastes"][0]["id"]
+                        )
+                except:
+                    async with session.post(
+                        "https://bin.readthedocs.fr/new",
+                        data={"code": content, "lang": lang},
+                    ) as post:
+                        if not 200 <= post.status < 400:
+                            raise
+                        text = post.url
+                        return text
+    except:
+        raise NoDumpingSpots("All tried hosts did not work")
 
 
 def get_signature(menu: View, self: Command):
@@ -391,7 +401,15 @@ def get_signature(menu: View, self: Command):
             annotation = param.converter
 
         origin = getattr(annotation, "__origin__", None)
-        example = choice(examples.get(annotation, [f"{{{name}}}"])) or f"{{{name}}}"
+
+        example = examples.get(annotation, [f"{{{name}}}"])
+        if hasattr(self, "examples") or hasattr(self.callback, "examples"):
+            examples = getattr(
+                self, "examples", getattr(self.callback, "examples", MISSING)
+            )
+            assert examples
+            if name in examples:
+                example: Dict[str, List] = examples[name]
 
         if not greedy and origin is Union:
             none_cls = type(None)
@@ -403,9 +421,7 @@ def get_signature(menu: View, self: Command):
 
         if annotation is Attachment:
             if optional:
-                optionals[_("[{name} (upload a file)]".format(name=name))] = str(
-                    example
-                )
+                optionals[_("[{name} (upload a file)]".format(name=name))] = example
             else:
                 required[
                     (
@@ -427,22 +443,22 @@ def get_signature(menu: View, self: Command):
                     f"[{name}: {annotation.__name__}]…"
                     if greedy
                     else f"[{name}: {annotation.__name__}]"
-                ] = str(example)
+                ] = example
                 continue
             else:
-                optionals[f"[{name}: {annotation.__name__}]"] = str(example)
+                optionals[f"[{name}: {annotation.__name__}]"] = example
             continue
 
         elif param.kind == param.VAR_POSITIONAL:
             if self.require_var_positional:
                 required[f"<{name}: {annotation.__name__}…>"] = str(example)
             else:
-                optionals[f"[{name}: {annotation.__name__}…]"] = str(example)
+                optionals[f"[{name}: {annotation.__name__}…]"] = example
         elif optional:
-            optionals[f"[{name}: {annotation.__name__}]"] = str(example)
+            optionals[f"[{name}: {annotation.__name__}]"] = example
         else:
             if greedy:
-                optionals[f"[{name}: {annotation.__name__}]…"] = str(example)
+                optionals[f"[{name}: {annotation.__name__}]…"] = example
             else:
                 required[f"<{name}: {annotation.__name__}>"] = str(example)
 

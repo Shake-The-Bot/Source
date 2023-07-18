@@ -3,10 +3,19 @@
 from importlib import reload
 from typing import Optional
 
+from discord.app_commands import Choice, choices
 from discord.ext.commands import Cog, guild_only, hybrid_command
 
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
-from Classes.types import CATEGORYS
+from Classes import (
+    Categorys,
+    Format,
+    ShakeBot,
+    ShakeContext,
+    Testing,
+    _,
+    locale_doc,
+    setlocale,
+)
 
 from . import help, testing
 
@@ -25,11 +34,21 @@ class help_extension(Cog):
     @hybrid_command(name="help")
     @guild_only()
     @setlocale()
+    @choices(
+        category=[
+            Choice(name="Community", value="Community"),
+            Choice(name="Gimmicks", value="Gimmicks"),
+            Choice(name="Information", value="Information"),
+            Choice(name="Moderation", value="Moderation"),
+            Choice(name="Other", value="Other"),
+        ]
+    )
     @locale_doc
     async def help(
         self,
         ctx: ShakeContext,
-        category: Optional[CATEGORYS] = None,
+        category: Optional[str] = None,
+        *,
         command: Optional[str] = None,
     ):
         _(
@@ -55,6 +74,17 @@ class help_extension(Cog):
         do = testing if ctx.testing else help
 
         try:
+            if not category is None:
+                try:
+                    lowered = category.lower()
+                    category = Categorys[lowered].value
+                except KeyError:
+                    if command is None:
+                        command = category
+                    else:
+                        command = Format.join(category, command)
+                    category = None
+
             await do.command(
                 ctx=ctx,
                 category=category,

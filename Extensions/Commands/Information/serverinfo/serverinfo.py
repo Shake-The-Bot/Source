@@ -27,7 +27,7 @@ from Classes.accessoires import (
     ListPageSource,
     SourceSource,
 )
-from Classes.types import TextFormat, Translated, Types
+from Classes.types import Format, Translated, Types
 from Classes.useful import MISSING, human_join
 
 ############
@@ -128,15 +128,15 @@ class RolesSource(ListPageSource):
             name = "@" + (role.name[0:15] + "[...]" if to_long else role.name)
             member = menu.ctx.author in self.guild.members
             infos = {
-                "ID:": f"{TextFormat.codeblock(role.id)}",
+                "ID:": f"{Format.codeblock(role.id)}",
                 _("Created") + ":": str(format_dt(role.created_at, "f")),
                 _("Mention") + ":": role.mention if member else "@" + role.name,
-                _("Colour") + ":": TextFormat.codeblock(str(role.colour))
+                _("Colour") + ":": Format.codeblock(str(role.colour))
                 if not role.colour == Colour.default()
                 else _("Default"),
             }
             text = "\n".join(
-                f"{TextFormat.bold(key)} {value}" for key, value in infos.items()
+                f"{Format.bold(key)} {value}" for key, value in infos.items()
             )
             embed.add_field(name=f"` {i}. ` " + name, value=text, inline=True)
             if ii % 2 == 0:
@@ -185,7 +185,7 @@ class AssetsSource(ListPageSource):
         )
         for formattype in formattypes:
             listed.append(
-                TextFormat.hyperlink(
+                Format.hyperlink(
                     str(formattype).upper(),
                     items.replace(size=1024, format=f"{formattype}").url,
                 )
@@ -228,7 +228,7 @@ class EmojisSource(ListPageSource):
             i = self.items.index(emoji) + 1
             ii = items.index(emoji) + 1
             infos = {
-                "ID:": f"{TextFormat.codeblock(emoji.id)}",
+                "ID:": f"{Format.codeblock(emoji.id)}",
                 _("Created") + ":": str(format_dt(emoji.created_at, "f")),
                 _("Twitch") + "?": _("Yes") if emoji.managed else _("No"),
                 _("Added") + ":": emoji.user.mention
@@ -236,7 +236,7 @@ class EmojisSource(ListPageSource):
                 else emoji.user,
             }
             text = "\n".join(
-                f"{TextFormat.bold(key)} {value}"
+                f"{Format.bold(key)} {value}"
                 for key, value in infos.items()
                 if all([key is not None, value is not None])
             )
@@ -330,12 +330,12 @@ class ChannelsSource(ListPageSource):
         description = _(
             "{categories} Categorie-, {voices} Voice-, {stages} Stage-, {forums} Forum- and {texts} Textchannel with {threads} Threads"
         ).format(
-            categories=TextFormat.bold(categories),
-            voices=TextFormat.bold(voices),
-            stages=TextFormat.bold(stages),
-            forums=TextFormat.bold(forums),
-            texts=TextFormat.bold(texts),
-            threads=TextFormat.bold(threads),
+            categories=Format.bold(categories),
+            voices=Format.bold(voices),
+            stages=Format.bold(stages),
+            forums=Format.bold(forums),
+            texts=Format.bold(texts),
+            threads=Format.bold(threads),
         )
         embed = ShakeEmbed(title=_("Server Channels"), description=description)
 
@@ -392,77 +392,75 @@ class MembersSource(ItemPageSource):
         human = PartialEmoji(name="\N{BUST IN SILHOUETTE}")
         bot = PartialEmoji(name="\N{ROBOT FACE}")
         infos = {
-            str(member)
-            + " "
-            + _("Total Members"): TextFormat.multicodeblock(len(members)),
+            str(member) + " " + _("Total Members"): Format.multicodeblock(len(members)),
             str(human)
             + " "
-            + _("Total Humans"): TextFormat.multicodeblock(
+            + _("Total Humans"): Format.multicodeblock(
                 len([m for m in members if not m.bot])
             ),
             str(bot)
             + " "
-            + _("Total Bots"): TextFormat.multicodeblock(
+            + _("Total Bots"): Format.multicodeblock(
                 len([m for m in members if m.bot])
             ),
             str(emojis.online)
             + " "
-            + _("Total Online"): TextFormat.multicodeblock(
+            + _("Total Online"): Format.multicodeblock(
                 len([m for m in members if m.status == Status.online])
             ),
             str(emojis.online)
             + " "
-            + _("Humans Online"): TextFormat.multicodeblock(
+            + _("Humans Online"): Format.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.online])
             ),
             str(emojis.online)
             + " "
-            + _("Bots Online"): TextFormat.multicodeblock(
+            + _("Bots Online"): Format.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.online])
             ),
             str(emojis.idle)
             + " "
-            + _("Total Idle"): TextFormat.multicodeblock(
+            + _("Total Idle"): Format.multicodeblock(
                 len([m for m in members if m.status == Status.idle])
             ),
             str(emojis.idle)
             + " "
-            + _("Humans Idle"): TextFormat.multicodeblock(
+            + _("Humans Idle"): Format.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.idle])
             ),
             str(emojis.idle)
             + " "
-            + _("Bots Idle"): TextFormat.multicodeblock(
+            + _("Bots Idle"): Format.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.idle])
             ),
             str(emojis.dnd)
             + " "
-            + _("Total DND"): TextFormat.multicodeblock(
+            + _("Total DND"): Format.multicodeblock(
                 len([m for m in members if m.status == Status.dnd])
             ),
             str(emojis.dnd)
             + " "
-            + _("Humans DND"): TextFormat.multicodeblock(
+            + _("Humans DND"): Format.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.dnd])
             ),
             str(emojis.dnd)
             + " "
-            + _("Bots DND"): TextFormat.multicodeblock(
+            + _("Bots DND"): Format.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.dnd])
             ),
             str(emojis.offline)
             + " "
-            + _("Total Offline"): TextFormat.multicodeblock(
+            + _("Total Offline"): Format.multicodeblock(
                 len([m for m in members if m.status == Status.offline])
             ),
             str(emojis.offline)
             + " "
-            + _("Humans Offline"): TextFormat.multicodeblock(
+            + _("Humans Offline"): Format.multicodeblock(
                 len([m for m in members if not m.bot and m.status == Status.offline])
             ),
             str(emojis.offline)
             + " "
-            + _("Bots Offline"): TextFormat.multicodeblock(
+            + _("Bots Offline"): Format.multicodeblock(
                 len([m for m in members if m.bot and m.status == Status.offline])
             ),
         }
@@ -507,7 +505,7 @@ class BadgesSource(ItemPageSource):
                 " ".join(
                     list(_.capitalize() for _ in str(badge).replace("_", " ").split())
                 ),
-                TextFormat.bold(self.item.get(badge, 0)),
+                Format.bold(self.item.get(badge, 0)),
             )
             for badge in self.all
             if (emoji := self.bot.get_emoji_local("badges", badge))
@@ -570,7 +568,7 @@ class ActivitiesSource(ListPageSource):
                 + _("Top {index} Activity ({type})").format(
                     _="`", index="`" + str(i) + "`", type=_type
                 ),
-                value="({}): ".format(TextFormat.bold(people)) + _name,
+                value="({}): ".format(Format.bold(people)) + _name,
             )
             if (items.index((type, name)) + 1) % 2 == 0:
                 embed.add_field(name=f"\u200b", value="\u200b", inline=True)
@@ -608,8 +606,8 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("Created"),
-            value=TextFormat.multiblockquotes(
-                TextFormat.join(
+            value=Format.multiblockquotes(
+                Format.join(
                     format_dt(guild.created_at, "F"),
                     "(" + format_dt(guild.created_at, "R") + ")",
                 )
@@ -622,18 +620,18 @@ class Front(FrontPageSource):
         emojis = ctx.bot.emojis.status
         statuses = "︱".join(
             [
-                str(emojis.online) + TextFormat.codeblock(status["online"]),
-                str(emojis.idle) + TextFormat.codeblock(status["idle"]),
-                str(emojis.dnd) + TextFormat.codeblock(status["dnd"]),
-                str(emojis.offline) + TextFormat.codeblock(status["offline"]),
+                str(emojis.online) + Format.codeblock(status["online"]),
+                str(emojis.idle) + Format.codeblock(status["idle"]),
+                str(emojis.dnd) + Format.codeblock(status["dnd"]),
+                str(emojis.offline) + Format.codeblock(status["offline"]),
             ]
         )
-        members = TextFormat.underline(
-            TextFormat.bold(len(set(m for m in guild.members if not m.bot)))
+        members = Format.underline(
+            Format.bold(len(set(m for m in guild.members if not m.bot)))
         )
         embed.add_field(
             name=_("Members"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 f'{members} (+{bots} {_("Bots")})\n{statuses}'
             ),
             inline=False,
@@ -642,8 +640,8 @@ class Front(FrontPageSource):
         if guild.me:
             embed.add_field(
                 name=_("Servers's position"),
-                value=TextFormat.blockquotes(
-                    TextFormat.bold(
+                value=Format.blockquotes(
+                    Format.bold(
                         "#"
                         + str(
                             sum(
@@ -665,7 +663,7 @@ class Front(FrontPageSource):
             )
         ).most_common(1)
         result = region[0][0] if bool(region) else "en-US"
-        embed.add_field(name=_("Region"), value=TextFormat.blockquotes(result))
+        embed.add_field(name=_("Region"), value=Format.blockquotes(result))
 
         more: Dict[str, str] = {
             _("ID"): f"`{guild.id}`",
@@ -680,10 +678,9 @@ class Front(FrontPageSource):
 
         embed.add_field(
             name=_("More Information"),
-            value=TextFormat.multiblockquotes(
+            value=Format.multiblockquotes(
                 "\n".join(
-                    f"{TextFormat.bold(k)}: {TextFormat.bold(v)}"
-                    for k, v in more.items()
+                    f"{Format.bold(k)}: {Format.bold(v)}" for k, v in more.items()
                 )
             ),
             inline=False,

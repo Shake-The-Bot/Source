@@ -74,7 +74,7 @@ class Event:
                             ),
                             name=user_name,
                         ),
-                        view=Link(self.bot.config.other.topgg.vote),
+                        view=Link(self.bot.config.botlists.topgg_vote),
                     )
 
 

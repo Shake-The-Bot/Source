@@ -5,7 +5,7 @@ from typing import Optional
 
 from discord import PartialEmoji, ui
 
-from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
+from Classes import Format, ShakeCommand, ShakeEmbed, _
 
 
 ########
@@ -46,23 +46,23 @@ class command(ShakeCommand):
         )
         embed.add_field(
             name=_("Discord Gateway"),
-            value=TextFormat.blockquotes(TextFormat.bold("{}ms".format(bot))),
+            value=Format.blockquotes(Format.bold("{}ms".format(bot))),
         )
         embed.add_field(
             name=_("Discord Typing"),
-            value=TextFormat.blockquotes(TextFormat.bold("{}ms".format(typing))),
+            value=Format.blockquotes(Format.bold("{}ms".format(typing))),
         )
         embed.add_field(
             name=_("Discord Messaging"),
-            value=TextFormat.blockquotes(TextFormat.bold("{}ms".format(messaging))),
+            value=Format.blockquotes(Format.bold("{}ms".format(messaging))),
         )
         embed.add_field(
             name=_("Postgres Database"),
-            value=TextFormat.blockquotes(TextFormat.bold("{}ms".format(postgres))),
+            value=Format.blockquotes(Format.bold("{}ms".format(postgres))),
         )
         embed.add_field(
             name=_("Average Latency"),
-            value=TextFormat.blockquotes(TextFormat.bold("{}ms".format(average))),
+            value=Format.blockquotes(Format.bold("{}ms".format(average))),
         )
 
         await message.edit(embed=embed, view=Link("https://discordstatus.com/"))

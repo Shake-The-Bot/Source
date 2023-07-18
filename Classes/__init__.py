@@ -12,7 +12,6 @@ from bot import ShakeBot
 
 from .converter import *
 from .decorator import *
-from .decorator import locale_doc, setlocale
 from .exceptions import *
 from .helpful import *
 from .i18n import *

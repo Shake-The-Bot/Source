@@ -2,7 +2,7 @@
 #
 from random import random
 
-from Classes import ShakeBot, ShakeContext, TextFormat, _
+from Classes import Format, ShakeBot, ShakeContext, _
 
 
 ########
@@ -19,15 +19,19 @@ class Event:
         if not self.ctx.done:
             self.ctx.done = True
 
-        if self.ctx.command and not self.ctx.command.extras.get("owner", False):
+        if (
+            self.ctx.command
+            and not self.ctx.command.extras.get("owner", False)
+            and not await self.bot.is_owner(self.ctx.author)
+        ):
             self.bot.cache["used_commands"][self.ctx.author.id].add(self.ctx.command)
 
             if len(self.bot.cache["used_commands"][self.ctx.author.id]) >= 10:
                 if random() < (6 / 100):
-                    content = TextFormat.italics(
+                    content = Format.italics(
                         _(
                             "Enjoying using Shake? I would love it if you </vote:1056920829620924439> for me or share me to your friends!"
-                        ).format(votelink=self.bot.config.other.vote, _="*")
+                        ).format(votelink=self.bot.config.botlists.topgg_vote)
                     )
                     await self.ctx.send(content=content, forced=True)
 

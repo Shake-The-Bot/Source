@@ -5,7 +5,7 @@ from typing import List
 
 from discord import Member
 
-from Classes import ShakeBot, ShakeCommand, ShakeEmbed, _
+from Classes import Format, ShakeCommand, ShakeEmbed, _
 
 
 ########
@@ -18,10 +18,7 @@ class command(ShakeCommand):
     async def __await__(self):
         embed = ShakeEmbed.default(
             self.ctx,
-        )
-        embed.set_author(
-            name=_("Peepee length"),
-            icon_url="https://discord.com/assets/f1426431eb7c60fb8c072f90acb07ceb.svg",
+            title=_("Peepee length"),
         )
 
         def genitiv_author(u: Member):
@@ -39,7 +36,7 @@ class command(ShakeCommand):
             )
             embed.add_field(
                 name=f"> {genitiv_author(member)} pp ({len(pp)+2}cm)",
-                value=f"**8{pp}D**",
+                value=Format.multicodeblock(f"8{pp}D", "python"),
             )
         return await self.ctx.chat(embed=embed)
 

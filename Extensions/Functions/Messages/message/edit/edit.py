@@ -5,7 +5,7 @@ from typing import Any, Literal, Optional
 
 from discord import Guild, Message, TextChannel, Webhook, utils
 
-from Classes import MISSING, ShakeBot, ShakeContext, TextFormat, _, cleanup
+from Classes import MISSING, Format, ShakeBot, ShakeContext, _, cleanup
 
 ########
 #
@@ -129,7 +129,7 @@ class Event:
                 if bool(webhook)
                 else _("{user} edited their word. The word was {word}!").format(
                     user=self.message.author.mention,
-                    word=TextFormat.codeblock(word),
+                    word=Format.codeblock(word),
                 )
             )
             await self.chat(
@@ -147,7 +147,7 @@ class Event:
                 if bool(webhook)
                 else _("{user} edited their phrase. The phrase was „{phrase}“!").format(
                     user=self.message.author.mention,
-                    phrase=TextFormat.codeblock(phrase),
+                    phrase=Format.codeblock(phrase),
                 )
             )
             await self.chat(
@@ -171,10 +171,8 @@ class Event:
                     "{user} edited their count of {count}. The next number is {next}!"
                 ).format(
                     user=self.message.author.mention,
-                    count=TextFormat.codeblock(count),
-                    next=TextFormat.codeblock(
-                        count + (+1 if direction is True else -1)
-                    ),
+                    count=Format.codeblock(count),
+                    next=Format.codeblock(count + (+1 if direction is True else -1)),
                 )
             )
             await self.chat(webhook_url=webhook, content=content)

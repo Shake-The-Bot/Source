@@ -115,7 +115,7 @@ class Event:
             
             Finally, if you have any problems or want to suggest something, you can **[join my Discord server here]({invite})** and feel free to post.
             """.format(
-            point=point, invite=self.bot.config.other.server, emoji=heart
+            point=point, invite=self.bot.config.bot.server, emoji=heart
         )
         channel = introdoucing()
         if channel:

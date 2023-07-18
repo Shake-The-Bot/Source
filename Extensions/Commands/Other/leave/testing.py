@@ -2,7 +2,7 @@
 #
 from discord import Object
 
-from Classes import ShakeCommand, ShakeEmbed, TextFormat, _
+from Classes import Format, ShakeCommand, ShakeEmbed, _
 
 
 ########
@@ -19,7 +19,7 @@ class command(ShakeCommand):
         if not (
             guild := self.bot.get_guild(self.guild) if self.guild else self.ctx.guild
         ):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("{emoji} {prefix} The given server is not valid").format(
                     emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix
                 )
@@ -28,14 +28,14 @@ class command(ShakeCommand):
             try:
                 await guild.leave()
             except:
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _("{emoji} {prefix} leaving the guild raised an error").format(
                         emoji=self.bot.emojis.cross, prefix=self.bot.emojis.prefix
                     )
                 )
 
             else:
-                embed.description = TextFormat.bold(
+                embed.description = Format.bold(
                     _("{emoji} {prefix} I'll leave the given server").format(
                         emoji=self.bot.emojis.hook, prefix=self.bot.emojis.prefix
                     )

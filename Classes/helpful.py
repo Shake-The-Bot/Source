@@ -32,7 +32,7 @@ from PIL import Image, ImageDraw, ImageFont
 from Classes.i18n import Client as i18nClient
 from Classes.i18n import Locale, _
 from Classes.tomls import Config, Emojis, config, emojis
-from Classes.types import Regex, TextFormat, TracebackType
+from Classes.types import Format, Regex, TracebackType
 from Classes.useful import MISSING, source_lines
 from Extensions.Functions.Debug.error import error
 
@@ -608,7 +608,7 @@ class ShakeEmbed(Embed):
     def advertise(self, bot: ShakeBot) -> ShakeEmbed:
         self.add_field(
             name="\u200b",
-            value=TextFormat.blockquotes(bot.config.embed.footer),
+            value=Format.blockquotes(bot.config.embed.footer),
             inline=False,
         )
         return self
@@ -647,8 +647,8 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs["description"] = TextFormat.multiblockquotes(
-                TextFormat.bold(f"{bot.emojis.hook} {bot.emojis.prefix} {description}")
+            kwargs["description"] = Format.multiblockquotes(
+                Format.bold(f"{bot.emojis.hook} {bot.emojis.prefix} {description}")
             )
         instance = cls(colour=colour or 0x00CC88, **kwargs)
         instance.timestamp = None
@@ -668,8 +668,8 @@ class ShakeEmbed(Embed):
             else getattr(ctx, "client", str(MISSING))
         )
         if description := kwargs.pop("description", None):
-            kwargs["description"] = TextFormat.multiblockquotes(
-                TextFormat.bold(f"{bot.emojis.cross} {bot.emojis.prefix} {description}")
+            kwargs["description"] = Format.multiblockquotes(
+                Format.bold(f"{bot.emojis.cross} {bot.emojis.prefix} {description}")
             )
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
@@ -1192,6 +1192,8 @@ class Category(Cog):
 
     def __init__(self, bot: ShakeBot, cog: Optional[Cog] = None) -> None:
         self.bot = bot
+        if not cog is None:
+            setattr(cog, "category", self)
 
     @property
     def description(self) -> str:
@@ -1218,10 +1220,10 @@ class Reddit:
     def __init__(self):
         self.posts = set()
         self.client = asyncpraw.Reddit(
-            client_id=config.reddit.client_id,
-            client_secret=config.reddit.client_secret,
-            username=config.reddit.username,
-            password=config.reddit.password,
+            client_id=config.auth.reddit.client_id,
+            client_secret=config.auth.reddit.client_secret,
+            username=config.auth.reddit.username,
+            password=config.auth.reddit.password,
             user_agent="Shake/{}".format(__version__),
         )
 

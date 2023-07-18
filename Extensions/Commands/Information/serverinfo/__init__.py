@@ -38,7 +38,7 @@ class server_extension(Information):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def serverinfo(self, ctx: ShakeContext, guild: Optional[str] = None):
+    async def serverinfo(self, ctx: ShakeContext, *, guild: Optional[str] = None):
         _(
             """Get information about a specific server.
             

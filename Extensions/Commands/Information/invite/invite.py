@@ -20,7 +20,7 @@ class command(ShakeCommand):
             url="https://cdn.discordapp.com/attachments/946862628179939338/1060311122751782992/collerbanertomm2.png"
         )
         return await self.ctx.chat(
-            embed=embed, view=Link(link=self.bot.config.other.authentication)
+            embed=embed, view=Link(link=self.bot.config.bot.authentication)
         )
 
 

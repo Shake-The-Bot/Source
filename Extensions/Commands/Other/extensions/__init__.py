@@ -38,7 +38,7 @@ class extensions_extension(Other):
             name="\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}"
         )
 
-    @command(name="extensions", aliases=["exts", "cogs"])
+    @command(name="extensions", aliases=["extension", "exts", "ext", "cogs", "cog"])
     @extras(owner=True)
     @guild_only()
     @is_owner()

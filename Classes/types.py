@@ -8,15 +8,14 @@ from discord import Guild, PartialEmoji, Thread, User
 from discord.channel import *
 from discord.ext.commands import Bot
 
-from Extensions.extensions import CATEGORYS, Categorys
+from Extensions.extensions import Categorys
 
 __all__ = (
     "Types",
-    "TextFormat",
+    "Format",
     "Regex",
     "OneWordBatch",
     "Localization",
-    "CATEGORYS",
     "Categorys",
     "AboveMesBatch",
     "AboveMeBatch",
@@ -144,7 +143,7 @@ def string(
     return f"{front}{str(text)}{end}"
 
 
-class TextFormat(Enum):
+class Format(Enum):
     quote: Callable[[str], str] = lambda t: string(t, front="„", end="“", iterate=False)
     italics: Callable[[str], str] = lambda t: string(t, "_")
     bold: Callable[[str], str] = lambda t: string(t, "**")
@@ -189,10 +188,22 @@ class Types(Enum):
         | CategoryChannel
         | DMChannel
     )
-    RtfmPage = {
-        "stable": "https://discordpy.readthedocs.io/en/stable",
-        "latest": "https://discordpy.readthedocs.io/en/latest",
-        "python": "https://docs.python.org/3",
+    Manuals = {
+        "stable": {
+            "name": "Discord.py",
+            "url": "https://discordpy.readthedocs.io/en/stable",
+            "icon": "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
+        },
+        "latest": {
+            "name": "Discord.py (latest)",
+            "url": "https://discordpy.readthedocs.io/en/latest",
+            "icon": "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
+        },
+        "python": {
+            "url": "https://docs.python.org/3",
+            "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/240px-Python-logo-notext.svg.png",
+        },
+        "peps": {"name": "Python peps", "url": "https://peps.python.org/"},
     }
 
 

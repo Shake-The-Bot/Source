@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 from discord import Guild, Member, Message, TextChannel
 from discord.ext.commands import BucketType, CooldownMapping
 
-from Classes import MISSING, AboveMeBatch, ShakeBot, ShakeEmbed, TextFormat, _, cleanup
+from Classes import MISSING, AboveMeBatch, Format, ShakeBot, ShakeEmbed, _, cleanup
 
 SystemType = Tuple[Optional[ShakeEmbed], bool, bool]
 ############
@@ -58,7 +58,7 @@ class Event:
             if self.channel.id in records:
                 if (not self.message.content) or bool(self.message.attachments):
                     embed = ShakeEmbed(timestamp=None)
-                    embed.description = TextFormat.bold(
+                    embed.description = Format.bold(
                         _(
                             "You should not write anything other than messages with text content!"
                         )
@@ -191,7 +191,7 @@ class AboveMe:
         user_id: int = record["user_id"]
         message_id: int = record["message_id"]
         count: int = record.get("count", 0)
-        used: str = record["used"]
+        used: datetime = record["used"]
         react: bool = record.get("react", True)
         phrases: List[str] = record.get("phrases", []) or []
 
@@ -200,12 +200,12 @@ class AboveMe:
         passed = False
 
         if not await self.member_check(user_id, member, testing):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _("""You are not allowed show off multiple numbers in a row.""")
             )
 
         elif not await self.syntax_check(content):
-            embed.description = TextFormat.bold(
+            embed.description = Format.bold(
                 _(
                     "Your message should start with „{trigger}“ and should make sense."
                 ).format(
@@ -214,9 +214,7 @@ class AboveMe:
             )
 
         elif not await self.phrase_check(content, phrases):
-            embed.description = TextFormat.bold(
-                _("Your message should be something new")
-            )
+            embed.description = Format.bold(_("Your message should be something new"))
 
         else:
             passed = True
@@ -237,7 +235,7 @@ class AboveMe:
 
         self.cache[self.channel.id]: AboveMeBatch = {
             "used": str(
-                time.replace(tzinfo=timezone.utc).isoformat() if passed else used
+                (time if passed else used).replace(tzinfo=timezone.utc).isoformat()
             ),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,

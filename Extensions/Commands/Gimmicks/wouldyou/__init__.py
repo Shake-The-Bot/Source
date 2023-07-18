@@ -24,7 +24,7 @@ class wouldyou_extension(Gimmicks):
 
     @property
     def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name="scale", id=1099618823348437032)
+        return PartialEmoji(name="⚖ ️")
 
     @hybrid_command(name="wouldyou")
     @extras(beta=True)
@@ -43,7 +43,7 @@ class wouldyou_extension(Gimmicks):
             
             The command presents the user with a random selection of two concepts, items, or the like, both of which are labeled as either useful or useless. 
             Users in the chat can then choose which of the two counterparts they think is better or more useful before the overall trend of opinions is displayed after the timeout expires. 
-            This command can serve as a fun way to expand users' judgment and preferences.
+            This command can serve as a fun way to expand users judgment and preferences.
 
             Parameters
             -----------

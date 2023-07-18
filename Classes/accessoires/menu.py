@@ -11,7 +11,7 @@ from Classes.accessoires.page import ShakePages
 from Classes.accessoires.select import CategoricalSelect
 from Classes.accessoires.source import FrontPageSource, ItemPageSource, ListPageSource
 from Classes.i18n import _
-from Classes.types import TextFormat
+from Classes.types import Format
 
 __all__ = ("ListMenu", "CategoricalMenu", "LinkingSource", "ForwardingMenu")
 
@@ -166,14 +166,13 @@ class CategoricalMenu(ShakePages):
         self.fill()
 
     async def on_timeout(self, interaction: Optional[Interaction] = None) -> None:
-        await self.rebind(self.front(timeout=True), interaction=interaction)
+        front = self.front(timeout=True) if callable(self.front) else self.front
+        await self.rebind(front, interaction=interaction)
         for item in self._children:
             if isinstance(item, ui.Button) or isinstance(item, ui.Select):
                 item.disabled = True
                 item.style = ButtonStyle.grey
-        await self.rebind(
-            self.front(timeout=True), interaction=interaction, update=False
-        )
+        await self.rebind(front, interaction=interaction, update=False)
 
 
 class ForwardingMenu(ui.View):
@@ -217,7 +216,7 @@ class ForwardingMenu(ui.View):
         self.update()
         embed = Embed(
             colour=self.bot.config.embed.colour,
-            description=TextFormat.bold(
+            description=Format.bold(
                 _("Before continuing you must click on the Setup button.")
             ),
         )
@@ -259,9 +258,7 @@ class ForwardingMenu(ui.View):
         self.update(-list(self.items.keys()).index(self.page))
 
         embed = self.message.embeds[0]
-        embed.description = TextFormat.bold(
-            _("The ShakeMenu was canceled due inactivity")
-        )
+        embed.description = Format.bold(_("The ShakeMenu was canceled due inactivity"))
         await self.message.edit(embed=embed, view=self)
         self.stop()
 
@@ -291,7 +288,7 @@ class ForwardingMenu(ui.View):
         self.update()
 
         embed = self.message.embeds[0]
-        embed.description = TextFormat.bold(_("The ShakeMenu was canceled"))
+        embed.description = Format.bold(_("The ShakeMenu was canceled"))
         await self.message.edit(embed=embed, view=self)
 
         self.stop()

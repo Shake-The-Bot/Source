@@ -84,9 +84,9 @@ extensions = [
 class Categorys(Enum):
     community = "Community"
     gimmicks = "Gimmicks"
+    gimmick = "Gimmicks"
     information = "Information"
+    informations = "Information"
     moderation = "Moderation"
     other = "Other"
-
-
-CATEGORYS = Literal["Community", "Gimmicks", "Information", "Moderation", "Other"]
+    others = "Other"

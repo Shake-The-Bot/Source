@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ast import AsyncFunctionDef, Call, ClassDef, Expr, Name, Str, parse
+from enum import Enum, EnumType
 from functools import wraps
 from inspect import cleandoc, getsource
 from typing import (
@@ -26,7 +27,15 @@ from Classes.useful import votecheck
 if TYPE_CHECKING:
     from Classes.helpful import ShakeBot, ShakeContext
 
-__all__ = ("event_check", "has_voted", "extras", "has_permissions")
+__all__ = (
+    "event_check",
+    "has_voted",
+    "extras",
+    "has_permissions",
+    "locale_doc",
+    "setlocale",
+    "examples",
+)
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -130,6 +139,38 @@ def has_voted() -> Check[Any]:
     return check(predicate)
 
 
+def examples(
+    func: Optional[T] = None, **parameters: Union[list, Enum, Any]
+) -> Callable[[T], T]:
+    def decorator(inner: T) -> T:
+        # if isinstance(inner, Command):
+        #     pass
+        # else:
+        #     try:
+        #         pass
+        #     except AttributeError:
+        #         pass
+
+        inner.examples = dict()
+        for key, examples in parameters.items():
+            if isinstance(examples, (EnumType, Enum)):
+                examples = list(e.name for e in examples)
+            elif isinstance(examples, list):
+                examples = examples
+            elif isinstance(examples, str):
+                examples = [str]
+            else:
+                print("key", key, "examples", examples, type(examples))
+
+            inner.examples[key] = examples
+        return inner
+
+    if func is None:
+        return decorator
+    else:
+        return decorator(func)
+
+
 def extras(
     func: Optional[T] = None, **kwargs: Dict[Any, bool]
 ) -> Callable[[Optional[T], bool], T]:
@@ -149,20 +190,20 @@ def extras(
             await ctx.send('I am a beta command!')
     """
 
-    def inner(f: T) -> T:
-        if isinstance(f, Command):
-            f.extras.update(kwargs)
+    def decorator(inner: T) -> T:
+        if isinstance(inner, Command):
+            inner.extras.update(kwargs)
         else:
             try:
-                f.extras.update(kwargs)
+                inner.extras.update(kwargs)
             except AttributeError:
-                f.extras = kwargs
-        return f
+                inner.extras = kwargs
+        return inner
 
     if func is None:
-        return inner
+        return decorator
     else:
-        return inner(func)
+        return decorator(func)
 
 
 def setlocale(guild: Optional[bool] = False) -> Check[Any]:

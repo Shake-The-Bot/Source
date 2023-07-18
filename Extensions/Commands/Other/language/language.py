@@ -4,15 +4,7 @@ from typing import List
 
 from discord import PartialEmoji
 
-from Classes import (
-    MISSING,
-    Locale,
-    Localization,
-    ShakeCommand,
-    ShakeEmbed,
-    TextFormat,
-    _,
-)
+from Classes import MISSING, Format, Locale, Localization, ShakeCommand, ShakeEmbed, _
 from Classes.accessoires import ListMenu, ListPageSource
 
 ########
@@ -58,18 +50,18 @@ class command(ShakeCommand):
                 ctx=self.ctx,
                 items=list(locales.values()),
                 title=_("Available Translations"),
-                description=TextFormat.join(
+                description=Format.join(
                     _(
                         "There are currently translations for `{languages}` languages\nand your current language is {current}.".format(
-                            languages=TextFormat.codeblock(len(locales.keys())),
-                            current=TextFormat.bold(current.language),
+                            languages=Format.codeblock(len(locales.keys())),
+                            current=Format.bold(current.language),
                         )
                     ),
-                    TextFormat.italics(
+                    Format.italics(
                         _(
                             "Don't you see your language or is it incomplete?\nThen come help us out on [Crowdin]({link})!"
                         ).format(
-                            link=self.bot.config.other.crowdin.url,
+                            link=self.bot.config.auth.crowdin.url,
                         )
                     ),
                     splitter="\n\n",
@@ -83,10 +75,10 @@ class command(ShakeCommand):
         await self.ctx.defer()
         locale = self.get_locale_by_name(name, locales)
         if locale is None:
-            description = TextFormat.join(
+            description = Format.join(
                 _("Your given language is not valid."),
                 _("Use {command} to get a list of all available languages").format(
-                    command=TextFormat.codeblock("/language list")
+                    command=Format.codeblock("/language list")
                 ),
                 splitter="\n",
             )
@@ -100,7 +92,7 @@ class command(ShakeCommand):
             )
             embed.description += "\n" + _(
                 "Try to contribute [here]({link}) if you want to!"
-            ).format(link=self.bot.config.other.crowdin.url)
+            ).format(link=self.bot.config.auth.crowdin.url)
             locale = None
         else:
             if guild:
@@ -111,7 +103,7 @@ class command(ShakeCommand):
             embed = ShakeEmbed.to_success(
                 self.ctx,
                 description=_("{name} was successfully set as language!").format(
-                    name=TextFormat.quote(
+                    name=Format.quote(
                         Localization.available[locale]["language"].capitalize()
                     )
                 ),
@@ -122,12 +114,12 @@ class command(ShakeCommand):
 
 class PageSource(ListPageSource):
     def add_field(self, embed, item: Locale):
-        index = TextFormat.codeblock(f" {self.items.index(item) + 1}. ")
+        index = Format.codeblock(f" {self.items.index(item) + 1}. ")
         split = "\N{EM DASH}"
 
         specified = item.specific
         if specified:
-            language = TextFormat.codeblock(specified.capitalize())
+            language = Format.codeblock(specified.capitalize())
         else:
             language = item.language.capitalize()
 
@@ -138,8 +130,8 @@ class PageSource(ListPageSource):
 
         embed.add_field(
             inline=False,
-            name=f"{index} {item.flag} {split} {TextFormat.codeblock(language)} {split} {item.simplified} {tick}",
-            value=TextFormat.multicodeblock(
+            name=f"{index} {item.flag} {split} {Format.codeblock(language)} {split} {item.simplified} {tick}",
+            value=Format.multicodeblock(
                 "/language set {locale}".format(locale=item.locale)
             ),
         )

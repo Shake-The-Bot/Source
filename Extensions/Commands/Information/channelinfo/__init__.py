@@ -3,11 +3,21 @@
 from importlib import reload
 from typing import Optional
 
-from discord import PartialEmoji, TextChannel
+from discord import Interaction, Message, PartialEmoji
+from discord.abc import GuildChannel
+from discord.app_commands import ContextMenu
 from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command
-from discord.ext.commands.converter import GuildChannelConverter
 
-from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+from Classes import (
+    GuildChannelConverter,
+    ShakeBot,
+    ShakeContext,
+    Testing,
+    _,
+    extras,
+    locale_doc,
+    setlocale,
+)
 
 from ..information import Information
 from . import channelinfo, testing
@@ -23,6 +33,11 @@ class channel_extension(Information):
     def __init__(self, bot) -> None:
         super().__init__(bot=bot)
         self.load()
+        self.menu = ContextMenu(
+            name="shake channelinfo",
+            callback=self.context_menu,
+        )
+        self.bot.tree.add_command(self.menu)
 
     def load(self) -> None:
         try:
@@ -34,12 +49,20 @@ class channel_extension(Information):
     def display_emoji(self) -> PartialEmoji:
         return PartialEmoji(name="ℹ️")
 
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def context_menu(self, interaction: Interaction, message: Message) -> None:
+        ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
+        channel_id: GuildChannel = message.channel.id or interaction.channel_id
+        await self.ci(ctx, str(channel_id))
+
     @hybrid_command(name="channelinfo", aliases=["ci"])
     @guild_only()
     @setlocale()
     @extras(beta=True)
     @locale_doc
-    async def channelinfo(self, ctx: ShakeContext, channel: Optional[str] = None):
+    async def channelinfo(self, ctx: ShakeContext, *, channel: Optional[str] = None):
         _(
             """Get information about a specific channel.
             
@@ -50,7 +73,9 @@ class channel_extension(Information):
             channel: Optional[str]
                 the channel mention, name or id to get information about"""
         )
+        await self.ci(ctx, channel)
 
+    async def ci(self, ctx: ShakeContext, channel: Optional[str] = None):
         if ctx.testing:
             try:
                 reload(testing)

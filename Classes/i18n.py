@@ -86,6 +86,8 @@ class Client:
 
     @staticmethod
     def use(*args: Any, **kwargs: Any) -> str:
+        if not bool(args) and not bool(kwargs):
+            return None
         if not translations:
             return gettext(*args, **kwargs)
         locale = current.get()

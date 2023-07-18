@@ -6,7 +6,7 @@ from inspect import cleandoc
 from itertools import chain
 from itertools import combinations as cmb
 from itertools import groupby
-from random import sample
+from random import choice, sample
 from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional, Union
 
 from discord import (
@@ -20,24 +20,17 @@ from discord import (
     ui,
 )
 from discord.ext import commands, menus
-from discord.ext.commands import (
-    Cog,
-    Command,
-    CommandError,
-    Group,
-    HybridCommand,
-    errors,
-)
+from discord.ext.commands import Cog, Command, CommandError, Group, errors
 from discord.utils import format_dt, maybe_coroutine
 
 from Classes import (
     MISSING,
     Category,
+    Format,
     ShakeBot,
     ShakeCommand,
     ShakeContext,
     ShakeEmbed,
-    TextFormat,
     _,
     get_signature,
 )
@@ -49,7 +42,7 @@ from Classes.accessoires import (
     ListPageSource,
     ShakePages,
 )
-from Classes.types import CATEGORYS, Categorys
+from Classes.types import Categorys
 
 ########
 #
@@ -82,12 +75,16 @@ class command(ShakeCommand):
     def __init__(self, ctx, command: Optional[str], category: Optional[Category]):
         super().__init__(ctx)
         self.command: str = command
-        self.category: Optional[CATEGORYS] = category
+        self.category: Optional[Categorys] = category
 
     async def __await__(self: command):
         if self.category is not None:
-            name: Categorys = Categorys[self.category.lower()].value
-            self.category = self.ctx.bot.get_cog(name)
+            try:
+                name = Categorys[self.category.lower()].value
+            except KeyError:
+                self.category = None
+            else:
+                self.category = self.ctx.bot.get_cog(name)
 
         cat_or_cmd = self.command or self.category
 
@@ -110,13 +107,11 @@ class command(ShakeCommand):
                 found = cmd.all_commands.get(key)
 
             except AttributeError:
-                kwargs = help.subcommand_not_found(cmd)
-                return await self.ctx.chat(**kwargs)
+                return help.subcommand_not_found(cmd)
 
             else:
                 if found is None:
-                    kwargs = help.subcommand_not_found(cmd)
-                    return await self.ctx.chat(**kwargs)
+                    return help.subcommand_not_found(cmd)
                 cmd = found
 
         if isinstance(cmd, Group):
@@ -138,7 +133,7 @@ class HelpPaginatedCommand:
             "command_error",
             self.ctx,
             errors.BadArgument(
-                _('Unknown command `{argument}`. Use "/help" for help.').format(
+                message=_('Unknown command `{argument}`. Use "/help" for help.').format(
                     argument=string
                 )
             ),
@@ -176,19 +171,15 @@ class HelpPaginatedCommand:
     def subcommand_not_found(
         self, command: Command[Any, ..., Any], string: str, /
     ) -> ShakeEmbed:
-        embed = ShakeEmbed.default(
+        self.ctx.bot.dispatch(
+            "command_error",
             self.ctx,
+            errors.BadArgument(
+                message=_(
+                    'Unknown subcommand `{argument}`. Use "/help" for help.'
+                ).format(argument=string)
+            ),
         )
-        embed.set_author(
-            name=f'Command "{command.qualified_name}" hat keine subcommands.',
-            icon_url=self.ctx.bot.emojis.cross.url,
-        )
-        if isinstance(command, Group) and len(command.commands) > 0:
-            embed.set_author(
-                name=f'Command "{command.qualified_name}" hat keinen subcommand mit dem namen {string}',
-                icon_url=self.ctx.bot.emojis.cross.url,
-            )
-        return {"embed": embed}
 
     async def commands(
         self,
@@ -326,11 +317,19 @@ class HelpSelect(CategoricalSelect):
                         interaction=interaction,
                     )
                 elif isinstance(self.view.source, CategorySource):
-                    await self.view.rebind(self.view.front(), interaction=interaction)
-                else:
-                    await self.view.rebind(
-                        self.view.front(), 0, interaction=interaction
+                    front = (
+                        self.view.front()
+                        if callable(self.view.front)
+                        else self.view.front
                     )
+                    await self.view.rebind(front, interaction=interaction)
+                else:
+                    front = (
+                        self.view.front()
+                        if callable(self.view.front)
+                        else self.view.front
+                    )
+                    await self.view.rebind(front, 0, interaction=interaction)
         else:
             group = self.find.get(value, MISSING)
             items = self.categories.get(group, MISSING)
@@ -565,7 +564,7 @@ class CategorySource(ListPageSource):
         embed.add_field(
             name=signature,
             inline=False,
-            value=TextFormat.blockquotes(help).capitalize() + badges,
+            value=Format.blockquotes(help).capitalize() + badges,
         )
         return
 
@@ -608,27 +607,46 @@ class CommandSource(ItemPageSource):
         self.page: Command = page
         return self
 
-    def format_page(self, menu: ShakePages, *args: Any, **kwargs: Any):
-        self.cog: Cog = self.item.cog
-        self.category = menu.bot.get_cog(self.cog.__class__.__bases__[0].__name__)
+    @property
+    def cog(self) -> Cog:
+        return self.item.cog
 
+    @property
+    def category(self) -> Category:
+        if hasattr(self.cog, "category"):
+            category: Category = self.cog.category
+        else:
+            category: Category = self.bot.get_cog(
+                self.cog.__class__.__bases__[0].__name__
+            )
+        return category
+
+    def format_page(self, menu: ShakePages, *args: Any, **kwargs: Any):
         description = (
             self.item.callback.__doc__
             or self.item.help
             or _("No more detailed description given.")
+        ).replace("`", "´")
+
+        title = " » ".join(
+            _
+            for _ in (
+                self.category.label,
+                *(_.name.capitalize() for _ in self.item.parents),
+                self.item.name.capitalize(),
+            )
+            if _
         )
 
         embed = ShakeEmbed.default(
             menu.ctx,
-            title=_("{category} » {command} Command").format(
-                category=self.category.label,
-                command=self.item.name.capitalize(),
-            ),
-            description=TextFormat.multicodeblock(
-                cleandoc(_(description).format(prefix=menu.ctx.prefix)), "py"
-            ),
+            title=title,
+            description=Format.multicodeblock(cleandoc(_(description)), "py"),
         )
-        embed.set_author(name=_("More detailed command description"))
+
+        embed.set_author(
+            name=_("More detailed command description"),
+        )
         required, optionals = get_signature(menu, self.item)
         if bool(required) or bool(optionals):
             count = 3 if len(optionals.items()) > 3 else len(optionals.items()) + 1
@@ -641,42 +659,41 @@ class CommandSource(ItemPageSource):
                 [combi for combi in combinations], count
             )  # if not any(not bool(x) for x in combi)
 
-            usgs = [[k for k in combina] for combina in fetched]
-            exmpls = [[optionals[k] for k in combina] for combina in fetched]
-
-            usage = [
-                f'```\n{_("Usage of the {command} command").format(command=self.item.name.capitalize())}\n```'
-            ]
-            for usg in usgs:
-                usage.append(
-                    "\n> "
-                    + "\n ".join(
-                        [
-                            f"**/{self.item.name}** "
-                            + " ".join(required.keys())
-                            + " "
-                            + " ".join(usg)
-                        ]
-                    )
+            def add_help(title, required, n):
+                embed.add_field(
+                    name="\u200b",
+                    inline=False,
+                    value=title
+                    + "".join(
+                        Format.join(
+                            "\n>",
+                            Format.bold(f"/{self.item.name}"),
+                            " ".join(required),
+                            " ".join(map(str, _)),
+                        )
+                        for _ in n
+                    ),
                 )
-            embed.add_field(name="\u200b", inline=False, value="".join(usage))
 
-            examples = [
-                f'```\n{_("Examples of the {command} command").format(command=self.item.name.capitalize())}\n```'
-            ]
-            for exmpl in exmpls:
-                examples.append(
-                    "\n> "
-                    + "\n ".join(
-                        [
-                            f"**/{self.item.name}** "
-                            + " ".join(required.values())
-                            + " "
-                            + " ".join(exmpl)
-                        ]
+            add_help(
+                Format.multicodeblock(
+                    _("Usage of the {command} command").format(
+                        command=self.item.name.capitalize()
                     )
-                )
-            embed.add_field(name="\u200b", inline=False, value="".join(examples))
+                ),
+                required.keys(),
+                [[k for k in combina] for combina in fetched],
+            )
+
+            add_help(
+                Format.multicodeblock(
+                    _("Examples of the {command} command").format(
+                        command=self.item.name.capitalize()
+                    )
+                ),
+                required.values(),
+                [[choice(optionals[k]) for k in combina] for combina in fetched],
+            )
 
         bot = self.item.extras.get("permissions", {}).get("bot", [])
         user = self.item.extras.get("permissions", {}).get("user", [])
@@ -685,7 +702,7 @@ class CommandSource(ItemPageSource):
             embed.add_field(
                 name="\u200b",
                 inline=False,
-                value=TextFormat.multicodeblock(
+                value=Format.multicodeblock(
                     "{}\n{}\n{}\n{}".format(
                         _("Necessary user permissions"),
                         ", ".join([str(_) for _ in user]),
@@ -715,7 +732,7 @@ class GroupPage(ListPageSource):
             group=group,
             items=list(group.commands),
             description="{}".format(
-                _(group.help).format(prefix=ctx.prefix)
+                _(group.help)
                 if group.help
                 else _("No more detailed description given.")
             ),
@@ -849,7 +866,7 @@ class Front(FrontPageSource):
                 inline=False,
                 value=_(
                     "You can get more help if you join the official server at\n{support_server}"
-                ).format(support_server=menu.ctx.bot.config.other.server),
+                ).format(support_server=menu.ctx.bot.config.bot.server),
             )
         file = None
         if self.index == 0:
@@ -862,7 +879,7 @@ class Front(FrontPageSource):
                 value=_(
                     "I am Shake, a bot that is partially intended for the public.\nWritten with only {lines} lines of code. Please be nice"
                 ).format(
-                    lines=TextFormat.codeblock("{0:,}".format(menu.ctx.bot.lines)),
+                    lines=Format.codeblock("{0:,}".format(menu.ctx.bot.lines)),
                 ),
             )
         elif self.index == 1:
