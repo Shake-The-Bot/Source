@@ -6,15 +6,15 @@ from typing import Literal, Optional
 from discord import Object, PartialEmoji
 from discord.ext.commands import Greedy, command, guild_only, is_owner
 
-from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
+from Classes import ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..other import Other
+from ..developing import Developing
 from . import sync, testing
 
 
 ########
 #
-class sync_extension(Other):
+class sync_extension(Developing):
     def __init__(self, bot) -> None:
         super().__init__(bot=bot)
         try:

@@ -10,13 +10,13 @@ from discord.ext.commands import command, is_owner
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from Classes.decorator import extras
 
-from ..other import Other
+from ..developing import Developing
 from . import repl, testing
 
 
 ########
 #
-class repl_extension(Other):
+class repl_extension(Developing):
     def __init__(self, bot: ShakeBot):
         super().__init__(bot=bot)
         self.last: Any = None

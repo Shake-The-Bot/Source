@@ -18,13 +18,13 @@ from Classes import (
 )
 from Classes.types import ExtensionMethods
 
-from ..other import Other
+from ..developing import Developing
 from . import extensions, testing
 
 
 ########
 #
-class extensions_extension(Other):
+class extensions_extension(Developing):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:

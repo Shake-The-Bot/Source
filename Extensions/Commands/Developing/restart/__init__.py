@@ -7,50 +7,45 @@ from discord.ext.commands import command, guild_only, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..other import Other
-from . import bash, testing
+from ..developing import Developing
+from . import restart, testing
 
 
 ########
 #
-class bash_extension(Other):
+class restart_extension(Developing):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:
-            reload(bash)
+            reload(restart)
         except:
             pass
 
     @property
     def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name="\N{DESKTOP COMPUTER}")
+        return PartialEmoji(
+            name="\N{ANTICLOCKWISE DOWNWARDS AND UPWARDS OPEN CIRCLE ARROWS}"
+        )
 
-    @command(name="bash")
+    @command(name="restart")
     @extras(owner=True)
     @guild_only()
     @is_owner()
     @setlocale()
     @locale_doc
-    async def bash(self, ctx: ShakeContext, *, command: str) -> None:
-        _(
-            """Run shell commands.
-
-            Parameters
-            -----------
-            command: str
-                the command"""
-        )
-
+    async def restart(self, ctx: ShakeContext):
+        _("""Stops and starts the bot like in a regular Restart""")
         if ctx.testing:
             try:
                 reload(testing)
             except Exception as e:
                 await self.bot.testing_error(module=testing, error=e)
                 ctx.testing = False
-        do = testing if ctx.testing else bash
+
+        do = testing if ctx.testing else restart
 
         try:
-            await do.command(ctx=ctx, command=command).__await__()
+            await do.command(ctx=ctx).__await__()
 
         except:
             if ctx.testing:
@@ -59,7 +54,7 @@ class bash_extension(Other):
 
 
 async def setup(bot: ShakeBot):
-    await bot.add_cog(bash_extension(bot))
+    await bot.add_cog(restart_extension(bot))
 
 
 #

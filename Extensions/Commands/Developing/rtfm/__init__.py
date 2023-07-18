@@ -13,7 +13,6 @@ from discord.app_commands import Choice, choices
 from discord.ext.commands import Greedy, guild_only, hybrid_group
 
 from Classes import (
-    Format,
     ShakeBot,
     ShakeContext,
     Testing,
@@ -24,7 +23,7 @@ from Classes import (
     setlocale,
 )
 
-from ..information import Information
+from ..developing import Developing
 from . import rtfm, testing
 
 ########
@@ -113,7 +112,7 @@ class Keys(Enum):
     peps = "peps"
 
 
-class rtfm_extension(Information):
+class rtfm_extension(Developing):
     """
     rtfm_cog
     """
