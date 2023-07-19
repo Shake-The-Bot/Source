@@ -472,134 +472,6 @@ class HelpMenu(CategoricalMenu):
         self.add_item(self.go_to_info_page)
 
 
-class CategorySource(ListPageSource):
-    group: Category
-
-    def __init__(
-        self,
-        ctx: ShakeContext,
-        group: Category,
-        items: list[commands.Command],
-        paginating: bool = True,
-        per_page: int = 6,
-        **kwargs: Any,
-    ):
-        title: str = getattr(group, "title", MISSING)
-        assert not title is MISSING
-
-        super().__init__(
-            ctx=ctx,
-            group=group,
-            items=items,
-            description=group.description,
-            paginating=paginating,
-            per_page=per_page,
-            title=title,
-        )
-        self.suffixes = set()
-
-    def get_page_from_item(self, item: Command) -> int:
-        index = self.items.index(item)
-
-        pages, left_over = divmod(len(self.entries), self.per_page)
-        if left_over:
-            pages += 1
-
-        for page in range(pages):
-            visual = page + 1
-            indexes = range(page * self.per_page, visual * self.per_page)
-            if index in indexes:
-                return page
-
-    def signature(self, command: commands.Command):
-        signature = []
-        count = (
-            28
-            + command.signature.count("…")
-            + command.signature.count(" ")
-            + command.signature.count("...")
-        )
-        for argument in (
-            getattr(command, "signature", "").replace("...", "…").split(" ")
-        ):
-            if not bool(argument):
-                continue
-            if len("".join(signature) + argument) + 1 > count:
-                signature.append("[…]")
-                break
-            signature.append("{}".format(argument))
-        return signature
-
-    def add_field(self, embed: ShakeEmbed, item: Command, config: configurations):
-        suffix: dict[str, dict] = {
-            extra: config[extra]
-            for extra, key in getattr(item.callback, "extras", {}).items()
-            if key is True and extra in set(config.keys())
-        }
-        if isinstance(item, Group):
-            suffix["group"] = config["group"]
-
-        self.suffixes.update(set(suffix.keys()))
-        arguments = (
-            (" `" + " ".join(sig) + "`") if bool(sig := self.signature(item)) else ""
-        )
-        badges = (
-            (
-                " **➜** "
-                + " ".join(
-                    [str(configuration["suffix"]) for configuration in suffix.values()]
-                )
-            )
-            if bool(suffix)
-            else ""
-        )
-        emoji = getattr(item.cog, "display_emoji", "👀")
-
-        signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
-        help = (
-            _(item.callback.__doc__).split("\n", 1)[0]
-            if item.callback.__doc__
-            else _("No help given... (You should report this)")
-        )
-        embed.add_field(
-            name=signature,
-            inline=False,
-            value=Format.blockquotes(help).capitalize() + badges,
-        )
-        return
-
-    async def format_page(
-        self, menu: ShakePages | ui.View, items: list[commands.Command]
-    ):
-        config = configurations(self.bot)
-        menu.items = items
-        embed = ShakeEmbed.default(
-            menu.ctx,
-            title=self.group.title,
-            description=self.group.description + "\n\u200b",
-        )
-        embed.set_author(
-            name=_("Page {current}/{max} ({entries} commands)").format(
-                current=menu.page + 1,
-                max=self.get_max_pages(),
-                entries=len(self.entries),
-            )
-        )
-        for item in items:
-            self.add_field(embed, item, config=config)
-
-        last_embed = [
-            "**{0}・{1}**".format(config[key].get("suffix"), config[key].get("text"))
-            for key in self.suffixes
-        ]
-        if bool(last_embed):
-            embed.add_field(name="\u200b", value="\n".join(last_embed))
-        else:
-            embed.advertise(self.bot)
-
-        return embed, None
-
-
 class CommandSource(ItemPageSource):
     item: Command
 
@@ -715,8 +587,163 @@ class CommandSource(ItemPageSource):
         embed.advertise(self.bot)
         return embed, None
 
+    @staticmethod
+    def field(
+        item: Command,
+        suffixes: dict,
+        items: List[Command],
+        config: configurations,
+    ):
+        suffix: dict[str, dict] = {
+            extra: config[extra]
+            for extra, key in getattr(item.callback, "extras", {}).items()
+            if key is True and extra in set(config.keys())
+        }
+        if isinstance(item, Group):
+            suffix["group"] = config["group"]
+
+        suffixes.update(set(suffix.keys()))
+
+        arrow = Format.bold("➜")
+
+        if bool(suffix):
+            badges = Format.join(
+                arrow,
+                " ".join(
+                    [str(configuration["suffix"]) for configuration in suffix.values()]
+                ),
+            )
+        else:
+            badges = str()
+
+        index = Format.codeblock(Format.join("", str(items.index(item) + 1) + ".", ""))
+
+        emoji = getattr(item.cog, "display_emoji", "👀")
+
+        name = Format.codeblock("/" + item.qualified_name)
+
+        signatures = CommandSource.signature(item)
+        if bool(signatures):
+            arguments = Format.codeblock(" ".join(signatures))
+        else:
+            arguments = str()
+
+        __doc__ = (
+            _(item.callback.__doc__).split("\n", 1)[0]
+            if item.callback.__doc__
+            else _("No help given... (You should report this)")
+        )
+        signature = Format.blockquotes(
+            Format.join(index, emoji, arrow, Format.join(name, arguments))
+        )
+        help = Format.multiblockquotes(Format.join(__doc__.capitalize(), badges))
+
+        return signature, help, False
+
+    @staticmethod
+    def signature(command: commands.Command):
+        signature = []
+        count = (
+            28
+            + command.signature.count("…")
+            + command.signature.count(" ")
+            + command.signature.count("...")
+        )
+        for argument in (
+            getattr(command, "signature", "").replace("...", "…").split(" ")
+        ):
+            if not bool(argument):
+                continue
+            if len("".join(signature) + argument) + 1 > count:
+                signature.append("[…]")
+                break
+            signature.append("{}".format(argument))
+        return signature
+
+
+class CategorySource(ListPageSource):
+    group: Category
+    suffixes = set()
+
+    def __init__(
+        self,
+        ctx: ShakeContext,
+        group: Category,
+        items: list[commands.Command],
+        paginating: bool = True,
+        per_page: int = 6,
+        **kwargs: Any,
+    ):
+        title: str = getattr(group, "title", MISSING)
+        assert not title is MISSING
+
+        super().__init__(
+            ctx=ctx,
+            group=group,
+            items=items,
+            description=group.description,
+            paginating=paginating,
+            per_page=per_page,
+            title=title,
+        )
+
+    def get_page_from_item(self, item: Command) -> int:
+        index = self.items.index(item)
+
+        pages, left_over = divmod(len(self.entries), self.per_page)
+        if left_over:
+            pages += 1
+
+        for page in range(pages):
+            visual = page + 1
+            indexes = range(page * self.per_page, visual * self.per_page)
+            if index in indexes:
+                return page
+
+    async def format_page(
+        self, menu: ShakePages | ui.View, items: list[commands.Command]
+    ):
+        menu.current = items
+        config = configurations(self.bot)
+        embed = ShakeEmbed.default(
+            menu.ctx,
+            title=self.group.title,
+            description=self.group.description + "\n\u200b",
+        )
+        embed.set_author(
+            name="{current}/{max} ({entries})".format(
+                current=menu.page + 1,
+                max=self.get_max_pages(),
+                entries=len(self.entries),
+            )
+        )
+        for command in items:
+            name, value, inline = CommandSource.field(
+                command, self.suffixes, items, config
+            )
+            embed.add_field(name=name, value=value, inline=inline)
+
+        CategorySource.last(embed, self.bot, self.suffixes, config)
+
+        return embed, None
+
+    @staticmethod
+    def last(embed: ShakeEmbed, bot: ShakeBot, suffixes: dict, config: configurations):
+        last = [
+            Format.bold(
+                "・".join((str(config[key].get("suffix")), str(config[key].get("text"))))
+            )
+            for key in suffixes
+        ]
+        if bool(last):
+            embed.add_field(name="\u200b", value="\n".join(last))
+        else:
+            embed.advertise(bot)
+
 
 class GroupPage(ListPageSource):
+    suffixes = set()
+
     def __init__(
         self,
         ctx: ShakeContext,
@@ -740,88 +767,29 @@ class GroupPage(ListPageSource):
             per_page=per_page,
             title=title,
         )
-        self.suffixes = set()
-
-    def getsig(self, command: commands.Command):
-        signature = []
-        count = (
-            28
-            + command.signature.count("…")
-            + command.signature.count(" ")
-            + command.signature.count("...")
-        )
-        for argument in (
-            getattr(command, "signature", "").replace("...", "…").split(" ")
-        ):
-            if not bool(argument):
-                continue
-            if len("".join(signature) + argument) + 1 > count:
-                signature.append("[…]")
-                break
-            signature.append("{}".format(argument))
-        return signature
-
-    def add_field(self, embed: ShakeEmbed, item: Command, config: configurations):
-        suffix: dict[str, dict] = {
-            extra: config[extra]
-            for extra, key in getattr(item.callback, "extras", {}).items()
-            if key is True and extra in set(config.keys())
-        }
-        self.suffixes.update(set(suffix.keys()))
-        arguments = (
-            (" `" + " ".join(sig) + "`") if bool(sig := self.getsig(item)) else ""
-        )
-        badges = (
-            (
-                " **➜** "
-                + " ".join(
-                    [str(configuration["suffix"]) for configuration in suffix.values()]
-                )
-            )
-            if bool(suffix)
-            else ""
-        )
-        emoji = getattr(item.cog, "display_emoji", "👀")
-
-        signature = f"> ` {self.items.index(item)+1}. ` {emoji} **➜** `/{item.qualified_name}`{arguments}"
-        embed.add_field(
-            name=signature,
-            inline=False,
-            value="> "
-            + (
-                _(item.help).split("\n", 1)[0]
-                if item.help
-                else _("No help given... (You should report this)")
-            ).capitalize()
-            + badges,
-        )
-        return
 
     async def format_page(
         self, menu: ShakePages | ui.View, items: list[commands.Command]
     ):
+        menu.current = items
         config = configurations(self.bot)
         embed = ShakeEmbed.default(
-            menu.ctx,
-            title=self.title,
-            description=self.description + "\n\u200b",
+            menu.ctx, title=self.title, description=self.description + "\n\u200b"
         )
         embed.set_author(
-            name=_("Page {current} of {max} ({entries} subcommands)").format(
+            name="{current}/{max} ({entries})".format(
                 current=menu.page + 1,
                 max=self.get_max_pages(),
                 entries=len(self.entries),
             )
         )
-        for item in items:
-            self.add_field(embed, item, config=config)
+        for command in items:
+            name, value, inline = CommandSource.field(
+                command, self.suffixes, items, config
+            )
+            embed.add_field(name=name, value=value, inline=inline)
 
-        last_embed = [
-            "**{0}・{1}**".format(config[key].get("suffix"), config[key].get("text"))
-            for key in self.suffixes
-        ]
-        if bool(last_embed):
-            embed.add_field(name="\u200b", value="\n".join(last_embed))
+        CategorySource.last(embed, self.bot, self.suffixes, config)
 
         return embed, None
 
@@ -902,7 +870,10 @@ class Front(FrontPageSource):
                     "[" + _("argument") + "]",
                     _("Stands for that the argument is __**optional**__."),
                 ),
-                ("[A|B]", _("Stands for the argument can be __**either A or B**__.")),
+                (
+                    "[argument A | argument B]",
+                    _("Stands for the argument can be __**either A or B**__."),
+                ),
                 (
                     f"[{_('argument')}]…",
                     cleandoc(

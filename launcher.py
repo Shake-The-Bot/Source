@@ -1,8 +1,10 @@
 ############
 #
-from asyncio import run, set_event_loop_policy
+from asyncio import run, set_event_loop_policy, sleep
 from contextlib import contextmanager
 from logging import INFO, NullHandler, getLogger
+from sys import exc_info
+from traceback import format_exception
 
 from asyncpg import Pool
 from discord import Activity, ActivityType, Intents
@@ -96,20 +98,39 @@ async def main():
 
 if __name__ == "__main__":
     logger = getLogger()
-    print(
-        "\n"
-        "   ▄████████▄   ▄██    ██▄     ▄████████   ▄██   ▄██   ▄████████▄ \n"
-        "  ███▀    ███   ███    ███    ███    ███   ███ ▄███▀   ███▀   ▄██ \n"
-        "  ███      █▀   ███    ███▄▄  ███    ███   ███▐██▀     ███    █▀  \n"
-        "  ████▄▄▄▄▄     ███▄▄▄████▀   ███▄▄▄▄███  ▄████▀      ▄███▄▄▄     \n"
-        "   ▀▀▀▀▀▀███▄ ▄█████▀▀▀███  ▀████▀▀▀▀███ ▀▀█████▄    ▀▀███▀▀▀     \n"
-        "          ███   ███    ███    ███    ███   ███▐██▄     ███    █▄  \n"
-        "   ▄█   ▄███▀   ███    ███    ███    ███   ███ ▀███▄   ███    ██▄ \n"
-        " ▄█████████▀    ▀██    █▀     ███    ██▀   ███   ▀██▄  ██████████ \n"
-        "\u200b"
-    )
     with setup():
+        print(
+            "\n"
+            "   ▄████████▄   ▄██    ██▄     ▄████████   ▄██   ▄██   ▄████████▄ \n"
+            "  ███▀    ███   ███    ███    ███    ███   ███ ▄███▀   ███▀   ▄██ \n"
+            "  ███      █▀   ███    ███▄▄  ███    ███   ███▐██▀     ███    █▀  \n"
+            "  ████▄▄▄▄▄     ███▄▄▄████▀   ███▄▄▄▄███  ▄████▀      ▄███▄▄▄     \n"
+            "   ▀▀▀▀▀▀███▄ ▄█████▀▀▀███  ▀████▀▀▀▀███ ▀▀█████▄    ▀▀███▀▀▀     \n"
+            "          ███   ███    ███    ███    ███   ███▐██▄     ███    █▄  \n"
+            "   ▄█   ▄███▀   ███    ███    ███    ███   ███ ▀███▄   ███    ██▄ \n"
+            " ▄█████████▀    ▀██    █▀     ███    ██▀   ███   ▀██▄  ██████████ \n"
+            "\u200b"
+        )
+
+    tries = 0
+    while True:
         try:
             run(main())
-        except:
-            exit()
+
+        except KeyboardInterrupt:
+            break
+
+        except Exception as e:
+            if tries < config.client.retries:
+                try:
+                    logger.debug(
+                        "Restarting ({}/{})".format(tries, config.client.retries)
+                    )
+                    tries += 1
+                    run(sleep(5))
+                except:
+                    break
+            else:
+                exc, value, tb, *_ = exc_info()
+                logger.warning(f"Closing: {''.join(format_exception(exc, value, tb))}")
+                break
