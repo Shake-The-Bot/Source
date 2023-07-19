@@ -45,7 +45,10 @@ class Client:
         self.domain = domain
         self.translate()
         self.create()
-        pass
+
+    def __call__(self) -> None:
+        self.translate()
+        self.create()
 
     @property
     def locales(
