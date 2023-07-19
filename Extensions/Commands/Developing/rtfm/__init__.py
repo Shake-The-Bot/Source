@@ -10,7 +10,7 @@ from zlib import decompressobj
 
 from discord import Interaction, Member, PartialEmoji, app_commands
 from discord.app_commands import Choice, choices
-from discord.ext.commands import Greedy, guild_only, hybrid_group
+from discord.ext.commands import Greedy, guild_only, hybrid_group, is_owner
 
 from Classes import (
     ShakeBot,
@@ -170,6 +170,7 @@ class rtfm_extension(Developing):
     @hybrid_group(name="rtfm", invoke_without_command=True)
     @guild_only()
     @setlocale()
+    @is_owner()
     @locale_doc
     async def rtfm(
         self,
@@ -186,6 +187,7 @@ class rtfm_extension(Developing):
 
     @rtfm.command(name="search")
     @guild_only()
+    @is_owner()
     @choices(
         key=[
             Choice(name="discord.py latest", value="latest"),
@@ -252,6 +254,7 @@ class rtfm_extension(Developing):
 
     @rtfm.command(name="stats")
     @setlocale()
+    @is_owner()
     @locale_doc
     async def stats(self, ctx: ShakeContext, member: Greedy[Member] = None):
         _(
