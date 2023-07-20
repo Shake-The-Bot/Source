@@ -155,7 +155,7 @@ class AboveMe:
         channel: TextChannel,
         guild: Guild,
         user: Member,
-        used: datetime,
+        time: datetime,
         phrase: str,
         failed: bool,
     ) -> None:
@@ -164,7 +164,7 @@ class AboveMe:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
-                "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
+                "used": time.isoformat(),
                 "phrase": phrase,
                 "failed": failed,
             }
@@ -174,7 +174,7 @@ class AboveMe:
         self, member: Member, message: Message
     ) -> Tuple[Optional[ShakeEmbed], bool, bool]:
         content: str = cleanup(message.clean_content.strip())
-        time = message.created_at
+        time = message.created_at.replace(tzinfo=timezone.utc)
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
         )
@@ -191,7 +191,7 @@ class AboveMe:
         user_id: int = record["user_id"]
         message_id: int = record["message_id"]
         count: int = record.get("count", 0)
-        used: datetime = record["used"]
+        used: datetime = record.get("used") or time
         react: bool = record.get("react", True)
         phrases: List[str] = record.get("phrases", []) or []
 
@@ -228,15 +228,13 @@ class AboveMe:
             channel=self.channel,
             guild=self.guild,
             user=member,
-            used=time,
+            time=time,
             phrase=content,
             failed=not passed,
         )
 
         self.cache[self.channel.id]: AboveMeBatch = {
-            "used": str(
-                (time if passed else used).replace(tzinfo=timezone.utc).isoformat()
-            ),
+            "used": (time if passed else used).isoformat(),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
             "message_id": message.id if passed else message_id,

@@ -166,7 +166,7 @@ class Counting:
         self, member: Member, message: Message
     ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
         content: str = cleanup(message.clean_content.strip())
-        time = message.created_at
+        time = message.created_at.replace(tzinfo=timezone.utc)
         testing: bool = any(
             _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
         )
@@ -187,7 +187,7 @@ class Counting:
         goal: int = record.get("goal")
         count: int = record.get("count", 0) or 0
         start: int = record.get("start", 0) or 0
-        used: datetime = record.get("used")
+        used: datetime = record.get("used") or time
         done: bool = record.get("done", False)
         webhook: bool = record.get("webhook", None) or None
         direction: bool = record.get("direction", True)
@@ -298,16 +298,14 @@ class Counting:
             guild=self.guild,
             user=member,
             direction=direction,
-            used=time,
+            time=time,
             count=count,
             failed=not passed,
         )
 
         s = streak + 1 if passed else streak
         self.cache[self.channel.id]: CountingBatch = {
-            "used": str(
-                (time if passed else used).replace(tzinfo=timezone.utc).isoformat()
-            ),
+            "used": (time if passed else used).isoformat(),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
@@ -331,7 +329,7 @@ class Counting:
         guild: Guild,
         user: Member,
         direction: bool,
-        used: datetime,
+        time: datetime,
         count: Optional[int],
         failed: bool,
     ) -> None:
@@ -341,7 +339,7 @@ class Counting:
                 "channel_id": channel.id,
                 "user_id": user.id,
                 "direction": direction,
-                "used": str(used.replace(tzinfo=timezone.utc).isoformat()),
+                "used": time.isoformat(),
                 "count": count,
                 "failed": failed,
             }

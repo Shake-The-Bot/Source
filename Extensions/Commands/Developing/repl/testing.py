@@ -105,8 +105,10 @@ async def func():
 
         if executor is None:
             try:
-                code = async_compile(formed, "<repl session>", "exec")
-                exec(code, self.env)
+                with redirect_stdout(stdout):
+                    with redirect_stderr(stderr):
+                        code = async_compile(formed, "<repl session>", "exec")
+                        exec(code, self.env)
             except SyntaxError as e:
                 error = cleanup(safe_output(self.ctx, get_syntax_error(e)))
                 return await self.ctx.send(Format.multicodeblock(error))

@@ -535,7 +535,9 @@ def get_syntax_error(e):
     """
     if e.text is None:
         return "{0.__class__.__name__}: {0}".format(e)
-    return "{0.text}{1:>{0.offset}}\n{2}: {0}".format(e, "^", type(e).__name__)
+    return "\u200b{0.text:>{0.offset}}{1:>{0.offset}}\n{2}: {0}".format(
+        e, "^", type(e).__name__
+    )
 
 
 def stdoutable(code: str, output: bool = False):

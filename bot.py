@@ -34,17 +34,16 @@ class ShakeBot(BotBase):
         self.log: Logger = getLogger()
         super().__init__(**options)
         self.__version__ = __version__
-        self.reload.start()
+        if not self.refresh.is_running:
+            self.refresh.start()
 
     @loop(seconds=60.0)
-    async def reload(self):
+    async def refresh(self):
         self.config.reload()
         self.emojis.reload()
 
     async def process_commands(self, message: Message) -> Optional[ShakeContext]:
         ctx = await super().process_commands(message)
-        self.config.reload()
-        self.emojis.reload()
         return ctx
 
     async def testing_error(
@@ -73,8 +72,9 @@ class ShakeBot(BotBase):
         return
 
     async def close(self) -> None:
-        print()
         self.log.info("Bot is shutting down")
+        if self.refresh.is_running():
+            self.refresh.stop()
         await super().close()
 
     async def dump(self, content: str, lang: Optional[str] = "txt") -> Optional[str]:
