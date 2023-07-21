@@ -935,7 +935,7 @@ class Front(FrontPageSource):
         if m := member or fallback:
             for activity in filter(lambda a: a.type.value == 4, m.activities):
                 if getattr(activity, "name", None):
-                    embed.description = "„" + activity.name + "“"
+                    embed.description = Format.multicodeblock("„" + activity.name + "“")
                     break
 
             emojis = menu.bot.emojis.status
@@ -1036,7 +1036,6 @@ features = (
     | PermissionsSource
     | ActivitiesSource
     | CountingSource
-    | MutualSource
     | AboveMeSource
     | OneWordSource
 )

@@ -41,9 +41,7 @@ class topgg_extension(Cog):
 
     @Cog.listener()
     async def on_autopost_success(self):
-        self.bot.log.info(
-            f"Posted server count ({self.bot.topggpy.guild_count}), shard count ({self.bot.shard_count})"
-        )
+        self.bot.log.info(f"Posted server count ({self.bot.topggpy.guild_count})")
 
     @Cog.listener()
     async def on_dbl_vote(self, data: BotVoteData):

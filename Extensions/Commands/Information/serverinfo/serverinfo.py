@@ -48,13 +48,15 @@ class command(ShakeCommand):
             ChannelsSource(ctx=self.ctx, guild=self.guild): set(self.guild.channels),
             MembersSource(ctx=self.ctx, guild=self.guild): set(self.guild.members),
             BadgesSource(ctx=self.ctx, guild=self.guild): 1,
-            ActivitiesSource(ctx=self.ctx, guild=self.guild): set(
-                m.activities for m in self.guild.members
-            ),
             PremiumSource(ctx=self.ctx, guild=self.guild): set(
                 self.guild.premium_subscribers
             ),
         }
+        for member in self.guild.members:
+            if filter(lambda a: a.type != ActivityType.custom, member.activities):
+                categoies[ActivitiesSource(ctx=self.ctx, guild=self.guild)] = 1
+                break
+
         if bool(self.guild.emojis):
             categoies[EmojisSource(ctx=self.ctx, guild=self.guild)] = [
                 self.guild.icon,
@@ -599,7 +601,9 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=_("General Overview"),
-            description="„" + guild.description + "“" if guild.description else None,
+            description=Format.multicodeblock("„" + guild.description + "“")
+            if guild.description
+            else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(guild.icon, "url", recovery))

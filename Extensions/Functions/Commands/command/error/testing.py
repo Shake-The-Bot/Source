@@ -47,8 +47,8 @@ class Event:
         if isinstance(self.ctx, ShakeContext) and not self.ctx.done:
             await self.bot.register_command(self.ctx)
 
-        if not self.ctx in self.bot.cache["context"]:
-            self.bot.cache["context"].append(self.ctx)
+            if not self.ctx in self.bot.cache["context"]:
+                self.bot.cache["context"].append(self.ctx)
 
         if isinstance(self.original, errors.CommandNotFound):
             return await self.command_not_found(self.ctx)
@@ -58,20 +58,18 @@ class Event:
                 "I am missing [`{permissions}`](https://support.discord.com/hc/en-us/articles/206029707) permission(s) to run this command."
             ).format(permissions=", ".join(self.original.missing_permissions))
 
-        elif isinstance(self.original, (errors.BadArgument)):
-            description = self.message or _(
-                "You typed in some bad arguments, try {command}"
-            ).format(command=self.ctx.prefix + "help")
+        elif isinstance(self.original, errors.GuildNotFound):
+            guild = self.original.argument
+            description = _("Either this server does not exist or I am not on it.")
+
+        elif isinstance(self.original, (errors.ChannelNotFound, errors.ThreadNotFound)):
+            channel = self.original.argument
+            description = _("Either this channel does not exist or I can't see it.")
 
         elif isinstance(self.original, arguments):
             description = self.message or _(
                 "You did something wrong with the arguments, try {command}"
             ).format(command=self.ctx.prefix + "help")
-
-        elif isinstance(self.original, (errors.GuildNotFound,)):
-            description = self.message or _(
-                "I cannot see the server `{argument}` because it does not exist or I am not a member of it."
-            ).format(argument=self.original.argument)
 
         elif isinstance(self.original, errors.CommandInvokeError):
             if isinstance(self.original, Forbidden):
@@ -102,6 +100,11 @@ class Event:
             description = _(
                 "You are missing `{permission}` permission(s) to run this command."
             ).format(permission=", ".join(self.original.missing_permissions))
+
+        elif isinstance(self.original, errors.BadArgument):
+            description = self.message or _(
+                "You typed in some bad arguments, try {command}"
+            ).format(command=self.ctx.prefix + "help")
 
         else:
             self.raisable = True

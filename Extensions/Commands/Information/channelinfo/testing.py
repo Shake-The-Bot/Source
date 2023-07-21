@@ -249,10 +249,21 @@ class TextChannelSource(ItemPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=self.title or _("General Overview"),
-            description="„" + self.item.topic + "“" if self.item.topic else None,
+            description=Format.multicodeblock("„" + self.item.topic + "“") if self.item.topic else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(self.item.guild.icon, "url", recovery))
+
+        embed.add_field(
+            name=_("NSFW"),
+            value=Format.blockquotes(
+                (menu.bot.emojis.no, menu.bot.emojis.yes)[self.item.nsfw]
+            ),
+        )
+
+        embed.add_field(
+            name=_("Channel's mention"), value=Format.blockquotes(self.item.mention)
+        )
 
         embed.add_field(
             name=_("Created"),
@@ -263,13 +274,7 @@ class TextChannelSource(ItemPageSource):
                     splitter="\n",
                 )
             ),
-        )
-
-        embed.add_field(
-            name=_("NSFW"),
-            value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[self.item.nsfw]
-            ),
+            inline=False,
         )
 
         embed.add_field(
@@ -330,7 +335,7 @@ class ThreadSource(ItemPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=_("General Overview"),
-            description="„" + channel.parent.topic + "“"
+            description=Format.multicodeblock("„" + channel.parent.topic + "“")
             if channel.parent.topic
             else None,
         )
@@ -367,6 +372,10 @@ class ThreadSource(ItemPageSource):
                     Format.multicodeblock(channel.parent.category.name)
                 ),
             )
+
+        embed.add_field(
+            name=_("Threads's mention"), value=Format.blockquotes(self.item.mention)
+        )
 
         more: Dict[str, str] = {
             _("ID"): f"`{channel.id}`",
@@ -457,6 +466,10 @@ class VoiceChannelSource(ItemPageSource):
                     "css",
                 )
             ),
+        )
+
+        embed.add_field(
+            name=_("Channel's mention"), value=Format.blockquotes(self.item.mention)
         )
 
         more: Dict[str, str] = {
@@ -572,7 +585,7 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=_("General Overview"),
-            description="„" + guild.description + "“" if guild.description else None,
+            description=Format.multicodeblock("„" + guild.description + "“") if guild.description else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(guild.icon, "url", recovery))

@@ -1,15 +1,13 @@
 ############
 #
 from importlib import reload
-from typing import Optional, Union
 
-from discord import Client, Interaction
+from discord import Interaction
 from discord.ext.commands import Cog, CommandError
 
-from Classes import ShakeBot, ShakeContext, Testing
+from Classes import ShakeBot, ShakeContext
 
-from . import command_error
-from . import testing as testfile
+from . import command_error, testing
 
 
 ########
@@ -41,11 +39,11 @@ class on_command_error(Cog):
 
         if test:
             try:
-                reload(testfile)
+                reload(testing)
             except Exception as e:
-                await self.bot.testing_error(module=testfile, error=e)
+                await self.bot.testing_error(module=testing, error=e)
                 test = False
-        do = testfile if test else command_error
+        do = testing if test else command_error
 
         try:
             await do.Event(ctx=ctx, error=error).__await__()

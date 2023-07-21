@@ -2,7 +2,7 @@
 #
 from asyncio import run, set_event_loop_policy, sleep
 from contextlib import contextmanager
-from logging import INFO, NullHandler, getLogger
+from logging import INFO, NullHandler, basicConfig, getLogger
 from sys import exc_info
 from traceback import format_exception
 
@@ -77,7 +77,8 @@ async def main():
         return ["<@!{}> ".format(bot.user.id), "<@{}> ".format(bot.user.id)]
 
     async with ShakeBot(
-        shard_count=2,
+        logger=logger,
+        shard_count=config.client.shard_count,
         command_prefix=prefix,
         case_insensitive=True,
         intents=Intents.all(),

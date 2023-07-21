@@ -3,7 +3,7 @@
 from logging import Filter
 from typing import Optional, Tuple
 
-__all__ = ("NoShards", "NoAttemps", "NoVotes", "NoJobs", "NoCommands", "OnlyCommands")
+__all__ = ("NoAttemps", "NoVotes", "NoJobs", "NoCommands", "OnlyCommands")
 
 
 def only(
@@ -69,9 +69,6 @@ def nomore(
     return final()
 
 
-NoShards = nomore(
-    names=("discord.gateway",), levelnames=("INFO",), messages=("shard id",)
-)
 NoAttemps = nomore(
     names=("lavalink.websocket",),
     levelnames=(

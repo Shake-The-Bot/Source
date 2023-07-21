@@ -62,9 +62,7 @@ class server_extension(Information):
         try:
             guild = await GuildConverter().convert(self, str(guild or ctx.guild.id))
         except GuildNotFound:
-            raise GuildNotFound(
-                _("Either this server does not exist or I am not on it.")
-            )
+            raise GuildNotFound(guild)
 
         try:
             await do.command(ctx=ctx, guild=guild).__await__()

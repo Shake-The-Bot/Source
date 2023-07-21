@@ -22,7 +22,7 @@ class error:
         self.kwargs: Any = kwargs
 
     async def __await__(self):
-        print(1)
+        self.bot.log.debug(1)
         exc, value, tb, *_ = exc_info()
         dumped = await self.bot.dump(f"{''.join(format_exception(exc, value, tb))}")
         self.bot.log.warning(f"{self.event}: {dumped}")

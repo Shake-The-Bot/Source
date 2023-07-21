@@ -79,7 +79,7 @@ class BotSource(ItemPageSource):
         embed = ShakeEmbed()
         embed.title = _("Bot Info")
 
-        uptime = format_dt(menu.bot.started, "R")
+        uptime = format_dt(menu.bot.boot, "R")
         embed.add_field(name=_("Started"), value=Format.blockquotes(uptime))
         embed.add_field(
             name=_("Ping"),

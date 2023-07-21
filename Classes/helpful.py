@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from asyncio.exceptions import CancelledError
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -11,8 +12,10 @@ from os import replace
 from pathlib import Path
 from random import choice, random, randrange
 from re import Match, sub
+from sys import exc_info
 from threading import Thread
 from time import monotonic
+from traceback import format_exception
 from typing import *
 from uuid import uuid4
 
@@ -23,14 +26,14 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
 from asyncpraw.models import Submission, Subreddit
 from discord import *
-from discord import Guild
+from discord.abc import Snowflake
 from discord.ext.commands import *
 from discord.player import AudioPlayer
 from discord.ui import View
 from PIL import Image, ImageDraw, ImageFont
 
 from Classes.i18n import Client as i18nClient
-from Classes.i18n import Locale, _
+from Classes.i18n import _
 from Classes.tomls import Config, Emojis, config, emojis
 from Classes.types import Format, Regex, TracebackType
 from Classes.useful import MISSING, source_lines
@@ -376,16 +379,14 @@ class ShakeCommand:
 """ A Class representing the Base of the ShakeBot (Inherits from discord.ext.commands.AutoSharedBot)
 yeah.. lazy rn"""
 
+base: Union[AutoShardedBot, Bot] = AutoShardedBot if config.client.shard else Bot
 
-class BotBase(AutoShardedBot):
+
+class BotBase(Bot):
     user: ClientUser
-    pool: Pool
-    gpool: DatabaseProtocol
     boot: datetime
     gateway_handler: Any
     cache = dict()
-    session: ClientSession
-    ready_shards: Record
     bot_app_info: AppInfo
 
     def __init__(self, **options):
@@ -399,32 +400,69 @@ class BotBase(AutoShardedBot):
         self.cache.setdefault("context", deque(maxlen=100))
         self.cache.setdefault("tests", ExpiringCache(60 * 5))
         self.cache.setdefault("cached_posts", dict())
-        self._session = None
-        self._config = config
-        self._emojis = emojis
+        if config.client.shard:
+            self.ready_shards = Record(sequence=range(self.shard_count))
+        else:
+            filtered = options.pop("shard_count", None)
         super().__init__(**options)
-        self.ready_shards = Record(sequence=range(self.shard_count))
+        self.testing: Dict[int, Any] = self.cache.get("testing")
+
+    @property
+    def lines(self) -> int:
+        if getattr(self, "_lines", None) is not None:
+            return self._lines
+        self._lines: int = source_lines()
+        return self._lines
+
+    @property
+    def scheduler(self) -> AsyncIOScheduler:
+        if getattr(self, "_scheduler", None) is not None:
+            return self._scheduler
+        self._scheduler: int = AsyncIOScheduler()
+        return self._scheduler
 
     @property
     def session(self) -> ClientSession:
+        if getattr(self, "_session", None) is not None:
+            return self._session
+        self._session = ClientSession()
         return self._session
 
     @property
-    def testing(self) -> Dict[int, Any]:
-        return self.cache["testing"]
+    def i18n(self) -> i18nClient:
+        if getattr(self, "_i18n", None) is not None:
+            return self._i18n
+
+        self._i18n = i18nClient(self, domain="shake", directory="Locales")
+        return self._i18n
 
     @property
     def emojis(self) -> Emojis:
-        return self._emojis
+        return emojis
 
     @property
     def config(self) -> Config:
-        return self._config
+        return config
 
     @property
     def shake(self) -> Optional[User]:
         """Returns the owner as a discord.User Object"""
         return self.get_user_global(self.shake_id)
+
+    async def add_cog(
+        self,
+        cog: Cog,
+        /,
+        *,
+        override: bool = False,
+        guild: Optional[Snowflake] = MISSING,
+        guilds: Sequence[Snowflake] = MISSING,
+    ) -> None:
+        try:
+            await super().add_cog(cog, override=override, guild=guild, guilds=guilds)
+        except Exception as e:
+            self.log.warn('"{}" couldn\'t get loaded: {}'.format(cog, e))
+        return
 
     def get_emoji_local(self, dictionary: Any, name: str) -> Any:
         dictionary = getattr(self.emojis, dictionary, MISSING)
@@ -541,11 +579,6 @@ class BotBase(AutoShardedBot):
         return ctx
 
     async def setup_hook(self):
-        self.i18n = i18nClient(self, domain="shake", directory="Locales")
-        self._session = ClientSession()
-        self.reddit: Reddit = Reddit()
-        self.lines: int = source_lines()
-        self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
         await self.load_extensions()
         self.scheduler.start()
 
@@ -578,8 +611,11 @@ class BotBase(AutoShardedBot):
     async def start(self, token: str) -> None:
         try:
             await super().start(token, reconnect=True)
-        except Exception as error:
-            self.log.error(error)
+        except CancelledError:
+            raise KeyboardInterrupt
+        except:
+            exc, value, tb, *_ = exc_info()
+            self.log.warning(f"Closing: {''.join(format_exception(exc, value, tb))}")
 
 
 """ Embed Helper
@@ -856,8 +892,6 @@ class Migration:
         ordered = self.ordered_revisions
         for revision in ordered:
             if revision.version > self.version:
-                print(1, revision)
-                print(2, revision.file)
                 sql = revision.file.read_text("utf-8")
                 print(sql)
 

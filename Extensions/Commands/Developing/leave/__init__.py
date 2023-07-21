@@ -8,13 +8,13 @@ from discord.ext.commands import command, guild_only, is_owner
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
-from ..other import Other
+from ..developing import Developing
 from . import leave, testing
 
 
 ########
 #
-class leave_extension(Other):
+class leave_extension(Developing):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
         try:
