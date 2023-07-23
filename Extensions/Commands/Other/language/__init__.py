@@ -6,7 +6,7 @@ from itertools import chain
 from typing import Optional
 
 from discord import Interaction, PartialEmoji, app_commands
-from discord.ext.commands import MissingPermissions, guild_only, hybrid_group
+from discord.ext.commands import MissingPermissions, guild_only, hybrid_command
 from discord.ext.tasks import loop
 
 from Classes import (
@@ -50,7 +50,7 @@ class language_extension(Other):
     ) -> list[app_commands.Choice[str]]:
         if not bool(self.locales):
             await interaction.response.autocomplete([])
-            # await rtfm.build_rtfm_lookup_table(self.bot)
+            await self.fetch()
             return []
 
         if not current:
@@ -60,15 +60,13 @@ class language_extension(Other):
             return [app_commands.Choice(name=current, value=current)]
 
         assert interaction.command is not None
-
-        languages = dict(
+        dicts = dict(
             (locale.language.lower(), locale) for locale in self.locales.values()
-        )
-        simples = dict(
+        ) | dict(
             (locale.simplified.lower(), locale) for locale in self.locales.values()
         )
-        matches = finder(current, list(chain(self.bot.cache["rtfm"].values())))[:10]
-        return [app_commands.Choice(name=m, value=m) for m in matches]
+        matches = finder(current, list(dicts.keys()))[:10]
+        return [app_commands.Choice(name=m, value=dicts.get(m)) for m in matches]
 
     async def cog_unload(self) -> None:
         self.fetch.stop()
@@ -87,50 +85,14 @@ class language_extension(Other):
 
         self.locales = locales
 
-    @hybrid_group(name="language", aliases=["lang"], invoke_without_command=True)
+    @hybrid_command(name="language", aliases=["lang"])
     @guild_only()
+    @app_commands.autocomplete(entity=language_slash_autocomplete)
     @setlocale()
     @locale_doc
-    async def language(self, ctx: ShakeContext, language: str):
-        return await self.set(ctx, language=language)
-
-    @language.command(name="list")
-    @guild_only()
-    @setlocale()
-    @locale_doc
-    async def list(self, ctx: ShakeContext) -> None:
-        _(
-            """Display a list of availible languages and locale codes.
-            
-            You can check if your language is available by comparing against [this list](https://saimana.com/list-of-country-locale-code/)
-            Some of these languages are no real languages but serve as a way to spice up the text.
-            (If something is not yet translated, the english original text is used.)"""
-        )
-
-        if ctx.testing:
-            try:
-                reload(testing)
-            except Exception as e:
-                await self.bot.testing_error(module=testing, error=e)
-                ctx.testing = False
-
-        do = testing if ctx.testing else lang
-
-        try:
-            await do.command(ctx=ctx).list(locales=self.locales)
-
-        except:
-            if ctx.testing:
-                raise Testing
-            raise
-
-    @language.command(name="set")
-    @guild_only()
-    @setlocale()
-    @locale_doc
-    async def set(
+    async def language(
         self, ctx: ShakeContext, *, language: str, server: Optional[bool] = False
-    ) -> None:
+    ):
         _(
             """Set your language for Shake.
             Full list of available languages can be found with `{prefix}language`
@@ -175,19 +137,17 @@ class language_extension(Other):
                 raise Testing
             raise
 
-    @language.command(name="reset")
+    @hybrid_command(name="languages")
     @guild_only()
     @setlocale()
     @locale_doc
-    async def reset(self, ctx: ShakeContext, *, server: Optional[bool] = False) -> None:
+    async def languages(self, ctx: ShakeContext) -> None:
         _(
-            """Reset your language for Shake to the good old language
-            Doesn't change anything if no language is set
+            """Display a list of availible languages and locale codes.
             
-            Parameters
-            -----------
-            server: Optional[bool]
-                If the language should be reset for the whole server"""
+            You can check if your language is available by comparing against [this list](https://saimana.com/list-of-country-locale-code/)
+            Some of these languages are no real languages but serve as a way to spice up the text.
+            (If something is not yet translated, the english original text is used.)"""
         )
 
         if ctx.testing:
@@ -200,22 +160,7 @@ class language_extension(Other):
         do = testing if ctx.testing else lang
 
         try:
-            if server == True:
-                if missing := [
-                    perm
-                    for perm, value in {"administrator": True}.items()
-                    if getattr(ctx.permissions, perm) != value
-                ]:
-                    raise MissingPermissions(missing)
-                await do.command(ctx=ctx).set_locale(
-                    name=ctx.bot.i18n.default, locales=self.locales, guild=True
-                )
-
-            else:
-                await do.command(ctx=ctx).set_locale(
-                    name=ctx.bot.i18n.default,
-                    locales=self.locales,
-                )
+            await do.command(ctx=ctx).list(locales=self.locales)
 
         except:
             if ctx.testing:
