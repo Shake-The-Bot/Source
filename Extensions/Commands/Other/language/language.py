@@ -47,7 +47,7 @@ class command(ShakeCommand):
             print(locales)
         assert current is not None
 
-        print("lol your ma")
+        print("lol your ma likes him")
 
         menu = ListMenu(
             ctx=self.ctx,
