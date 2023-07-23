@@ -85,9 +85,16 @@ def upgrade(sql, type: Literal["guild", "bot"] = "bot"):
 
 
 @db.command()
-def current():
+@option(
+    "--type",
+    "-t",
+    default="bot",
+    help="type of revision",
+    type=Choice(["guild", "bot"]),
+)
+def current(type: Literal["guild", "bot"] = "bot"):
     """Shows the current active revision version"""
-    migration = Migration()
+    migration = Migration(type=type)
     echo(f"Version {migration.version}")
 
 
