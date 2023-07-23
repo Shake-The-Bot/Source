@@ -2,15 +2,13 @@
 #
 from gettext import GNUTranslations
 from importlib import reload
-from itertools import chain
-from typing import Optional
+from typing import Dict, Optional
 
-from discord import Interaction, PartialEmoji, app_commands
+from discord import Interaction, app_commands
 from discord.ext.commands import MissingPermissions, guild_only, hybrid_command
 from discord.ext.tasks import loop
 
 from Classes import (
-    MISSING,
     Locale,
     ShakeBot,
     ShakeContext,
@@ -60,13 +58,18 @@ class language_extension(Other):
             return [app_commands.Choice(name=current, value=current)]
 
         assert interaction.command is not None
-        dicts = dict(
+        languages = dict(
             (locale.language.lower(), locale) for locale in self.locales.values()
-        ) | dict(
+        )
+        simplified = dict(
             (locale.simplified.lower(), locale) for locale in self.locales.values()
         )
-        matches = finder(current, list(dicts.keys()))[:10]
-        return [app_commands.Choice(name=m, value=dicts.get(m)) for m in matches]
+        added: Dict[str, Locale] = languages | simplified
+        matches = finder(current, list(added.keys()))[:10]
+        return [
+            app_commands.Choice(name=added.get(m).language, value=added.get(m))
+            for m in matches
+        ]
 
     async def cog_unload(self) -> None:
         self.fetch.stop()
