@@ -87,7 +87,7 @@ class language_extension(Other):
 
     @hybrid_command(name="language", aliases=["lang"])
     @guild_only()
-    @app_commands.autocomplete(entity=language_slash_autocomplete)
+    @app_commands.autocomplete(language=language_slash_autocomplete)
     @setlocale()
     @locale_doc
     async def language(
