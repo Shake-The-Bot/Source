@@ -43,6 +43,9 @@ class command(ShakeCommand):
     async def list(self, locales: dict[str, Locale]):
         locale = await self.bot.i18n.get_user(self.ctx.author.id, default="en-US")
         current: Locale = locales.get(locale)
+        if current is None:
+            print(locales)
+        assert current is not None
 
         menu = ListMenu(
             ctx=self.ctx,

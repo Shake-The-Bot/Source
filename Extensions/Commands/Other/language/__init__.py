@@ -41,6 +41,7 @@ class language_extension(Other):
             pass
 
         self.fetch.start()
+        self.bot.loop.create_task(self.fetch())
 
     @property
     def display_emoji(self) -> PartialEmoji:
