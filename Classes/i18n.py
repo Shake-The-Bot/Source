@@ -4,7 +4,8 @@ from contextlib import suppress
 from contextvars import ContextVar
 from gettext import NullTranslations, gettext, translation
 from glob import glob
-from os import getcwd, path, walk
+from os import getcwd, listdir, walk
+from os.path import basename, isdir, isfile, join, splitext
 from subprocess import call
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -37,18 +38,18 @@ class Client:
     def __init__(
         self, bot: ShakeBot, domain: str = "shake", directory: str = "Locales"
     ) -> None:
-        self.directory = path.join(getcwd(), directory)
+        self.directory = join(getcwd(), directory)
         self.default = default
         self.bot = bot
         bot.cache.setdefault("locales", dict())
         self.cache: Dict = bot.cache["locales"]
         self.domain = domain
         self.translate()
-        self.create()
+        self.convert()
 
     def __call__(self) -> None:
         self.translate()
-        self.create()
+        self.convert()
 
     @property
     def locales(
@@ -56,25 +57,26 @@ class Client:
     ) -> frozenset[str]:
         return frozenset(
             map(
-                path.basename,
-                filter(path.isdir, glob(path.join(getcwd(), self.directory, "*"))),
+                basename,
+                filter(isdir, glob(join(getcwd(), self.directory, "*"))),
             )
         ) | {self.default}
 
-    def create(self) -> list[tuple[str, str]]:
-        data_files = []
-        po_dirs = [self.directory + "/" + l + "/LC_MESSAGES/" for l in self.locales]
-        for d in po_dirs:
-            mo_files = []
-            po_files = [f for f in next(walk(d))[2] if path.splitext(f)[1] == ".po"]
-            for po_file in po_files:
-                filename, extension = path.splitext(po_file)
-                mo_file = filename + ".mo"
-                msgfmt_cmd = "msgfmt {} -o {}".format(d + po_file, d + mo_file)
-                call(msgfmt_cmd, shell=True)
-                mo_files.append(d + mo_file)
-            data_files.append((d, mo_files))
-        return data_files
+    def convert(self) -> list[tuple[str, str]]:
+        directories = [self.directory + "/" + l + "/LC_MESSAGES/" for l in self.locales]
+        files = []
+        for directory in directories:
+            paths = filter(
+                lambda path: isfile(join(directory, path)) and path.endswith(".po"),
+                listdir(directory),
+            )
+            for path in paths:
+                po = join(directory, path)
+                filename, extension = splitext(po)
+                mo = filename + ".mo"
+                cmd = "msgfmt {} -o {}".format(po, mo)
+                call(cmd, shell=True)
+                files.append(mo)
 
     def translate(self) -> None:
         for locale in self.locales:
@@ -161,9 +163,7 @@ class Locale:
         self.locale = locale
         self.__language = self.__flag = None
 
-        localepath = path.join(
-            self.bot.i18n.directory, locale, "LC_MESSAGES", "shake.po"
-        )
+        localepath = join(self.bot.i18n.directory, locale, "LC_MESSAGES", "shake.po")
 
         po = None
         with suppress(OSError):
