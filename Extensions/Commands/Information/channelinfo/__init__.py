@@ -6,7 +6,7 @@ from typing import Optional
 from discord import Interaction, Message, PartialEmoji
 from discord.abc import GuildChannel
 from discord.app_commands import ContextMenu
-from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command
+from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
 
 from Classes import (
     GuildChannelConverter,
@@ -51,6 +51,7 @@ class channel_extension(Information):
 
     @guild_only()
     @setlocale()
+    @is_owner()
     @locale_doc
     async def context_menu(self, interaction: Interaction, message: Message) -> None:
         ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
@@ -59,6 +60,7 @@ class channel_extension(Information):
 
     @hybrid_command(name="channelinfo", aliases=["ci"])
     @guild_only()
+    @is_owner()
     @setlocale()
     @extras(beta=True)
     @locale_doc

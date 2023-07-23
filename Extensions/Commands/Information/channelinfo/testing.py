@@ -249,10 +249,29 @@ class TextChannelSource(ItemPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=self.title or _("General Overview"),
-            description=Format.multicodeblock("„" + self.item.topic + "“") if self.item.topic else None,
+            description=Format.multicodeblock("„" + self.item.topic + "“")
+            if self.item.topic
+            else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(self.item.guild.icon, "url", recovery))
+
+        embed.add_field(name=_("Mention"), value=Format.blockquotes(self.item.mention))
+
+        embed.add_field(
+            name=_("Position"),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.join(
+                        "#",
+                        self.item.position,
+                        " / ",
+                        len(self.item.guild.channels),
+                        splitter="",
+                    )
+                )
+            ),
+        )
 
         embed.add_field(
             name=_("NSFW"),
@@ -262,16 +281,11 @@ class TextChannelSource(ItemPageSource):
         )
 
         embed.add_field(
-            name=_("Channel's mention"), value=Format.blockquotes(self.item.mention)
-        )
-
-        embed.add_field(
             name=_("Created"),
             value=Format.multiblockquotes(
                 Format.join(
                     format_dt(self.item.created_at, "F"),
                     "(" + format_dt(self.item.created_at, "R") + ")",
-                    splitter="\n",
                 )
             ),
             inline=False,
@@ -279,29 +293,26 @@ class TextChannelSource(ItemPageSource):
 
         embed.add_field(
             name=_("Channel's server"),
-            value=Format.multiblockquotes(Format.multicodeblock(self.item.guild.name)),
+            value=Format.multiblockquotes(
+                Format.join(
+                    Format.multicodeblock(self.item.guild.name),
+                    Format.codeblock(self.item.guild.id),
+                )
+            ),
             inline=False,
         )
+
         if self.item.category:
             embed.add_field(
                 name=_("Channel's category"),
                 value=Format.multiblockquotes(
-                    Format.multicodeblock(self.item.category.name)
+                    Format.join(
+                        Format.multicodeblock(self.item.category.name),
+                        Format.codeblock(self.item.category_id),
+                    )
                 ),
+                inline=False,
             )
-
-        embed.add_field(
-            name=_("Channel's position"),
-            value=Format.multiblockquotes(
-                Format.multicodeblock(
-                    "#"
-                    + str(self.item.position)
-                    + " / "
-                    + str(len(self.item.guild.channels)),
-                    "css",
-                )
-            ),
-        )
 
         more: Dict[str, str] = {
             _("ID"): f"`{self.item.id}`",
@@ -343,14 +354,7 @@ class ThreadSource(ItemPageSource):
         embed.set_thumbnail(url=getattr(channel.guild.icon, "url", recovery))
 
         embed.add_field(
-            name=_("Created"),
-            value=Format.multiblockquotes(
-                Format.join(
-                    format_dt(channel.created_at, "F"),
-                    "(" + format_dt(channel.created_at, "R") + ")",
-                    splitter="\n",
-                )
-            ),
+            name=_("Threads's mention"), value=Format.blockquotes(self.item.mention)
         )
 
         embed.add_field(
@@ -361,21 +365,38 @@ class ThreadSource(ItemPageSource):
         )
 
         embed.add_field(
-            name=_("Threads's server"),
-            value=Format.multiblockquotes(Format.multicodeblock(channel.guild.name)),
+            name=_("Created"),
+            value=Format.multiblockquotes(
+                Format.join(
+                    format_dt(channel.created_at, "F"),
+                    "(" + format_dt(channel.created_at, "R") + ")",
+                )
+            ),
             inline=False,
         )
-        if channel.parent.category:
-            embed.add_field(
-                name=_("Threads's category"),
-                value=Format.multiblockquotes(
-                    Format.multicodeblock(channel.parent.category.name)
-                ),
-            )
 
         embed.add_field(
-            name=_("Threads's mention"), value=Format.blockquotes(self.item.mention)
+            name=_("Threads's server"),
+            value=Format.multiblockquotes(
+                Format.join(
+                    Format.multicodeblock(self.item.guild.name),
+                    Format.codeblock(self.item.guild.id),
+                )
+            ),
+            inline=False,
         )
+
+        if channel.parent.category:
+            embed.add_field(
+                name=_("Threads's server"),
+                value=Format.multiblockquotes(
+                    Format.join(
+                        Format.multicodeblock(self.item.parent.category.name),
+                        Format.codeblock(self.item.parent.category.id),
+                    )
+                ),
+                inline=False,
+            )
 
         more: Dict[str, str] = {
             _("ID"): f"`{channel.id}`",
@@ -410,70 +431,66 @@ class VoiceChannelSource(ItemPageSource):
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(channel.guild.icon, "url", recovery))
 
+        embed.add_field(name=_("Mention"), value=Format.blockquotes(self.item.mention))
+
+        embed.add_field(
+            name=_("Position"),
+            value=Format.multiblockquotes(
+                Format.bold(
+                    Format.join(
+                        "#",
+                        self.item.position,
+                        " / ",
+                        len(self.item.guild.channels),
+                        splitter="",
+                    )
+                )
+            ),
+        )
+
+        region = channel.rtc_region if not channel.rtc_region is None else "en-US"
+        embed.add_field(name=_("Region"), value=Format.blockquotes(Format.bold(region)))
+
         embed.add_field(
             name=_("Created"),
             value=Format.multiblockquotes(
                 Format.join(
                     format_dt(channel.created_at, "F"),
                     "(" + format_dt(channel.created_at, "R") + ")",
-                    splitter="\n",
                 )
             ),
             inline=False,
-        )
-
-        embed.add_field(
-            name=_("Bitrate"),
-            value=Format.multiblockquotes(Format.multicodeblock(channel.bitrate)),
-        )
-
-        embed.add_field(
-            name=_("User limit"),
-            value=Format.multiblockquotes(
-                Format.multicodeblock(
-                    channel.user_limit if bool(channel.user_limit) else "/"
-                )
-            ),
-        )
-
-        region = channel.rtc_region if not channel.rtc_region is None else "en-US"
-        embed.add_field(
-            name=_("Region"),
-            value=Format.multiblockquotes(Format.multicodeblock(region)),
         )
 
         embed.add_field(
             name=_("Channel's server"),
-            value=Format.multiblockquotes(Format.multicodeblock(channel.guild.name)),
+            value=Format.multiblockquotes(
+                Format.join(
+                    Format.multicodeblock(self.item.guild.name),
+                    Format.codeblock(self.item.guild.id),
+                )
+            ),
             inline=False,
         )
-        if channel.category:
+
+        if self.item.category:
             embed.add_field(
                 name=_("Channel's category"),
                 value=Format.multiblockquotes(
-                    Format.multicodeblock(channel.category.name)
+                    Format.join(
+                        Format.multicodeblock(self.item.category.name),
+                        Format.codeblock(self.item.category_id),
+                    )
                 ),
+                inline=False,
             )
 
-        embed.add_field(
-            name=_("Channel's position"),
-            value=Format.multiblockquotes(
-                Format.multicodeblock(
-                    "#"
-                    + str(channel.position)
-                    + " / "
-                    + str(len(channel.guild.channels)),
-                    "css",
-                )
-            ),
-        )
-
-        embed.add_field(
-            name=_("Channel's mention"), value=Format.blockquotes(self.item.mention)
-        )
+        user_limit = channel.user_limit if bool(channel.user_limit) else "/"
 
         more: Dict[str, str] = {
-            _("ID"): f"`{channel.id}`",
+            _("ID"): Format.codeblock(channel.id),
+            _("Bitrate"): Format.codeblock(channel.bitrate),
+            _("User limit"): Format.codeblock(user_limit),
         }
 
         embed.add_field(
@@ -585,7 +602,9 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=_("General Overview"),
-            description=Format.multicodeblock("„" + guild.description + "“") if guild.description else None,
+            description=Format.multicodeblock("„" + guild.description + "“")
+            if guild.description
+            else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(guild.icon, "url", recovery))
