@@ -3,6 +3,7 @@
 from enum import Enum
 from importlib import reload
 from io import BytesIO
+from itertools import chain
 from os import path
 from re import compile
 from typing import Generator, Optional
@@ -19,6 +20,7 @@ from Classes import (
     Types,
     _,
     examples,
+    finder,
     locale_doc,
     setlocale,
 )
@@ -163,8 +165,8 @@ class rtfm_extension(Developing):
             return [app_commands.Choice(name=current, value=current)]
 
         assert interaction.command is not None
-        key = interaction.command.name
-        matches = rtfm.finder(current, self.bot.cache["rtfm"][key])[:10]
+
+        matches = finder(current, list(chain(self.bot.cache["rtfm"].values())))[:10]
         return [app_commands.Choice(name=m, value=m) for m in matches]
 
     @hybrid_group(name="rtfm", invoke_without_command=True)

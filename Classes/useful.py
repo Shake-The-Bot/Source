@@ -11,7 +11,7 @@ from os import getcwd, listdir
 from os import urandom as _urandom
 from os.path import isdir, isfile
 from random import choice as rchoice
-from re import I, escape, sub
+from re import IGNORECASE, I, compile, escape, sub
 from sys import modules
 from time import time
 from typing import *
@@ -39,6 +39,7 @@ __all__ = (
     "votecheck",
     "get_file_paths",
     "dump",
+    "finder",
     "extshandler",
     "MISSING",
     "evaluate",
@@ -148,6 +149,34 @@ def evaluate(string):
         return result
     except (SyntaxError, TypeError, NameError):
         return None
+
+
+def finder(
+    text: str,
+    collection: Iterable[str],
+    *,
+    key: Optional[Callable[[str], str]] = ...,
+    lazy: bool = True,
+) -> list[str]:
+    suggestions: list[tuple[int, int, str]] = []
+    text = str(text)
+    pat = ".*?".join(map(escape, text))
+    regex = compile(pat, flags=IGNORECASE)
+    for item in collection:
+        to_search = key(item) if key else item
+        r = regex.search(to_search)
+        if r:
+            suggestions.append((len(r.group()), r.start(), item))
+
+    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str]:
+        if key:
+            return tup[0], tup[1], key(tup[2])
+        return tup
+
+    if lazy:
+        return (z for _, _, z in sorted(suggestions, key=sort_key))
+    else:
+        return [z for _, _, z in sorted(suggestions, key=sort_key)]
 
 
 def string_is_calculation(string):

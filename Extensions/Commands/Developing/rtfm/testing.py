@@ -7,38 +7,10 @@ from typing import Callable, Iterable, List, Optional
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
+from Classes import Format, ShakeCommand, ShakeEmbed, Types, _, finder
 
 ########
 #
-
-
-def finder(
-    text: str,
-    collection: Iterable[str],
-    *,
-    key: Optional[Callable[[str], str]] = ...,
-    lazy: bool = True,
-) -> list[str]:
-    suggestions: list[tuple[int, int, str]] = []
-    text = str(text)
-    pat = ".*?".join(map(escape, text))
-    regex = compile(pat, flags=IGNORECASE)
-    for item in collection:
-        to_search = key(item) if key else item
-        r = regex.search(to_search)
-        if r:
-            suggestions.append((len(r.group()), r.start(), item))
-
-    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str]:
-        if key:
-            return tup[0], tup[1], key(tup[2])
-        return tup
-
-    if lazy:
-        return (z for _, _, z in sorted(suggestions, key=sort_key))
-    else:
-        return [z for _, _, z in sorted(suggestions, key=sort_key)]
 
 
 class command(ShakeCommand):
@@ -62,7 +34,10 @@ class command(ShakeCommand):
             return await self.ctx.chat(_("Couldn't find anything."))
         embed = ShakeEmbed.default(
             self.ctx,
-            title=_("RTFM results on search „{query}“").format(query=obj)
+            title=Format.join(
+                _("RTFM results on search „{query}“").format(query=obj),
+                f"({completed:.0f}ms)",
+            )
             if obj
             else None,
             description="\n".join(
@@ -71,14 +46,10 @@ class command(ShakeCommand):
         )
         embed.set_author(
             icon_url=manuals.get("icon", None),
-            name=manuals.get("name", key.capitalize()),
+            name=manuals.get("name", key),
             url=manuals.get("url", None),
         )
-        embed.set_thumbnail(url=manuals.get("icon", None))
-        embed.set_footer(
-            icon_url=embed.footer.icon_url,
-            text=" • ".join((f"{completed:.0f}ms", (embed.footer.text or str()))),
-        )
+        embed.set_thumbnail(url=manuals.get("url", None))
         await self.ctx.chat(embed=embed)
         await self.bot.pool.execute(
             "INSERT INTO rtfm (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET count = rtfm.count + 1;",

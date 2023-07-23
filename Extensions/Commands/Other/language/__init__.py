@@ -2,19 +2,21 @@
 #
 from gettext import GNUTranslations
 from importlib import reload
+from itertools import chain
 from typing import Optional
 
-from discord import PartialEmoji
+from discord import Interaction, PartialEmoji, app_commands
 from discord.ext.commands import MissingPermissions, guild_only, hybrid_group
 from discord.ext.tasks import loop
-from polib import pofile
 
 from Classes import (
+    MISSING,
     Locale,
     ShakeBot,
     ShakeContext,
     Testing,
     _,
+    finder,
     locale_doc,
     setlocale,
     translations,
@@ -43,9 +45,30 @@ class language_extension(Other):
         self.fetch.start()
         self.bot.loop.create_task(self.fetch())
 
-    @property
-    def display_emoji(self) -> PartialEmoji:
-        return PartialEmoji(name="\N{EARTH GLOBE EUROPE-AFRICA}")
+    async def language_slash_autocomplete(
+        self, interaction: Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        if not bool(self.locales):
+            await interaction.response.autocomplete([])
+            # await rtfm.build_rtfm_lookup_table(self.bot)
+            return []
+
+        if not current:
+            return []
+
+        if len(current) < 3:
+            return [app_commands.Choice(name=current, value=current)]
+
+        assert interaction.command is not None
+
+        languages = dict(
+            (locale.language.lower(), locale) for locale in self.locales.values()
+        )
+        simples = dict(
+            (locale.simplified.lower(), locale) for locale in self.locales.values()
+        )
+        matches = finder(current, list(chain(self.bot.cache["rtfm"].values())))[:10]
+        return [app_commands.Choice(name=m, value=m) for m in matches]
 
     async def cog_unload(self) -> None:
         self.fetch.stop()

@@ -7,38 +7,10 @@ from typing import Callable, Iterable, List, Optional
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
+from Classes import Format, ShakeCommand, ShakeEmbed, Types, _, finder
 
 ########
 #
-
-
-def finder(
-    text: str,
-    collection: Iterable[str],
-    *,
-    key: Optional[Callable[[str], str]] = ...,
-    lazy: bool = True,
-) -> list[str]:
-    suggestions: list[tuple[int, int, str]] = []
-    text = str(text)
-    pat = ".*?".join(map(escape, text))
-    regex = compile(pat, flags=IGNORECASE)
-    for item in collection:
-        to_search = key(item) if key else item
-        r = regex.search(to_search)
-        if r:
-            suggestions.append((len(r.group()), r.start(), item))
-
-    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str]:
-        if key:
-            return tup[0], tup[1], key(tup[2])
-        return tup
-
-    if lazy:
-        return (z for _, _, z in sorted(suggestions, key=sort_key))
-    else:
-        return [z for _, _, z in sorted(suggestions, key=sort_key)]
 
 
 class command(ShakeCommand):
