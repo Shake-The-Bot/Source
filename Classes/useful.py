@@ -155,26 +155,26 @@ def finder(
     text: str,
     collection: Iterable[str],
     *,
-    key: Optional[Callable[[str], str]] = ...,
-    lazy: bool = True,
-) -> list[str]:
+    key: Optional[Callable[[str], str]] = None,
+    raw: bool = False,
+) -> list[tuple[int, int, str]] | list[str]:
     suggestions: list[tuple[int, int, str]] = []
     text = str(text)
     pat = ".*?".join(map(escape, text))
     regex = compile(pat, flags=IGNORECASE)
     for item in collection:
-        to_search = key(item) if key else item
+        to_search = key(item) if key else str(item)
         r = regex.search(to_search)
         if r:
             suggestions.append((len(r.group()), r.start(), item))
 
-    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str]:
+    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str | str]:
         if key:
             return tup[0], tup[1], key(tup[2])
         return tup
 
-    if lazy:
-        return (z for _, _, z in sorted(suggestions, key=sort_key))
+    if raw:
+        return sorted(suggestions, key=sort_key)
     else:
         return [z for _, _, z in sorted(suggestions, key=sort_key)]
 
