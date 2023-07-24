@@ -2,7 +2,7 @@
 #
 from gettext import GNUTranslations
 from importlib import reload
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from discord import Interaction, app_commands
 from discord.ext.commands import MissingPermissions, guild_only, hybrid_command
@@ -44,8 +44,8 @@ class language_extension(Other):
         self.bot.loop.create_task(self.fetch())
 
     async def language_slash_autocomplete(
-        self, interaction: Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
+        self, interaction: Interaction, current: Optional[str]
+    ) -> List[app_commands.Choice[str]]:
         if not bool(self.locales):
             await interaction.response.autocomplete([])
             await self.fetch()
@@ -53,9 +53,6 @@ class language_extension(Other):
 
         if not current:
             return []
-
-        if len(current) < 3:
-            return [app_commands.Choice(name=current, value=current)]
 
         assert interaction.command is not None
         languages = dict(
@@ -65,11 +62,16 @@ class language_extension(Other):
             (locale.simplified.lower(), locale) for locale in self.locales.values()
         )
         added: Dict[str, Locale] = languages | simplified
-        matches = finder(current, list(added.keys()))[:10]
-        return [
-            app_commands.Choice(name=added.get(m).language, value=added.get(m))
-            for m in matches
-        ]
+        matches = finder(current.lower(), list(added.keys()))[:10]
+        return list(
+            set(
+                app_commands.Choice(
+                    name=added.get(m).specific or added.get(m).language,
+                    value=added.get(m).locale,
+                )
+                for m in matches
+            )
+        )
 
     async def cog_unload(self) -> None:
         self.fetch.stop()
