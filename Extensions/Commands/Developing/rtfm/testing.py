@@ -28,7 +28,7 @@ class command(ShakeCommand):
             if l in dir(Messageable):
                 obj = f"abc.Messageable.{l}"
         cache = set(self.bot.cache["rtfm"][key].items())
-        matches = finder(obj, cache, key=lambda t: t[0], lazy=False)[:10]
+        matches = finder(obj, cache, key=lambda t: t[0])[:8]
         completed = time() * 1000 - start
         if len(matches) == 0:
             return await self.ctx.chat(_("Couldn't find anything."))

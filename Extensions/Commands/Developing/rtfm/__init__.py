@@ -161,12 +161,12 @@ class rtfm_extension(Developing):
         if not current:
             return []
 
-        if len(current) < 3:
-            return [app_commands.Choice(name=current, value=current)]
-
         assert interaction.command is not None
 
-        matches = finder(current, list(chain(self.bot.cache["rtfm"].values())))[:10]
+        key = interaction.namespace["key"] or "python"
+        items = self.bot.cache["rtfm"][key]
+        matches = finder(current, items)[:10]
+
         return [app_commands.Choice(name=m, value=m) for m in matches]
 
     @hybrid_group(name="rtfm", invoke_without_command=True)

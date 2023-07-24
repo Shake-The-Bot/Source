@@ -112,8 +112,8 @@ class Client:
         return True
 
     async def get_user(self, user_id: User.id, default: Optional[str] = None):
-        cached = self.cache.get(user_id, None)
-        if cached:
+        cached = self.cache.get(user_id)
+        if not cached is None:
             return cached
 
         async with self.bot.pool.acquire() as connection:

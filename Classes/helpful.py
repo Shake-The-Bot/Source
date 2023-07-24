@@ -429,14 +429,6 @@ class BotBase(Bot):
         return self._session
 
     @property
-    def i18n(self) -> i18nClient:
-        if getattr(self, "_i18n", None) is not None:
-            return self._i18n
-
-        self._i18n = i18nClient(self, domain="shake", directory="Locales")
-        return self._i18n
-
-    @property
     def emojis(self) -> Emojis:
         return emojis
 
@@ -579,6 +571,7 @@ class BotBase(Bot):
         return ctx
 
     async def setup_hook(self):
+        self.i18n = i18nClient(self, domain="shake", directory="Locales")
         await self.load_extensions()
         self.scheduler.start()
 

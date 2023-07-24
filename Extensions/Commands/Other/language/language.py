@@ -43,8 +43,6 @@ class command(ShakeCommand):
     async def list(self, locales: dict[str, Locale]):
         locale = await self.bot.i18n.get_user(self.ctx.author.id, default="en-US")
         current: Locale = locales.get(locale)
-        if current is None:
-            print(locales)
         assert current is not None
 
         menu = ListMenu(
@@ -64,7 +62,7 @@ class command(ShakeCommand):
                         _(
                             "Don't you see your language or is it incomplete?\nThen come help us out on [Crowdin]({link})!"
                         ).format(
-                            link=self.bot.config.auth.crowdin.url,
+                            link=self.bot.config.crowdin,
                         )
                     ),
                     splitter="\n\n",
@@ -122,7 +120,7 @@ class PageSource(ListPageSource):
 
         specified = item.specific
         if specified:
-            language = Format.codeblock(specified.capitalize())
+            language = specified.capitalize()
         else:
             language = item.language.capitalize()
 
@@ -133,9 +131,23 @@ class PageSource(ListPageSource):
 
         embed.add_field(
             inline=False,
-            name=f"{index} {item.flag} {split} {Format.codeblock(language)} {split} {item.simplified} {tick}",
+            name=" ".join(
+                (
+                    index,
+                    item.flag,
+                    split,
+                    Format.codeblock(language),
+                    tick,
+                )
+            ),
             value=Format.multicodeblock(
-                "/language set {locale}".format(locale=item.locale)
+                ", ".join(
+                    (
+                        item.locale,
+                        language,
+                        item.simplified,
+                    )
+                )
             ),
         )
 

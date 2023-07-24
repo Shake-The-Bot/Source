@@ -65,6 +65,7 @@ class Localization:
         "bg-BG": {"language": "български", "simplified": ["bulgarian"]},
         "cs-CZ": {"language": "čeština", "simplified": ["czech"]},
         "da-DK": {"language": "Dansk", "simplified": ["danish"]},
+        "en-PH": {"language": "Tagalog", "simplified": ["tagalog"]},
         "de-DE": {
             "language": "Deutsch",
             "simplified": ["german"],
@@ -72,12 +73,12 @@ class Localization:
         },
         "en-US": {
             "language": "English",
-            "simplified": ["american english", "english"],
+            "simplified": ["american english"],
             "specific": "English (american)",
         },
         "en-GB": {
             "language": "English",
-            "simplified": ["british english"],
+            "simplified": ["british english", "english"],
             "specific": "English (british)",
         },
         "zh-CN": {

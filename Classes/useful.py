@@ -11,7 +11,9 @@ from os import getcwd, listdir
 from os import urandom as _urandom
 from os.path import isdir, isfile
 from random import choice as rchoice
-from re import IGNORECASE, I, compile, escape, sub
+from re import IGNORECASE, I
+from re import compile as recom
+from re import escape, sub
 from sys import modules
 from time import time
 from typing import *
@@ -161,7 +163,7 @@ def finder(
     suggestions: list[tuple[int, int, str]] = []
     text = str(text)
     pat = ".*?".join(map(escape, text))
-    regex = compile(pat, flags=IGNORECASE)
+    regex = recom(pat, flags=IGNORECASE)
     for item in collection:
         to_search = key(item) if key else str(item)
         r = regex.search(to_search)

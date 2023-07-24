@@ -40,9 +40,6 @@ class language_extension(Other):
         except:
             pass
 
-        self.fetch.start()
-        self.bot.loop.create_task(self.fetch())
-
     async def language_slash_autocomplete(
         self, interaction: Interaction, current: Optional[str]
     ) -> List[app_commands.Choice[str]]:
@@ -76,17 +73,19 @@ class language_extension(Other):
     async def cog_unload(self) -> None:
         self.fetch.stop()
 
+    async def cog_load(self) -> None:
+        await self.fetch()
+        if not self.fetch.is_running:
+            self.fetch.start()
+
     @loop(minutes=60)
     async def fetch(self):
         locales = dict()
-
         for name, translation in translations.items():
-            # if not isinstance(translation, GNUTranslations):
-            #     continue
-
             locale = Locale(bot=self.bot, locale=name)
-            assert not locale.exists is False
-            locales[name] = locale
+
+            if locale.exists:
+                locales[name] = locale
 
         self.locales = locales
 
