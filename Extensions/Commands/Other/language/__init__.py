@@ -1,20 +1,21 @@
 ############
 #
+from difflib import get_close_matches
 from gettext import GNUTranslations
 from importlib import reload
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from discord import Interaction, app_commands
 from discord.ext.commands import MissingPermissions, guild_only, hybrid_command
 from discord.ext.tasks import loop
 
 from Classes import (
+    Format,
     Locale,
     ShakeBot,
     ShakeContext,
     Testing,
     _,
-    finder,
     locale_doc,
     setlocale,
     translations,
@@ -33,7 +34,6 @@ EXCEPTION = {"sr-SP": "sr"}
 class language_extension(Other):
     def __init__(self, bot: ShakeBot) -> None:
         super().__init__(bot=bot)
-        self.locales = list()
 
         try:
             reload(lang)
@@ -43,32 +43,38 @@ class language_extension(Other):
     async def language_slash_autocomplete(
         self, interaction: Interaction, current: Optional[str]
     ) -> List[app_commands.Choice[str]]:
-        if not bool(self.locales):
-            await interaction.response.autocomplete([])
+        if not bool(self.bot.locales):
             await self.fetch()
+            await interaction.response.autocomplete([])
             return []
 
         if not current:
             return []
 
-        assert interaction.command is not None
-        languages = dict(
-            (locale.language.lower(), locale) for locale in self.locales.values()
+        assert not interaction.command is None
+
+        searches: Dict[str, Locale] = (
+            self.bot.locales.languages | self.bot.locales.simples
         )
-        simplified = dict(
-            (locale.simplified.lower(), locale) for locale in self.locales.values()
-        )
-        added: Dict[str, Locale] = languages | simplified
-        matches = finder(current.lower(), list(added.keys()))[:10]
-        return list(
-            set(
+        matches = get_close_matches(current, list(searches.keys()))[:10]
+        if bool(matches):
+            return list(
                 app_commands.Choice(
-                    name=added.get(m).specific or added.get(m).language,
-                    value=added.get(m).locale,
+                    name=locale.specific or locale.language,
+                    value=locale.locale,
                 )
-                for m in matches
+                for locale in set(searches.get(m) for m in matches)
             )
-        )
+
+        if current in searches:
+            return [
+                app_commands.Choice(
+                    name=searches.get(current).specific,
+                    value=searches.get(current).specific,
+                )
+            ]
+        else:
+            return []
 
     async def cog_unload(self) -> None:
         self.fetch.stop()
@@ -80,14 +86,8 @@ class language_extension(Other):
 
     @loop(minutes=60)
     async def fetch(self):
-        locales = dict()
-        for name, translation in translations.items():
-            locale = Locale(bot=self.bot, locale=name)
-
-            if locale.exists:
-                locales[name] = locale
-
-        self.locales = locales
+        locales = [Locale(bot=self.bot, locale=name) for name in translations.keys()]
+        self.bot.locales(locales)
 
     @hybrid_command(name="language", aliases=["lang"])
     @guild_only()
@@ -127,14 +127,10 @@ class language_extension(Other):
                     if getattr(ctx.permissions, perm) != value
                 ]:
                     raise MissingPermissions(missing)
-                await do.command(ctx=ctx).set_locale(
-                    name=language, locales=self.locales, guild=True
-                )
+                await do.command(ctx=ctx).set_locale(name=language, guild=True)
 
             else:
-                await do.command(ctx=ctx).set_locale(
-                    name=language, locales=self.locales
-                )
+                await do.command(ctx=ctx).set_locale(name=language)
 
         except:
             if ctx.testing:
@@ -164,7 +160,7 @@ class language_extension(Other):
         do = testing if ctx.testing else lang
 
         try:
-            await do.command(ctx=ctx).list(locales=self.locales)
+            await do.command(ctx=ctx).list()
 
         except:
             if ctx.testing:

@@ -7,7 +7,7 @@ from glob import glob
 from os import getcwd, listdir, walk
 from os.path import basename, isdir, isfile, join, splitext
 from subprocess import call
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from discord import Guild, User
 from polib import pofile
@@ -17,7 +17,7 @@ from Classes.types import Localization
 if TYPE_CHECKING:
     from bot import ShakeBot
 
-__all__ = ("Client", "_", "current", "default", "translations", "Locale")
+__all__ = ("Client", "_", "Locales", "current", "default", "translations", "Locale")
 ########
 #
 default: str = "en-US"
@@ -153,6 +153,61 @@ class Client:
         return locale
 
 
+class Locales:
+    locales: Optional[List[Locale]]
+
+    def __init__(self, locales: Optional[List[Locale]] = None) -> None:
+        self.locales = locales or list()
+
+    def add(self, locales: Union[Locale, List[Locale]]):
+        if not isinstance(locales, list):
+            locales = [locales]
+        locales = list(filter(lambda l: l.exists, locales))
+        self.locales.extend(locales)
+
+    @property
+    def all_two_letters(self) -> Dict[str, Locale]:
+        return dict((locale.two_letters.lower(), locale) for locale in self.locales)
+
+    @property
+    def unique_two_letters(self) -> Dict[str, Locale]:
+        return dict(
+            (two, locale)
+            for two, locale in self.all_two_letters.items()
+            if not list(self.all_two_letters.keys()).count(two) > 1
+        )
+
+    @property
+    def languages(self) -> Dict[str, Locale]:
+        return dict((locale.language.lower(), locale) for locale in self.locales)
+
+    @property
+    def simples(self) -> Dict[str, Locale]:
+        return dict((locale.simplified.lower(), locale) for locale in self.locales)
+
+    @property
+    def codes(self) -> Dict[str, Locale]:
+        return dict((locale.locale.lower(), locale) for locale in self.locales)
+
+    def __call__(self, locales: List[Locale]) -> None:
+        self.locales = list(filter(lambda l: l.exists, locales))
+
+    def __getitem__(self, index):
+        return self.locales[index]
+
+    def get(self, index, default=None):
+        try:
+            return self.locales[index]
+        except IndexError:
+            return default
+
+    def __len__(self):
+        return len(self.locales)
+
+    def __iter__(self):
+        return iter(self.locales)
+
+
 class Locale:
     bot: ShakeBot
     locale: str
@@ -182,13 +237,13 @@ class Locale:
         return simplified[0]
 
     @property
-    def language(self) -> Optional[str]:
+    def language(self) -> str:
         if self.__language:
             return self.__language
         if self.information:
-            language = self.information.get("language", None)
+            language = self.information.get("language")
         else:
-            language = self.metadata.get("Lanugage-Team", None)
+            language = self.metadata.get("Lanugage-Team")
         self.__language = language
         return language
 

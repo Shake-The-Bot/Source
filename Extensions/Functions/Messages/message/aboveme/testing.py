@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from discord import Guild, Member, Message, TextChannel
@@ -233,8 +233,9 @@ class AboveMe:
             failed=not passed,
         )
 
+        used = time if passed else date.fromisoformat(used).isoformat()
         self.cache[self.channel.id]: AboveMeBatch = {
-            "used": (time if passed else used).isoformat(),
+            "used": used,
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
             "message_id": message.id if passed else message_id,

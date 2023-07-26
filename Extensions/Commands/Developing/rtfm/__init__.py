@@ -1,26 +1,26 @@
 ############
 #
+from difflib import get_close_matches
 from enum import Enum
 from importlib import reload
 from io import BytesIO
-from itertools import chain
 from os import path
 from re import compile
-from typing import Generator, Optional
+from typing import Generator, List, Optional
 from zlib import decompressobj
 
 from discord import Interaction, Member, PartialEmoji, app_commands
 from discord.app_commands import Choice, choices
-from discord.ext.commands import Greedy, guild_only, hybrid_group, is_owner
+from discord.ext.commands import Greedy, guild_only, hybrid_command, is_owner
 
 from Classes import (
+    MISSING,
     ShakeBot,
     ShakeContext,
     Testing,
     Types,
     _,
     examples,
-    finder,
     locale_doc,
     setlocale,
 )
@@ -162,17 +162,32 @@ class rtfm_extension(Developing):
             return []
 
         assert interaction.command is not None
+        if key := getattr(interaction.namespace, "key", MISSING):
+            items = self.bot.cache["rtfm"][key]
+        else:
+            items = self.bot.cache["rtfm"]["python"]
 
-        key = interaction.namespace["key"] or "python"
-        items = self.bot.cache["rtfm"][key]
-        matches = finder(current, items)[:10]
+        matches: Optional[List[str]] = get_close_matches(current, items)
+        if bool(matches):
+            return [app_commands.Choice(name=m, value=m) for m in matches]
 
-        return [app_commands.Choice(name=m, value=m) for m in matches]
+        if current in items:
+            return [app_commands.Choice(name=current, value=current)]
+        else:
+            return []
 
-    @hybrid_group(name="rtfm", invoke_without_command=True)
+    @hybrid_command(name="rtfm", invoke_without_command=True)
     @guild_only()
     @setlocale()
     @is_owner()
+    @choices(
+        key=[
+            Choice(name="discord.py latest", value="latest"),
+            Choice(name="discord.py stable", value="stable"),
+            Choice(name="python", value="python"),
+        ]
+    )
+    @app_commands.autocomplete(entity=rtfm_slash_autocomplete)
     @locale_doc
     async def rtfm(
         self,
@@ -182,34 +197,10 @@ class rtfm_extension(Developing):
         entity: Optional[str] = None,
     ) -> None:
         _(
-            """RTFM is internet slang for the phrase "read the damn manual".
-            This also applies to this command, with the help of which you can get the URLs to the documentation for various things"""
-        )
-        await self.search(ctx, key=key, entity=entity)
-
-    @rtfm.command(name="search")
-    @guild_only()
-    @is_owner()
-    @choices(
-        key=[
-            Choice(name="discord.py latest", value="latest"),
-            Choice(name="discord.py stable", value="stable"),
-            Choice(name="python", value="python"),
-        ]
-    )
-    @setlocale()
-    @locale_doc
-    @examples(key=Keys)
-    @app_commands.autocomplete(entity=rtfm_slash_autocomplete)
-    async def search(
-        self,
-        ctx: ShakeContext,
-        key: Optional[str] = None,
-        *,
-        entity: Optional[str] = None,
-    ) -> None:
-        _(
             """View objects from certain documentation.
+
+            RTFM is internet slang for the phrase "read the damn manual".
+            This also applies to this command, with the help of which you can get the URLs to the documentation for various things
 
             Parameters
             -----------
@@ -222,7 +213,6 @@ class rtfm_extension(Developing):
                 Defaults to ``None`` and returning the ``key`` website url
             """
         )
-
         if ctx.testing:
             try:
                 reload(testing)
@@ -254,11 +244,11 @@ class rtfm_extension(Developing):
                 raise Testing
             raise
 
-    @rtfm.command(name="stats")
+    @hybrid_command(name="rtfms")
     @setlocale()
     @is_owner()
     @locale_doc
-    async def stats(self, ctx: ShakeContext, member: Greedy[Member] = None):
+    async def rtfms(self, ctx: ShakeContext, member: Greedy[Member] = None):
         _(
             """View the members stats of the rtfm command.
             

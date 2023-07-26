@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, TextChannel
@@ -300,8 +300,10 @@ class Counting:
         )
 
         s = streak + 1 if passed else streak
+
+        used = self.time if passed else date.fromisoformat(self.used).isoformat()
         self.cache[self.channel.id]: CountingBatch = {
-            "used": (self.time if passed else self.used).isoformat(),
+            "used": used,
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else self.message_id,
@@ -341,7 +343,7 @@ class Counting:
             }
         )
 
-    async def syntax_check(self, content: str, math: bool):
+    async def syntax_check(self, content: str, numbers: bool, math: bool):
         if not content.isdigit():
             if math and string_is_calculation(content):
                 return True

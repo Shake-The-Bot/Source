@@ -33,20 +33,13 @@ from discord.ui import View
 from PIL import Image, ImageDraw, ImageFont
 
 from Classes.i18n import Client as i18nClient
-from Classes.i18n import _
+from Classes.i18n import Locales, _
 from Classes.tomls import Config, Emojis, config, emojis
 from Classes.types import Format, Regex, TracebackType
 from Classes.useful import MISSING, source_lines
-from Extensions.Functions.Debug.error import error
 
 if TYPE_CHECKING:
     from bot import ShakeBot
-    from Classes import __version__
-
-else:
-    from discord.ext.commands import Bot as ShakeBot
-
-    __version__ = MISSING
 
 p = ThreadPoolExecutor(2)
 
@@ -387,6 +380,7 @@ class BotBase(Bot):
     boot: datetime
     gateway_handler: Any
     cache = dict()
+    locales: Locales
     bot_app_info: AppInfo
 
     def __init__(self, **options):
@@ -572,6 +566,7 @@ class BotBase(Bot):
 
     async def setup_hook(self):
         self.i18n = i18nClient(self, domain="shake", directory="Locales")
+        self.locales = Locales()
         await self.load_extensions()
         self.scheduler.start()
 
@@ -597,9 +592,6 @@ class BotBase(Bot):
                 "app_command": ctx.interaction is not None,
             }
         )
-
-    async def on_error(self, event, *args, **kwargs):
-        await error(bot=self, event=event).__await__()
 
     async def start(self, token: str) -> None:
         try:
@@ -1218,7 +1210,7 @@ class Category(Cog):
     bot: ShakeBot
 
     def __init__(self, bot: ShakeBot, cog: Optional[Cog] = None) -> None:
-        self.bot = bot
+        self.bot: ShakeBot = bot
         if not cog is None:
             setattr(cog, "category", self)
 

@@ -1,5 +1,6 @@
 ############
 #
+from difflib import get_close_matches
 from re import IGNORECASE, compile, escape, sub
 from time import time
 from typing import Callable, Iterable, List, Optional
@@ -7,7 +8,7 @@ from typing import Callable, Iterable, List, Optional
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import Format, ShakeCommand, ShakeEmbed, Types, _, finder
+from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
 
 ########
 #
@@ -27,26 +28,21 @@ class command(ShakeCommand):
             l = obj.lower()
             if l in dir(Messageable):
                 obj = f"abc.Messageable.{l}"
-        cache = set(self.bot.cache["rtfm"][key].items())
-        matches = finder(obj, cache, key=lambda t: t[0])[:8]
+        cache = dict(set(self.bot.cache["rtfm"][key].items()))
+        matches = get_close_matches(obj, list(cache.keys()))[:8]
         completed = time() * 1000 - start
         if len(matches) == 0:
             return await self.ctx.chat(_("Couldn't find anything."))
         embed = ShakeEmbed.default(
             self.ctx,
-            title=Format.join(
-                _("RTFM results on search „{query}“").format(query=obj),
-                f"({completed:.0f}ms)",
-            )
-            if obj
-            else None,
+            title=_("RTFM results on search „{query}“").format(query=obj),
             description="\n".join(
-                Format.list(f"[`{key}`]({url})") for key, url in matches
+                Format.list(f"[`{key}`]({cache[key]})") for key in matches
             ),
         )
         embed.set_author(
             icon_url=manuals.get("icon", None),
-            name=manuals.get("name", key),
+            name=manuals.get("name", key).capitalize(),
             url=manuals.get("url", None),
         )
         embed.set_thumbnail(url=manuals.get("url", None))

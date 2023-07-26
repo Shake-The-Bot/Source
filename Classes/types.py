@@ -65,7 +65,7 @@ class Localization:
         "bg-BG": {"language": "български", "simplified": ["bulgarian"]},
         "cs-CZ": {"language": "čeština", "simplified": ["czech"]},
         "da-DK": {"language": "Dansk", "simplified": ["danish"]},
-        "en-PH": {"language": "Tagalog", "simplified": ["tagalog"]},
+        "tl-PH": {"language": "Tagalog", "simplified": ["tagalog"]},
         "de-DE": {
             "language": "Deutsch",
             "simplified": ["german"],
