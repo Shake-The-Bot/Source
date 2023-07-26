@@ -601,7 +601,9 @@ class Front(FrontPageSource):
         embed = ShakeEmbed.default(
             ctx,
             title=_("General Overview"),
-            description=Format.multicodeblock("„" + guild.description + "“") if guild.description else None,
+            description=Format.multicodeblock("„" + guild.description + "“")
+            if guild.description
+            else None,
         )
         recovery = "https://cdn.discordapp.com/attachments/946862628179939338/1093165455289622632/no_face_2.png"
         embed.set_thumbnail(url=getattr(guild.icon, "url", recovery))
@@ -682,11 +684,15 @@ class Front(FrontPageSource):
             name=_("More Information"),
             value=Format.multiblockquotes(
                 "\n".join(
-                    f"{Format.bold(k)}: {Format.bold(v)}" for k, v in more.items()
+                    [
+                        Format.join(Format.bold(k), Format.bold(v), splitter=": ")
+                        for k, v in more.items()
+                    ]
                 )
             ),
             inline=False,
         )
         embed.set_image(url=getattr(guild.banner, "url", None))
 
+        embed.advertise(ctx.bot)
         return embed

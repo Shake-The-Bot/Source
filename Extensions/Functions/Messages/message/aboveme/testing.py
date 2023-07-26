@@ -235,7 +235,7 @@ class AboveMe:
 
         used = time if passed else date.fromisoformat(used).isoformat()
         self.cache[self.channel.id]: AboveMeBatch = {
-            "used": used,
+            "used": str(used),
             "user_id": member.id if passed else user_id,
             "channel_id": self.channel.id,
             "message_id": message.id if passed else message_id,

@@ -293,9 +293,12 @@ class Locale:
 
     @property
     def two_letters(self) -> str:
-        two = self.metadata.get("Language", None)
-        if two is None:
-            two = self.crowdin[:2] if self.crowdin else self.locale[:2]
+        if crw := self.crowdin:
+            two = crw
+        elif lang := self.metadata.get("Language", None):
+            two = lang[:2]
+        else:
+            two = self.locale[:2]
         return two.lower()
 
     def __str__(self) -> str:

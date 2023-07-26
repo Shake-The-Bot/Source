@@ -303,7 +303,7 @@ class Counting:
 
         used = self.time if passed else date.fromisoformat(self.used).isoformat()
         self.cache[self.channel.id]: CountingBatch = {
-            "used": used,
+            "used": str(used),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else self.message_id,

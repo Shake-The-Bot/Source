@@ -24,8 +24,49 @@ class command(ShakeCommand):
 
         if found := self.bot.locales.unique_two_letters.get(name.lower(), MISSING):
             return found.locale
-        print(self.bot.locales.languages)
+
+        print(self.bot.locales.unique_two_letters)
         return None
+
+    async def set_locale(self, name, guild: bool = False):
+        await self.ctx.defer()
+        locale = self.get_locale_by_name(name)
+        if locale is None:
+            description = Format.join(
+                _("Your given language is not valid."),
+                _("Use {command} to get a list of all available languages").format(
+                    command=Format.codeblock("/languages")
+                ),
+                splitter="\n",
+            )
+            embed = ShakeEmbed.to_error(self.ctx, description=description)
+        elif not locale in self.bot.i18n.locales:
+            embed = ShakeEmbed.to_error(
+                self.ctx,
+                description=_(
+                    "I'm sorry to say that I dont have your given locale ready."
+                ),
+            )
+            embed.description += "\n" + _(
+                "Try to contribute [here]({link}) if you want to!"
+            ).format(link=self.bot.config.auth.crowdin.url)
+            locale = None
+        else:
+            if guild:
+                await self.bot.i18n.set_guild(self.ctx.guild.id, locale)
+            else:
+                await self.bot.i18n.set_guild(self.ctx.author.id, locale)
+
+            embed = ShakeEmbed.to_success(
+                self.ctx,
+                description=_("{name} was successfully set as language!").format(
+                    name=Format.quote(
+                        Localization.available[locale]["language"].capitalize()
+                    )
+                ),
+            )
+        await self.ctx.chat(embed=embed)
+        return
 
     async def list(self):
         code = await self.bot.i18n.get_user(self.ctx.author.id, default="en-US")
@@ -58,46 +99,6 @@ class command(ShakeCommand):
         )
         await menu.setup()
         await menu.send(ephemeral=True)
-
-    async def set_locale(self, name, guild: bool = False):
-        await self.ctx.defer()
-        locale = self.get_locale_by_name(name)
-        if locale is None:
-            description = Format.join(
-                _("Your given language is not valid."),
-                _("Use {command} to get a list of all available languages").format(
-                    command=Format.codeblock("/language list")
-                ),
-                splitter="\n",
-            )
-            embed = ShakeEmbed.to_error(self.ctx, description=description)
-        elif not locale in self.bot.i18n.locales:
-            embed = ShakeEmbed.to_error(
-                self.ctx,
-                description=_(
-                    "I'm sorry to say that I dont have your given locale ready."
-                ),
-            )
-            embed.description += "\n" + _(
-                "Try to contribute [here]({link}) if you want to!"
-            ).format(link=self.bot.config.auth.crowdin.url)
-            locale = None
-        else:
-            if guild:
-                await self.bot.i18n.set_guild(self.ctx.guild.id, locale)
-            else:
-                await self.bot.i18n.set_guild(self.ctx.author.id, locale)
-
-            embed = ShakeEmbed.to_success(
-                self.ctx,
-                description=_("{name} was successfully set as language!").format(
-                    name=Format.quote(
-                        Localization.available[locale]["language"].capitalize()
-                    )
-                ),
-            )
-        await self.ctx.chat(embed=embed)
-        return
 
 
 class PageSource(ListPageSource):

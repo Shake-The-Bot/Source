@@ -249,7 +249,7 @@ class OneWord:
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
-            "used": used,
+            "used": str(used),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,

@@ -684,11 +684,15 @@ class Front(FrontPageSource):
             name=_("More Information"),
             value=Format.multiblockquotes(
                 "\n".join(
-                    f"{Format.bold(k)}: {Format.bold(v)}" for k, v in more.items()
+                    [
+                        Format.join(Format.bold(k), Format.bold(v), splitter=": ")
+                        for k, v in more.items()
+                    ]
                 )
             ),
             inline=False,
         )
         embed.set_image(url=getattr(guild.banner, "url", None))
 
+        embed.advertise(ctx.bot)
         return embed

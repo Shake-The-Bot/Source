@@ -51,7 +51,6 @@ class channel_extension(Information):
 
     @guild_only()
     @setlocale()
-    @is_owner()
     @locale_doc
     async def context_menu(self, interaction: Interaction, message: Message) -> None:
         ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
@@ -60,7 +59,6 @@ class channel_extension(Information):
 
     @hybrid_command(name="channelinfo", aliases=["ci"])
     @guild_only()
-    @is_owner()
     @setlocale()
     @extras(beta=True)
     @locale_doc
