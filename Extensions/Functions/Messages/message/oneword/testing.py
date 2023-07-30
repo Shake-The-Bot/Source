@@ -244,12 +244,11 @@ class OneWord:
             failed=not passed,
         )
 
-        used = time if passed else date.fromisoformat(used).isoformat()
         self.cache[self.channel.id]: OneWordBatch = {
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
-            "used": str(used),
+            "used": str(time if passed else used),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,

@@ -24,8 +24,6 @@ class command(ShakeCommand):
 
         if found := self.bot.locales.unique_two_letters.get(name.lower(), MISSING):
             return found.locale
-
-        print(self.bot.locales.unique_two_letters)
         return None
 
     async def set_locale(self, name, guild: bool = False):

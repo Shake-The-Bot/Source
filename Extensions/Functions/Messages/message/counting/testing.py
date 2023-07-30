@@ -399,7 +399,7 @@ class Counting:
     @property
     def used(self) -> int:
         if self.record:
-            return self.record.get("used") or self.time
+            return str(self.record.get("used") or self.time)
 
     @property
     def webhook(self) -> int:

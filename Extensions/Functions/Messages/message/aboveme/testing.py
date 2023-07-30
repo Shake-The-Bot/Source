@@ -164,7 +164,7 @@ class AboveMe:
                 "guild_id": guild.id,
                 "channel_id": channel.id,
                 "user_id": user.id,
-                "used": time.isoformat(),
+                "used": str(time),
                 "phrase": phrase,
                 "failed": failed,
             }
@@ -233,7 +233,7 @@ class AboveMe:
             failed=not passed,
         )
 
-        used = time if passed else date.fromisoformat(used).isoformat()
+        used = time if passed else used
         self.cache[self.channel.id]: AboveMeBatch = {
             "used": str(used),
             "user_id": member.id if passed else user_id,

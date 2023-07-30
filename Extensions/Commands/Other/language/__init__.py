@@ -43,20 +43,26 @@ class language_extension(Other):
     async def language_slash_autocomplete(
         self, interaction: Interaction, current: Optional[str]
     ) -> List[app_commands.Choice[str]]:
+        assert not interaction.command is None
+
         if not bool(self.bot.locales):
             await self.fetch()
             await interaction.response.autocomplete([])
             return []
 
         if not current:
-            return []
-
-        assert not interaction.command is None
+            return [
+                app_commands.Choice(
+                    name=locale.specific or locale.language,
+                    value=locale.locale,
+                )
+                for locale in self.bot.locales[:25]
+            ]
 
         searches: Dict[str, Locale] = (
             self.bot.locales.languages | self.bot.locales.simples
         )
-        matches = get_close_matches(current, list(searches.keys()))[:10]
+        matches = get_close_matches(current, list(searches.keys()))
         if bool(matches):
             return list(
                 app_commands.Choice(
@@ -67,10 +73,11 @@ class language_extension(Other):
             )
 
         if current in searches:
+            locale = searches.get(current)
             return [
                 app_commands.Choice(
-                    name=searches.get(current).specific,
-                    value=searches.get(current).specific,
+                    name=locale.specific or locale.language,
+                    value=locale.locale,
                 )
             ]
         else:

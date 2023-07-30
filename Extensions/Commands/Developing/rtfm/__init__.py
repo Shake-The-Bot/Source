@@ -3,11 +3,9 @@
 from difflib import get_close_matches
 from enum import Enum
 from importlib import reload
-from io import BytesIO
 from os import path
 from re import compile
-from typing import Generator, List, Optional
-from zlib import decompressobj
+from typing import List, Optional
 
 from discord import Interaction, Member, PartialEmoji, app_commands
 from discord.app_commands import Choice, choices
@@ -15,12 +13,12 @@ from discord.ext.commands import Greedy, guild_only, hybrid_command, is_owner
 
 from Classes import (
     MISSING,
+    Manuals,
     ShakeBot,
     ShakeContext,
     Testing,
-    Types,
     _,
-    examples,
+    build_lookup_table,
     locale_doc,
     setlocale,
 )
@@ -30,88 +28,6 @@ from . import rtfm, testing
 
 ########
 #
-
-
-class SphinxObjectFileReader:
-    BUFSIZE = 16 * 1024
-
-    def __init__(self, buffer: bytes):
-        self.stream = BytesIO(buffer)
-
-    def readline(self) -> str:
-        return self.stream.readline().decode("utf-8")
-
-    def skipline(self) -> None:
-        self.stream.readline()
-
-    def read_compressed_chunks(self) -> Generator[bytes, None, None]:
-        decompressor = decompressobj()
-        while True:
-            chunk = self.stream.read(self.BUFSIZE)
-            if len(chunk) == 0:
-                break
-            yield decompressor.decompress(chunk)
-        yield decompressor.flush()
-
-    def read_compressed_lines(self) -> Generator[str, None, None]:
-        buf = b""
-        for chunk in self.read_compressed_chunks():
-            buf += chunk
-            pos = buf.find(b"\n")
-            while pos != -1:
-                yield buf[:pos].decode("utf-8")
-                buf = buf[pos + 1 :]
-                pos = buf.find(b"\n")
-
-
-def parse_object_inv(stream: SphinxObjectFileReader, url: str) -> dict[str, str]:
-    result: dict[str, str] = {}
-
-    inv_version = stream.readline().rstrip()
-
-    if inv_version != "# Sphinx inventory version 2":
-        raise RuntimeError("Invalid objects.inv file version.")
-
-    projname = stream.readline().rstrip()[11:]
-    version = stream.readline().rstrip()[11:]
-
-    line = stream.readline()
-    if "zlib" not in line:
-        raise RuntimeError("Invalid objects.inv file, not z-lib compatible.")
-
-    entry_regex = compile(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)")
-    for line in stream.read_compressed_lines():
-        match = entry_regex.match(line.rstrip())
-        if not match:
-            continue
-
-        name, directive, prio, location, dispname = match.groups()
-        domain, _, subdirective = directive.partition(":")
-        if directive == "py:module" and name in result:
-            continue
-
-        if directive == "std:doc":
-            subdirective = "label"
-
-        if location.endswith("$"):
-            location = location[:-1] + name
-
-        key = name if dispname == "-" else dispname
-        prefix = f"{subdirective}:" if domain == "std" else ""
-
-        if projname == "discord.py":
-            key = key.replace("discord.ext.commands.", "").replace("discord.", "")
-
-        result[f"{prefix}{key}"] = path.join(url, location)
-
-    return result
-
-
-class Keys(Enum):
-    latest = "latest"
-    stable = "stable"
-    python = "python"
-    peps = "peps"
 
 
 class rtfm_extension(Developing):
@@ -131,41 +47,34 @@ class rtfm_extension(Developing):
     def display_emoji(self) -> str:
         return PartialEmoji(name="\N{BOOKS}")
 
-    async def build_rtfm_lookup_table(self):
-        cache: dict[str, dict[str, str]] = {}
-        for key, d in Types.Manuals.value.items():
-            cache[key] = {}
-            async with self.bot.session.get(d["url"] + "/objects.inv") as resp:
-                if resp.status != 200:
-                    raise RuntimeError(
-                        "Cannot build rtfm lookup table, try again later."
-                    )
-
-                stream = SphinxObjectFileReader(await resp.read())
-                cache[key] = parse_object_inv(stream, d["url"])
-
-        self.bot.cache["rtfm"] = cache
-
     async def cog_load(self):
-        # if not bool(self.bot.cache["rtfm"]):
-        await self.build_rtfm_lookup_table()
+        self.bot.cache["rtfm"].clear()
+        self.bot.cache["rtfm"]["python"] = await build_lookup_table(
+            self.bot.session, "python"
+        )
 
     async def rtfm_slash_autocomplete(
         self, interaction: Interaction, current: str
     ) -> list[app_commands.Choice[str]]:
         if not bool(self.bot.cache["rtfm"]):
             await interaction.response.autocomplete([])
-            await rtfm.build_rtfm_lookup_table(self.bot)
+            await build_lookup_table(self.bot.session, "python")
             return []
 
         if not current:
-            return []
+            return [
+                app_commands.Choice(name=m, value=m)
+                for m in self.bot.cache["rtfm"]["python"][:25]
+            ]
 
         assert interaction.command is not None
-        if key := getattr(interaction.namespace, "key", MISSING):
-            items = self.bot.cache["rtfm"][key]
-        else:
-            items = self.bot.cache["rtfm"]["python"]
+        key = getattr(interaction.namespace, "key", "python")
+        if not key in self.bot.cache["rtfm"]:
+            self.bot.cache["rtfm"][key] = await build_lookup_table(
+                self.bot.session, key
+            )
+
+        items = self.bot.cache["rtfm"][key]
 
         matches: Optional[List[str]] = get_close_matches(current, items)
         if bool(matches):
@@ -176,17 +85,11 @@ class rtfm_extension(Developing):
         else:
             return []
 
-    @hybrid_command(name="rtfm", invoke_without_command=True)
+    @hybrid_command(name="rtfm")
     @guild_only()
     @setlocale()
     @is_owner()
-    @choices(
-        key=[
-            Choice(name="discord.py latest", value="latest"),
-            Choice(name="discord.py stable", value="stable"),
-            Choice(name="python", value="python"),
-        ]
-    )
+    @choices(key=[Choice(name=m.value.name, value=m.name) for m in Manuals])
     @app_commands.autocomplete(entity=rtfm_slash_autocomplete)
     @locale_doc
     async def rtfm(
@@ -228,7 +131,7 @@ class rtfm_extension(Developing):
             else:
                 try:
                     lowered = key.lower()
-                    key = Keys[lowered].value
+                    key = Manuals[lowered].name
                 except KeyError:
                     if entity is None:
                         entity = key

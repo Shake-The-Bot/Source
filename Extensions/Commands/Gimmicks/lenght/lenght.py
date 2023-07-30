@@ -18,25 +18,18 @@ class command(ShakeCommand):
     async def __await__(self):
         embed = ShakeEmbed.default(
             self.ctx,
-            title=_("Peepee length"),
+            title=_("Length"),
         )
 
-        def genitiv_author(u: Member):
-            return (
-                f"`{u.display_name}`'s"
-                if not u.display_name.endswith("s")
-                else f"`{u.display_name}`'"
-            )
-
         for member in self.member:
-            pp = (
-                "=" * randint(1, 15)
-                if not await self.bot.is_owner(member)
-                else "=" * 19
-            )
+            if await self.bot.is_owner(member):
+                lenght = "=" * 21
+            else:
+                lenght = "=" * randint(1, 17)
+
             embed.add_field(
-                name=f"> {genitiv_author(member)} pp ({len(pp)+2}cm)",
-                value=Format.multicodeblock(f"8{pp}D", "python"),
+                name=Format.blockquotes(Format.join(member, f"({len(lenght)}cm)")),
+                value=Format.multicodeblock(f"{lenght}", "python"),
             )
         return await self.ctx.chat(embed=embed)
 

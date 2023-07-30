@@ -32,7 +32,7 @@ class rainbow_extension(Gimmicks):
     @locale_doc
     async def rainbow(self, ctx: ShakeContext, member: Optional[Member] = None):
         _(
-            """Show your support to LGBT+ with a rainbow filter! ^^
+            """Get your avatar a rainbow filter! ^^
 
             Parameters
             -----------

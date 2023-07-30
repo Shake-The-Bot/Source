@@ -82,7 +82,7 @@ class help_extension(Cog):
                     if command is None:
                         command = category
                     else:
-                        command = Format.join(category, command)
+                        command = " ".join(category, command)
                     category = None
 
             await do.command(

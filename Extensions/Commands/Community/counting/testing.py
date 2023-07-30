@@ -2,6 +2,15 @@ from collections import deque
 from enum import Enum
 from typing import Dict, List, Optional
 
+from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
+from Classes.accessoires import (
+    ForwardingFinishSource,
+    ForwardingMenu,
+    ForwardingSource,
+    ListPageSource,
+    ShakePages,
+)
+from Classes.helpful import ShakeContext, ShakeEmbed
 from discord import (
     ButtonStyle,
     ChannelType,
@@ -20,16 +29,6 @@ from discord.app_commands import AppCommandChannel
 from discord.components import SelectOption
 from discord.ui import Button, ChannelSelect, Modal, Select, TextInput
 from discord.utils import MISSING
-
-from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
-from Classes.accessoires import (
-    ForwardingFinishSource,
-    ForwardingMenu,
-    ForwardingSource,
-    ListPageSource,
-    ShakePages,
-)
-from Classes.helpful import ShakeContext, ShakeEmbed
 
 ############
 #
@@ -124,7 +123,7 @@ class Channel(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -179,7 +178,7 @@ class Direction(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -232,7 +231,7 @@ class Number(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -287,7 +286,7 @@ class Math(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings.")
+            text=_("You can come back here in the setup to change settings.")
         )
         return {"embed": embed}
 
@@ -343,7 +342,7 @@ class MessageType(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -401,7 +400,7 @@ class React(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 

@@ -537,7 +537,7 @@ class CommandSource(ItemPageSource):
                     inline=False,
                     value=title
                     + "".join(
-                        Format.join(
+                        " ".join(
                             "\n>",
                             Format.bold(f"/{self.item.name}"),
                             " ".join(required),

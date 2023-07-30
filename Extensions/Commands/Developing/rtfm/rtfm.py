@@ -8,7 +8,15 @@ from typing import Callable, Iterable, List, Optional
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
+from Classes import (
+    Format,
+    Manual,
+    Manuals,
+    ShakeCommand,
+    ShakeEmbed,
+    _,
+    build_lookup_table,
+)
 
 ########
 #
@@ -17,10 +25,10 @@ from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
 class command(ShakeCommand):
     async def __await__(self, key, obj: str = None):
         assert bool(self.bot.cache["rtfm"])
-        manuals = Types.Manuals.value[key]
+        manual: Manual = Manuals[key].value
         await self.ctx.defer()
         if obj is None:
-            return await self.ctx.chat(manuals["url"])
+            return await self.ctx.chat(manual.url)
 
         start = time() * 1000
         obj = sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
@@ -28,9 +36,15 @@ class command(ShakeCommand):
             l = obj.lower()
             if l in dir(Messageable):
                 obj = f"abc.Messageable.{l}"
+        if not self.bot.cache["rtfm"].get(key, None):
+            self.bot.cache["rtfm"][key] = await build_lookup_table(
+                self.bot.session, key
+            )
+
         cache = dict(set(self.bot.cache["rtfm"][key].items()))
+
         matches = get_close_matches(obj, list(cache.keys()))[:8]
-        completed = time() * 1000 - start
+
         if len(matches) == 0:
             return await self.ctx.chat(_("Couldn't find anything."))
         embed = ShakeEmbed.default(
@@ -41,11 +55,11 @@ class command(ShakeCommand):
             ),
         )
         embed.set_author(
-            icon_url=manuals.get("icon", None),
-            name=manuals.get("name", key).capitalize(),
-            url=manuals.get("url", None),
+            icon_url=manual.icon,
+            name=manual.name,
+            url=manual.url,
         )
-        embed.set_thumbnail(url=manuals.get("url", None))
+        embed.set_thumbnail(url=manual.url)
         await self.ctx.chat(embed=embed)
         await self.bot.pool.execute(
             "INSERT INTO rtfm (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET count = rtfm.count + 1;",

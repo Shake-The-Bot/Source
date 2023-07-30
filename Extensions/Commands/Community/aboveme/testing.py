@@ -1,19 +1,6 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from discord import (
-    ButtonStyle,
-    ChannelType,
-    Forbidden,
-    Guild,
-    HTTPException,
-    Interaction,
-    SelectOption,
-    TextChannel,
-)
-from discord.app_commands import AppCommandChannel
-from discord.ui import Button, ChannelSelect, Select
-
 from Classes import (
     MISSING,
     Format,
@@ -30,6 +17,18 @@ from Classes.accessoires import (
     ListPageSource,
     ShakePages,
 )
+from discord import (
+    ButtonStyle,
+    ChannelType,
+    Forbidden,
+    Guild,
+    HTTPException,
+    Interaction,
+    SelectOption,
+    TextChannel,
+)
+from discord.app_commands import AppCommandChannel
+from discord.ui import Button, ChannelSelect, Select
 
 ############
 #
@@ -98,7 +97,7 @@ class Channel(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 
@@ -156,7 +155,7 @@ class React(ForwardingSource):
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
         embed.set_footer(
-            text=_("You can go back here in the setup to change settings..")
+            text=_("You can come back here in the setup to change settings..")
         )
         return {"embed": embed}
 

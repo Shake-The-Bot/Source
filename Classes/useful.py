@@ -6,10 +6,11 @@ from base64 import b64encode
 from hmac import new
 from importlib import reload
 from inspect import isawaitable
+from io import BytesIO
 from math import ceil
 from os import getcwd, listdir
 from os import urandom as _urandom
-from os.path import isdir, isfile
+from os.path import isdir, isfile, join
 from random import choice as rchoice
 from re import IGNORECASE, I
 from re import compile as recom
@@ -18,6 +19,7 @@ from sys import modules
 from time import time
 from typing import *
 from urllib.parse import quote
+from zlib import decompressobj
 
 from aiohttp import ClientSession
 from discord import *
@@ -27,6 +29,7 @@ from discord.ui import View
 from Classes.exceptions import NoDumpingSpots, NotVoted
 from Classes.i18n import _
 from Classes.tomls import config
+from Classes.types import Manual, Manuals
 
 if TYPE_CHECKING:
     from bot import ShakeBot
@@ -37,10 +40,12 @@ if TYPE_CHECKING:
 __all__ = (
     "human_join",
     "source_lines",
+    "build_lookup_table",
     "get_signature",
     "votecheck",
     "get_file_paths",
     "dump",
+    "chunk",
     "extshandler",
     "MISSING",
     "evaluate",
@@ -119,6 +124,8 @@ def human_join(
         return delimiter.join(seq[:-1]) + f" {final} {seq[-1]}"
 
 
+chunk = lambda seq, size: [seq[i : i + size] for i in range(0, len(seq), size)]
+
 """     Text     """
 
 
@@ -181,16 +188,14 @@ def files(origin: str) -> Iterator[int]:
             yield x
 
 
-def get_file_paths(origin: str) -> int:
-    return list(files(origin))
+get_file_paths = lambda origin: list(files(origin))
 
 
 def source_lines(path: Optional[str] = None) -> int:
     path = path or getcwd()
 
     def summed(path):
-        paths = files(path)
-        for path in paths:
+        for path in files(path):
             with open(path, encoding="utf8") as f:
                 yield len(
                     [
@@ -331,56 +336,30 @@ async def dump(
         raise NoDumpingSpots("All tried hosts did not work")
 
 
-def get_signature(menu: View, self: Command):
+def get_signature(menu: View, command: Command):
     bot: ShakeBot = menu.ctx.bot
-    ctx: ShakeContext = menu.ctx
     guild: Guild = menu.ctx.guild
 
-    if self.usage is not None:
-        return self.usage
+    if command.usage is not None:
+        return command.usage
 
-    params = self.clean_params
+    params = command.clean_params
     if not params:
         return {}, {}
 
     optionals = dict()
     required = dict()
 
-    all_text_channel = {
-        str(channel.name): channel.mention for channel in guild.text_channels
-    }
-    text_channel = (
-        all_text_channel.get(
-            sorted(set(all_text_channel.keys()), key=len, reverse=False)[0]
-        )
-        if bool(guild.text_channels)
-        else None
-    )
-
-    all_members = {str(member.name): member.mention for member in guild.members}
-    member = (
-        all_members.get(sorted(set(all_members.keys()), key=len, reverse=False)[0])
-        if bool(guild.members)
-        else None
-    )
-
-    all_voice_channel = {
-        str(channel.name): channel.mention for channel in guild.voice_channels
-    }
-    voice_channel = (
-        all_voice_channel.get(
-            sorted(set(all_voice_channel.keys()), key=len, reverse=False)[0]
-        )
-        if bool(guild.voice_channels)
-        else None
-    )
+    text_channels = set(channel.mention for channel in guild.text_channels[:2])
+    members = set(member.mention for member in guild.members[:2])
+    voice_channels = set(channel.mention for channel in guild.voice_channels[:2])
 
     examples = {
         int: [choice(range(0, 100))],
-        Member: [bot.user.mention, menu.ctx.author.mention, member],
-        User: [bot.user.mention],
-        TextChannel: [ctx.channel.mention if ctx.channel else None, text_channel],
-        VoiceChannel: [voice_channel],
+        Member: [bot.user.mention, menu.ctx.author.mention] + members,
+        User: [bot.user.id],
+        TextChannel: text_channels,
+        VoiceChannel: voice_channels,
         Object: [guild.id],
         Message: [menu.ctx.message.id, menu.message.id if menu.message else None],
         str: ["abc", "hello", "xyz"],
@@ -405,9 +384,9 @@ def get_signature(menu: View, self: Command):
         origin = getattr(annotation, "__origin__", None)
 
         example = examples.get(annotation, [f"{{{name}}}"])
-        if hasattr(self, "examples") or hasattr(self.callback, "examples"):
+        if hasattr(command, "examples") or hasattr(command.callback, "examples"):
             examples = getattr(
-                self, "examples", getattr(self.callback, "examples", MISSING)
+                command, "examples", getattr(command.callback, "examples", MISSING)
             )
             assert examples
             if name in examples:
@@ -452,7 +431,7 @@ def get_signature(menu: View, self: Command):
             continue
 
         elif param.kind == param.VAR_POSITIONAL:
-            if self.require_var_positional:
+            if command.require_var_positional:
                 required[f"<{name}: {annotation.__name__}…>"] = str(example)
             else:
                 optionals[f"[{name}: {annotation.__name__}…]"] = example
@@ -570,3 +549,95 @@ def tens(count: int, higher_when_same: bool = False, direction: bool = True):
         final += 1
 
     return max(1, final)
+
+
+class SphinxObjectFileReader:
+    BUFSIZE = 16 * 1024
+
+    def __init__(self, buffer: bytes):
+        self.stream = BytesIO(buffer)
+
+    def readline(self) -> str:
+        return self.stream.readline().decode("utf-8")
+
+    def skipline(self) -> None:
+        self.stream.readline()
+
+    def read_compressed_chunks(self) -> Generator[bytes, None, None]:
+        decompressor = decompressobj()
+        while True:
+            chunk = self.stream.read(self.BUFSIZE)
+            if len(chunk) == 0:
+                break
+            yield decompressor.decompress(chunk)
+        yield decompressor.flush()
+
+    def read_compressed_lines(self) -> Generator[str, None, None]:
+        buf = b""
+        for chunk in self.read_compressed_chunks():
+            buf += chunk
+            pos = buf.find(b"\n")
+            while pos != -1:
+                yield buf[:pos].decode("utf-8")
+                buf = buf[pos + 1 :]
+                pos = buf.find(b"\n")
+
+
+async def build_lookup_table(session, name: str) -> dict[str, str]:
+    try:
+        manual: Manual = Manuals[name].value
+    except KeyError:
+        return None
+
+    url = manual.url
+
+    async with session.get(url + "/objects.inv") as request:
+        if request.status != 200:
+            raise RuntimeError("Cannot build lookup table, try again later.")
+
+        stream = SphinxObjectFileReader(await request.read())
+        cache: dict[str, str] = parse_object_inv(stream, url)
+        return cache
+
+
+def parse_object_inv(stream: SphinxObjectFileReader, url: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+
+    inv_version = stream.readline().rstrip()
+
+    if inv_version != "# Sphinx inventory version 2":
+        raise RuntimeError("Invalid objects.inv file version.")
+
+    projname = stream.readline().rstrip()[11:]
+    version = stream.readline().rstrip()[11:]
+
+    line = stream.readline()
+    if "zlib" not in line:
+        raise RuntimeError("Invalid objects.inv file, not z-lib compatible.")
+
+    entry_regex = recom(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)")
+    for line in stream.read_compressed_lines():
+        match = entry_regex.match(line.rstrip())
+        if not match:
+            continue
+
+        name, directive, prio, location, dispname = match.groups()
+        domain, _, subdirective = directive.partition(":")
+        if directive == "py:module" and name in result:
+            continue
+
+        if directive == "std:doc":
+            subdirective = "label"
+
+        if location.endswith("$"):
+            location = location[:-1] + name
+
+        key = name if dispname == "-" else dispname
+        prefix = f"{subdirective}:" if domain == "std" else ""
+
+        if projname == "discord.py":
+            key = key.replace("discord.ext.commands.", "").replace("discord.", "")
+
+        result[f"{prefix}{key}"] = join(url, location)
+
+    return result

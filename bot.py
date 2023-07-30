@@ -58,10 +58,9 @@ class ShakeBot(BotBase):
         await super().close()
 
     async def on_error(self, event, *args, **kwargs):
-        self.bot.log.debug(1)
         exc, value, tb, *_ = exc_info()
-        dumped = await self.bot.dump(f"{''.join(format_exception(exc, value, tb))}")
-        return self.bot.log.warning(f"{self.event}: {dumped}")
+        dumped = await self.dump("".join(format_exception(exc, value, tb)))
+        return self.log.warning(": ".join([event, dumped]))
 
     async def dump(self, content: str, lang: Optional[str] = "txt") -> Optional[str]:
         dumped = await dump(content=content, session=self.session, lang=lang)
