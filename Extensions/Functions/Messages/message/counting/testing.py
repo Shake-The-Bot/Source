@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, TextChannel
@@ -30,6 +30,7 @@ class Event:
     channel: TextChannel
     message: Message
     spam_control: CooldownMapping
+    game = "Counting"
 
     def __init__(self, message: Message, bot: ShakeBot):
         self.bot = bot
@@ -38,7 +39,6 @@ class Event:
         self.channel = message.channel
         self.content = message.content
         self.message = message
-        self.game = "Counting"
 
     async def __await__(self):
         ctx = await self.bot.get_context(self.message)
@@ -162,57 +162,45 @@ class Counting:
         self.spam_control = spam_control
         self._auto_spam_count = Counter()
 
-    async def __await__(
-        self, member: Member, message: Message
-    ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
-        content: str = cleanup(message.clean_content.strip())
-        time = message.created_at.replace(tzinfo=timezone.utc)
-        testing: bool = any(
-            _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
-        )
-
+    async def record(
+        self,
+    ) -> dict:
         if self.channel.id in self.cache:
-            record: dict = self.cache[self.channel.id]
+            self.record: dict = self.cache[self.channel.id]
         else:
             async with self.bot.gpool.acquire() as connection:
-                record: dict = await connection.fetchrow(
+                self.record: dict = await connection.fetchrow(
                     "SELECT * FROM counting WHERE channel_id = $1",
                     self.channel.id,
                 )
+        return self.record
 
-        streak: int = record.get("streak", 0) or 0
-        best: int = record.get("best", 0) or 0
-        user_id: int = record.get("user_id")
-        message_id: int = record.get("message_id")
-        goal: int = record.get("goal")
-        count: int = record.get("count", 0) or 0
-        start: int = record.get("start", 0) or 0
-        used: datetime = record.get("used") or time
-        done: bool = record.get("done", False)
-        webhook: bool = record.get("webhook", None) or None
-        direction: bool = record.get("direction", True)
-        react: bool = record.get("react", True)
-        numbers: bool = record.get("numbers")
-        math: bool = record.get("math", False)
+    async def __await__(
+        self, member: Member, message: Message
+    ) -> Tuple[ShakeEmbed, bool, Literal[1, 2, 3]]:
+        self.content: str = cleanup(message.clean_content.strip())
+        self.time = message.created_at.replace(tzinfo=timezone.utc)
+        testing: bool = any(
+            _.id in set(self.bot.testing) for _ in [self.channel, self.guild, member]
+        )
+        await self.record()
+        user_id = self.record.get("user_id")
+        done = self.record.get("done") or False
+        streak = self.record.get("streak") or 0
         restart = reached = False
-
-        current.set(await self.bot.i18n.get_guild(self.guild.id, default="en-US"))
 
         embed = ShakeEmbed(timestamp=None)
         delete = passed = False
         bad_reaction = 0
 
-        influence = +1 if direction is True else -1
-
-        if not await self.syntax_check(content, math):
-            if numbers:
-                embed.description = Format.bold(
-                    _("You can't use anything but arithmetic here.")
-                )
-                delete = True
-                bad_reaction = 1
-            else:
-                return None, None, None
+        current.set(await self.bot.i18n.get_guild(self.guild.id, default="en-US"))
+        if not await self.syntax_check(self.content, self.numbers, self.math):
+            embed.description = Format.bold(
+                _("You can't use anything but arithmetic here.")
+            )
+            delete = True
+            bad_reaction = 1
+            # return None, None, None
 
         elif not await self.member_check(
             testing=testing, user_id=user_id, member=member
@@ -223,9 +211,11 @@ class Counting:
             bad_reaction = 1
             delete = True
 
-        elif not await self.check_number(content, count, direction, math):
+        elif not await self.check_number(
+            self.content, self.count, self.direction, self.math
+        ):
             bucket = self.spam_control.get_bucket(message)
-            retry_after = bucket and bucket.update_rate_limit(time.timestamp())
+            retry_after = bucket and bucket.update_rate_limit(self.time.timestamp())
             if retry_after:  # member.id != self.owner_id:
                 self._auto_spam_count[member.id] += 1
 
@@ -239,13 +229,13 @@ class Counting:
                 self._auto_spam_count.pop(member.id, None)
                 if streak != 0:
                     s = _("The streak of {streak} was broken!")
-                    if streak > best:
+                    if streak > self.best:
                         s = _("You've topped your best streak with {streak} numbers 🔥")
                     s = s.format(streak=Format.codeblock(f" {streak} "))
                 else:
                     s = ""
 
-                if count == start:
+                if self.count == self.start:
                     embed.description = Format.bold(
                         _(
                             "Incorrect number! The next number remains {start}. {streak}"
@@ -261,7 +251,7 @@ class Counting:
                             "{user} ruined it at {count}. The next number is {start}. {streak}"
                         ).format(
                             user=member.mention,
-                            count=Format.underline(count + influence),
+                            count=Format.underline(self.count + self.influence),
                             streak=s,
                             start=Format.codeblock(f" {start + influence} "),
                         )
@@ -274,14 +264,14 @@ class Counting:
         else:
             passed = True
 
-            if goal and count + 1 >= goal:
+            if self.goal and self.count + 1 >= self.goal:
                 reached = True
                 embed.description = Format.bold(
                     _(
                         "You've reached your goal of {goal} {emoji} Congratulations!"
-                    ).format(goal=goal, emoji="<a:tadaa:1038228851173625876>")
+                    ).format(goal=self.goal, emoji="<a:tadaa:1038228851173625876>")
                 )
-            elif direction is False and count - 1 <= 0:
+            elif self.direction is False and self.count - 1 <= 0:
                 embed.description = Format.bold(
                     _(
                         "You've reached the end of the numbers until 0 {emoji} Congratulations!"
@@ -291,37 +281,45 @@ class Counting:
             else:
                 embed = None
 
-        new = start if restart else (count + influence) if passed else count
+        new = (
+            self.start
+            if restart
+            else (self.count + self.influence)
+            if passed
+            else self.count
+        )
 
         await self.counting(
             channel=self.channel,
             guild=self.guild,
             user=member,
-            direction=direction,
-            time=time,
-            count=count,
+            direction=self.direction,
+            time=self.time,
+            count=self.count,
             failed=not passed,
         )
 
         s = streak + 1 if passed else streak
+
+        used = self.time if passed else date.fromisoformat(self.used).isoformat()
         self.cache[self.channel.id]: CountingBatch = {
-            "used": (time if passed else used).isoformat(),
+            "used": str(used),
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
-            "message_id": message.id if passed else message_id,
-            "best": s if s > best else best,
+            "message_id": message.id if passed else self.message_id,
+            "best": s if s > self.best else self.best,
             "count": new,
             "done": done,
-            "goal": None if reached else goal,
-            "webhook": webhook,
+            "goal": None if reached else self.goal,
+            "webhook": self.webhook,
             "streak": s,
-            "start": start,
-            "direction": direction,
-            "react": react,
-            "numbers": numbers,
-            "math": math,
+            "start": self.start,
+            "direction": self.direction,
+            "react": self.react,
+            "numbers": self.numbers,
+            "math": self.math,
         }
-        return embed, delete, bad_reaction if react == True else MISSING
+        return embed, delete, bad_reaction if self.react == True else MISSING
 
     async def counting(
         self,
@@ -345,7 +343,7 @@ class Counting:
             }
         )
 
-    async def syntax_check(self, content: str, math: bool):
+    async def syntax_check(self, content: str, numbers: bool, math: bool):
         if not content.isdigit():
             if math and string_is_calculation(content):
                 return True
@@ -372,6 +370,71 @@ class Counting:
         elif user_id == member.id:
             return False
         return True
+
+    @property
+    def best(self) -> int:
+        if self.record:
+            return self.record.get("best") or 0
+
+    @property
+    def message_id(self) -> int:
+        if self.record:
+            return self.record.get("message_id")
+
+    @property
+    def goal(self) -> int:
+        if self.record:
+            return self.record.get("goal")
+
+    @property
+    def count(self) -> int:
+        if self.record:
+            return self.record.get("count") or 0
+
+    @property
+    def start(self) -> int:
+        if self.record:
+            return self.record.get("start") or 0
+
+    @property
+    def used(self) -> int:
+        if self.record:
+            return str(self.record.get("used") or self.time)
+
+    @property
+    def webhook(self) -> int:
+        if self.record:
+            return self.record.get("webhook")
+
+    @property
+    def direction(self) -> int:
+        if self.record:
+            return self.record.get("direction") or True
+
+    @property
+    def react(self) -> int:
+        if self.record:
+            return self.record.get("react") or True
+
+    @property
+    def numbers(self) -> int:
+        if self.record:
+            return self.record.get("numbers") or True
+
+    @property
+    def math(self) -> int:
+        if self.record:
+            return self.record.get("math") or False
+
+    @property
+    def influence(self) -> int:
+        if self.direction is True:
+            influence = +1
+        elif self.direction is False:
+            influence = -1
+        else:
+            influence = None
+        return influence
 
 
 #

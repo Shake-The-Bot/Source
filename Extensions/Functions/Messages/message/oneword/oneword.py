@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple
 
 from discord import Guild, Member, Message, TextChannel
@@ -248,7 +248,7 @@ class OneWord:
             "channel_id": self.channel.id,
             "user_id": member.id if passed else user_id,
             "message_id": message.id if passed else message_id,
-            "used": (time if passed else used).isoformat(),
+            "used": str(time if passed else used),
             "phrase": phrase,
             "words": [] if passed else words,
             "react": react,

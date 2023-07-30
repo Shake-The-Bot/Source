@@ -41,10 +41,10 @@ __author__ = "Shake Team"
 __license__ = "MIT"
 __copyright__ = "/"
 __version__: VersionInfo = VersionInfo(
-    major=config.version.major,
-    minor=config.version.minor,
-    micro=config.version.micro,
-    releaselevel=config.version.releaselevel,
+    major=config.bot.version.major,
+    minor=config.bot.version.minor,
+    micro=config.bot.version.micro,
+    releaselevel=config.bot.version.releaselevel,
     serial=0,
 )
 

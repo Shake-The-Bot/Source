@@ -1,4 +1,10 @@
 import asyncio
+import collections
+import contextlib
+import importlib
+import io
+import os
+import sys
 from contextlib import redirect_stderr, redirect_stdout
 from io import BytesIO, StringIO
 from textwrap import indent
@@ -26,6 +32,20 @@ from Classes import (
 
 ############
 #
+imports = {
+    "io": io,
+    "os": os,
+    "sys": sys,
+    "aiohttp": aiohttp,
+    "asyncio": asyncio,
+    "discord": discord,
+    "importlib": importlib,
+    "contextlib": contextlib,
+    "collections": collections,
+    "helpful": helpful,
+    "useful": useful,
+    "Format": Format,
+}
 
 
 class command(ShakeCommand):
@@ -38,12 +58,6 @@ class command(ShakeCommand):
         self.env: dict[str, Any] = env
         self.env.update(
             {
-                "aiohttp": aiohttp,
-                "asyncio": asyncio,
-                "discord": discord,
-                "helpful": helpful,
-                "useful": useful,
-                "Format": Format,
                 "self": self,
                 "bot": self.bot,
                 "ctx": self.ctx,
@@ -57,6 +71,7 @@ class command(ShakeCommand):
                 else None,
                 "__": self.last,
             }
+            | imports
         )
 
     async def __await__(self):

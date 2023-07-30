@@ -997,25 +997,27 @@ class Front(FrontPageSource):
         ] or [(menu.bot.emojis.no, menu.bot.emojis.yes)[False]]
 
         more: Dict[str, str] = {
-            (_("Display name"), ":"): Format.codeblock(user.global_name),
-            (_("#Tag"), ":"): Format.codeblock(
+            _("Display name"): Format.codeblock(user.global_name),
+            _("#Tag"): Format.codeblock(
                 _("Migrated to username")
                 if user.discriminator == "0"
                 else user.discriminator
             ),
-            (_("ID"), ":"): Format.codeblock(user.id),
-            (_("Shared Servers"), ":"): Format.codeblock(
+            _("ID"): Format.codeblock(user.id),
+            _("Shared Servers"): Format.codeblock(
                 len(user.mutual_guilds) if hasattr(user, "mutual_guilds") else _("None")
             ),
-            (_("Badges"), ":"): " ".join(badges),
+            _("Badges"): " ".join(badges),
         }
 
         embed.add_field(
             name=_("More Information"),
             value=Format.multiblockquotes(
                 "\n".join(
-                    Format.bold(str(k) + str(s) + " " + str(v))
-                    for (k, s), v in more.items()
+                    [
+                        Format.join(Format.bold(k), Format.bold(v), splitter=f": ")
+                        for k, v in more.items()
+                    ]
                 )
             ),
             inline=False,

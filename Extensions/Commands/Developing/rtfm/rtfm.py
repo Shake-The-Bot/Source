@@ -1,5 +1,6 @@
 ############
 #
+from difflib import get_close_matches
 from re import IGNORECASE, compile, escape, sub
 from time import time
 from typing import Callable, Iterable, List, Optional
@@ -7,47 +8,27 @@ from typing import Callable, Iterable, List, Optional
 from discord import Member
 from discord.abc import Messageable
 
-from Classes import Format, ShakeCommand, ShakeEmbed, Types, _
+from Classes import (
+    Format,
+    Manual,
+    Manuals,
+    ShakeCommand,
+    ShakeEmbed,
+    _,
+    build_lookup_table,
+)
 
 ########
 #
 
 
-def finder(
-    text: str,
-    collection: Iterable[str],
-    *,
-    key: Optional[Callable[[str], str]] = ...,
-    lazy: bool = True,
-) -> list[str]:
-    suggestions: list[tuple[int, int, str]] = []
-    text = str(text)
-    pat = ".*?".join(map(escape, text))
-    regex = compile(pat, flags=IGNORECASE)
-    for item in collection:
-        to_search = key(item) if key else item
-        r = regex.search(to_search)
-        if r:
-            suggestions.append((len(r.group()), r.start(), item))
-
-    def sort_key(tup: tuple[int, int, str]) -> tuple[int, int, str]:
-        if key:
-            return tup[0], tup[1], key(tup[2])
-        return tup
-
-    if lazy:
-        return (z for _, _, z in sorted(suggestions, key=sort_key))
-    else:
-        return [z for _, _, z in sorted(suggestions, key=sort_key)]
-
-
 class command(ShakeCommand):
     async def __await__(self, key, obj: str = None):
         assert bool(self.bot.cache["rtfm"])
-        manuals = Types.Manuals.value[key]
+        manual: Manual = Manuals[key].value
         await self.ctx.defer()
         if obj is None:
-            return await self.ctx.chat(manuals["url"])
+            return await self.ctx.chat(manual.url)
 
         start = time() * 1000
         obj = sub(r"^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)", r"\1", obj)
@@ -55,29 +36,30 @@ class command(ShakeCommand):
             l = obj.lower()
             if l in dir(Messageable):
                 obj = f"abc.Messageable.{l}"
-        cache = set(self.bot.cache["rtfm"][key].items())
-        matches = finder(obj, cache, key=lambda t: t[0], lazy=False)[:10]
-        completed = time() * 1000 - start
+        if not self.bot.cache["rtfm"].get(key, None):
+            self.bot.cache["rtfm"][key] = await build_lookup_table(
+                self.bot.session, key
+            )
+
+        cache = dict(set(self.bot.cache["rtfm"][key].items()))
+
+        matches = get_close_matches(obj, list(cache.keys()))[:8]
+
         if len(matches) == 0:
             return await self.ctx.chat(_("Couldn't find anything."))
         embed = ShakeEmbed.default(
             self.ctx,
-            title=Format.join(
-                _("RTFM results on search „{query}“").format(query=obj),
-                f"({completed:.0f}ms)",
-            )
-            if obj
-            else None,
+            title=_("RTFM results on search „{query}“").format(query=obj),
             description="\n".join(
-                Format.list(f"[`{key}`]({url})") for key, url in matches
+                Format.list(f"[`{key}`]({cache[key]})") for key in matches
             ),
         )
         embed.set_author(
-            icon_url=manuals.get("icon", None),
-            name=manuals.get("name", key),
-            url=manuals.get("url", None),
+            icon_url=manual.icon,
+            name=manual.name,
+            url=manual.url,
         )
-        embed.set_thumbnail(url=manuals.get("url", None))
+        embed.set_thumbnail(url=manual.url)
         await self.ctx.chat(embed=embed)
         await self.bot.pool.execute(
             "INSERT INTO rtfm (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET count = rtfm.count + 1;",

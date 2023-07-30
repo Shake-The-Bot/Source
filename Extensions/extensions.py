@@ -26,7 +26,7 @@ extensions = [
     "Extensions.Commands.Gimmicks.roll.__init__",
     "Extensions.Commands.Gimmicks.everyone.__init__",
     "Extensions.Commands.Gimmicks.say.__init__",
-    "Extensions.Commands.Gimmicks.pp.__init__",
+    "Extensions.Commands.Gimmicks.lenght.__init__",
     "Extensions.Commands.Gimmicks.rainbow.__init__",
     "Extensions.Commands.Gimmicks.count.__init__",
     "Extensions.Commands.Gimmicks.random.__init__",

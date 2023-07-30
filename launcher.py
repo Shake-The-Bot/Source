@@ -74,7 +74,7 @@ def setup():
 
 async def main():
     def prefix(bot, msg):
-        return ["<@!{}> ".format(bot.user.id), "<@{}> ".format(bot.user.id)]
+        return (_.format(bot.user.id) for _ in ("<@!{}> ", "<@{}> "))
 
     async with ShakeBot(
         logger=logger,

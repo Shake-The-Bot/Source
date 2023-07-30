@@ -6,7 +6,7 @@ from typing import Optional
 from discord import Interaction, Message, PartialEmoji
 from discord.abc import GuildChannel
 from discord.app_commands import ContextMenu
-from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command
+from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
 
 from Classes import (
     GuildChannelConverter,

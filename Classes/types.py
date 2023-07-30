@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from functools import partial
 from sys import exc_info
-from typing import Any, Callable, List, Literal, Optional, TypedDict
+from typing import Any, Callable, List, Literal, NamedTuple, Optional, TypedDict
 
 from discord import Guild, PartialEmoji, Thread, User
 from discord.channel import *
@@ -21,12 +21,14 @@ __all__ = (
     "AboveMeBatch",
     "CountingBatch",
     "tick",
+    "Manuals",
     "Translated",
     "CountingsBatch",
     "AboveMesBatch",
     "Batch",
     "TracebackType",
     "ExtensionMethods",
+    "Manual",
     "UserGuild",
 )
 
@@ -65,6 +67,7 @@ class Localization:
         "bg-BG": {"language": "български", "simplified": ["bulgarian"]},
         "cs-CZ": {"language": "čeština", "simplified": ["czech"]},
         "da-DK": {"language": "Dansk", "simplified": ["danish"]},
+        "tl-PH": {"language": "Tagalog", "simplified": ["tagalog"]},
         "de-DE": {
             "language": "Deutsch",
             "simplified": ["german"],
@@ -72,12 +75,12 @@ class Localization:
         },
         "en-US": {
             "language": "English",
-            "simplified": ["american english", "english"],
+            "simplified": ["american english"],
             "specific": "English (american)",
         },
         "en-GB": {
             "language": "English",
-            "simplified": ["british english"],
+            "simplified": ["british english", "english"],
             "specific": "English (british)",
         },
         "zh-CN": {
@@ -175,6 +178,12 @@ class Format(Enum):
     )
 
 
+class Manual(NamedTuple):
+    name: str
+    url: str
+    icon: Optional[str] = None
+
+
 class Types(Enum):
     ValidStaticFormatTypes = Literal["webp", "jpeg", "jpg", "png"]
     ValidAssetFormatTypes = Literal["webp", "jpeg", "jpg", "png", "gif"]
@@ -188,23 +197,32 @@ class Types(Enum):
         | CategoryChannel
         | DMChannel
     )
-    Manuals = {
-        "stable": {
-            "name": "Discord.py",
-            "url": "https://discordpy.readthedocs.io/en/stable",
-            "icon": "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
-        },
-        "latest": {
-            "name": "Discord.py (latest)",
-            "url": "https://discordpy.readthedocs.io/en/latest",
-            "icon": "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
-        },
-        "python": {
-            "url": "https://docs.python.org/3",
-            "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/240px-Python-logo-notext.svg.png",
-        },
-        "peps": {"name": "Python peps", "url": "https://peps.python.org/"},
-    }
+
+
+class Manuals(Enum):
+    discord = Manual(
+        "Discord.py",
+        "https://discordpy.readthedocs.io/en/latest",
+        "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
+    )
+    python = Manual(
+        "python",
+        "https://docs.python.org/3",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/240px-Python-logo-notext.svg.png",
+    )
+    peps = Manual("Python peps", "https://peps.python.org")
+    pillow = Manual("Pillow", "https://pillow.readthedocs.io/en/latest")
+    aiohttp = Manual("aiohttp", "https://docs.aiohttp.org/en/latest")
+    wand = Manual("Wand", "https://docs.wand-py.org/en/latest")
+    numpy = Manual("NumPy", "https://numpy.org/doc/stable")
+    sympy = Manual("SymPy", "https://docs.sympy.org/latest")
+    matplotlib = Manual("Matplotlib", "https://matplotlib.org/stable")
+    pygame = Manual("PyGame", "https://www.pygame.org/docs")
+    opencv = Manual("OpenCV", "https://docs.opencv.org/2.4.13.7")
+    selenium = Manual("Selenium", "https://selenium-python.readthedocs.io/index.html")
+    requests = Manual("Requests", "https://docs.python-requests.org/en/latest")
+    magmatic = Manual("Magmatic", "https://magmatic.readthedocs.io/en/latest")
+    adapt = Manual("Adapt.py", "https://adaptpy.readthedocs.io/en/latest")
 
 
 class Regex(Enum):

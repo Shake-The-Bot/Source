@@ -4,9 +4,10 @@ from contextlib import suppress
 from contextvars import ContextVar
 from gettext import NullTranslations, gettext, translation
 from glob import glob
-from os import getcwd, path, walk
+from os import getcwd, listdir, walk
+from os.path import basename, isdir, isfile, join, splitext
 from subprocess import call
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from discord import Guild, User
 from polib import pofile
@@ -16,7 +17,7 @@ from Classes.types import Localization
 if TYPE_CHECKING:
     from bot import ShakeBot
 
-__all__ = ("Client", "_", "current", "default", "translations", "Locale")
+__all__ = ("Client", "_", "Locales", "current", "default", "translations", "Locale")
 ########
 #
 default: str = "en-US"
@@ -37,18 +38,18 @@ class Client:
     def __init__(
         self, bot: ShakeBot, domain: str = "shake", directory: str = "Locales"
     ) -> None:
-        self.directory = path.join(getcwd(), directory)
+        self.directory = join(getcwd(), directory)
         self.default = default
         self.bot = bot
         bot.cache.setdefault("locales", dict())
         self.cache: Dict = bot.cache["locales"]
         self.domain = domain
         self.translate()
-        self.create()
+        self.convert()
 
     def __call__(self) -> None:
         self.translate()
-        self.create()
+        self.convert()
 
     @property
     def locales(
@@ -56,25 +57,26 @@ class Client:
     ) -> frozenset[str]:
         return frozenset(
             map(
-                path.basename,
-                filter(path.isdir, glob(path.join(getcwd(), self.directory, "*"))),
+                basename,
+                filter(isdir, glob(join(getcwd(), self.directory, "*"))),
             )
         ) | {self.default}
 
-    def create(self) -> list[tuple[str, str]]:
-        data_files = []
-        po_dirs = [self.directory + "/" + l + "/LC_MESSAGES/" for l in self.locales]
-        for d in po_dirs:
-            mo_files = []
-            po_files = [f for f in next(walk(d))[2] if path.splitext(f)[1] == ".po"]
-            for po_file in po_files:
-                filename, extension = path.splitext(po_file)
-                mo_file = filename + ".mo"
-                msgfmt_cmd = "msgfmt {} -o {}".format(d + po_file, d + mo_file)
-                call(msgfmt_cmd, shell=True)
-                mo_files.append(d + mo_file)
-            data_files.append((d, mo_files))
-        return data_files
+    def convert(self) -> list[tuple[str, str]]:
+        directories = [self.directory + "/" + l + "/LC_MESSAGES/" for l in self.locales]
+        files = []
+        for directory in directories:
+            paths = filter(
+                lambda path: isfile(join(directory, path)) and path.endswith(".po"),
+                listdir(directory),
+            )
+            for path in paths:
+                po = join(directory, path)
+                filename, extension = splitext(po)
+                mo = filename + ".mo"
+                cmd = "msgfmt {} -o {}".format(po, mo)
+                call(cmd, shell=True)
+                files.append(mo)
 
     def translate(self) -> None:
         for locale in self.locales:
@@ -110,8 +112,8 @@ class Client:
         return True
 
     async def get_user(self, user_id: User.id, default: Optional[str] = None):
-        cached = self.cache.get(user_id, None)
-        if cached:
+        cached = self.cache.get(user_id)
+        if not cached is None:
             return cached
 
         async with self.bot.pool.acquire() as connection:
@@ -151,6 +153,61 @@ class Client:
         return locale
 
 
+class Locales:
+    locales: Optional[List[Locale]]
+
+    def __init__(self, locales: Optional[List[Locale]] = None) -> None:
+        self.locales = locales or list()
+
+    def add(self, locales: Union[Locale, List[Locale]]):
+        if not isinstance(locales, list):
+            locales = [locales]
+        locales = list(filter(lambda l: l.exists, locales))
+        self.locales.extend(locales)
+
+    @property
+    def all_two_letters(self) -> Dict[str, Locale]:
+        return dict((locale.two_letters.lower(), locale) for locale in self.locales)
+
+    @property
+    def unique_two_letters(self) -> Dict[str, Locale]:
+        return dict(
+            (two, locale)
+            for two, locale in self.all_two_letters.items()
+            if not list(self.all_two_letters.keys()).count(two) > 1
+        )
+
+    @property
+    def languages(self) -> Dict[str, Locale]:
+        return dict((locale.language.lower(), locale) for locale in self.locales)
+
+    @property
+    def simples(self) -> Dict[str, Locale]:
+        return dict((locale.simplified.lower(), locale) for locale in self.locales)
+
+    @property
+    def codes(self) -> Dict[str, Locale]:
+        return dict((locale.locale.lower(), locale) for locale in self.locales)
+
+    def __call__(self, locales: List[Locale]) -> None:
+        self.locales = list(filter(lambda l: l.exists, locales))
+
+    def __getitem__(self, index):
+        return self.locales[index]
+
+    def get(self, index, default=None):
+        try:
+            return self.locales[index]
+        except IndexError:
+            return default
+
+    def __len__(self):
+        return len(self.locales)
+
+    def __iter__(self):
+        return iter(self.locales)
+
+
 class Locale:
     bot: ShakeBot
     locale: str
@@ -161,9 +218,7 @@ class Locale:
         self.locale = locale
         self.__language = self.__flag = None
 
-        localepath = path.join(
-            self.bot.i18n.directory, locale, "LC_MESSAGES", "shake.po"
-        )
+        localepath = join(self.bot.i18n.directory, locale, "LC_MESSAGES", "shake.po")
 
         po = None
         with suppress(OSError):
@@ -182,13 +237,13 @@ class Locale:
         return simplified[0]
 
     @property
-    def language(self) -> Optional[str]:
+    def language(self) -> str:
         if self.__language:
             return self.__language
         if self.information:
-            language = self.information.get("language", None)
+            language = self.information.get("language")
         else:
-            language = self.metadata.get("Lanugage-Team", None)
+            language = self.metadata.get("Lanugage-Team")
         self.__language = language
         return language
 
@@ -238,9 +293,12 @@ class Locale:
 
     @property
     def two_letters(self) -> str:
-        two = self.metadata.get("Language", None)
-        if two is None:
-            two = self.crowdin[:2] if self.crowdin else self.locale[:2]
+        if crw := self.crowdin:
+            two = crw
+        elif lang := self.metadata.get("Language", None):
+            two = lang[:2]
+        else:
+            two = self.locale[:2]
         return two.lower()
 
     def __str__(self) -> str:
