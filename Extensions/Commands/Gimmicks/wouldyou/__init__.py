@@ -3,10 +3,9 @@
 from importlib import reload
 from typing import Literal, Optional
 
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 from discord import PartialEmoji
 from discord.ext.commands import guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import testing, wouldyou
@@ -29,8 +28,8 @@ class wouldyou_extension(Gimmicks):
     @hybrid_command(name="wouldyou")
     @extras(beta=True)
     @guild_only()
-    @setlocale(guild=True)
     @locale_doc
+    @setlocale(guild=True)
     async def wouldyou(
         self,
         ctx: ShakeContext,

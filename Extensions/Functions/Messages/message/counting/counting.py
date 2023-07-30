@@ -2,9 +2,6 @@ from collections import Counter
 from datetime import date, datetime, timezone
 from typing import Dict, List, Literal, Optional, Tuple
 
-from discord import Guild, Member, Message, TextChannel
-from discord.ext.commands import BucketType, CooldownMapping
-
 from Classes import (
     MISSING,
     CountingBatch,
@@ -17,6 +14,8 @@ from Classes import (
     evaluate,
     string_is_calculation,
 )
+from discord import Guild, Member, Message, TextChannel
+from discord.ext.commands import BucketType, CooldownMapping
 
 Literals = Literal["AboveMe", "Counting", "OneWord"]
 SystemType = Tuple[Optional[ShakeEmbed], bool, bool]
@@ -301,7 +300,7 @@ class Counting:
 
         s = streak + 1 if passed else streak
 
-        used = self.time if passed else date.fromisoformat(self.used).isoformat()
+        used = self.time if passed else self.used
         self.cache[self.channel.id]: CountingBatch = {
             "used": str(used),
             "channel_id": self.channel.id,

@@ -2,10 +2,9 @@
 #
 from importlib import reload
 
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord import PartialEmoji
 from discord.ext.commands import guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import scenario, testing
