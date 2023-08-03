@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio.exceptions import CancelledError
+from asyncio import CancelledError, Future
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -17,11 +17,13 @@ from threading import Thread
 from time import monotonic
 from traceback import format_exception
 from typing import *
+from typing import AsyncIterator, Generator, Optional
 from uuid import uuid4
+from zlib import decompressobj
 
 import asyncpraw
 from _collections_abc import dict_items, dict_values
-from aiohttp import ClientSession
+from aiohttp import ClientSession, StreamReader
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
 from asyncpraw.models import Submission, Subreddit
@@ -54,6 +56,7 @@ __all__ = (
     "ShakeCommand",
     "Category",
     "Migration",
+    "ResultFuture",
 )
 
 
@@ -1291,6 +1294,22 @@ class Reddit:
         post = choice(list(await self.create(ctx, subreddit)))
         self.expire(ctx, post)
         return post
+
+
+""" Scraping    """
+
+
+class ResultFuture(Future):
+    """
+    Future with metadata for the parser class.
+
+    `user_requested` is set by the parser when a Future is requested by an user and moved to the front,
+    allowing the futures to only be waited for when clearing if they were user requested.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.requested = False
 
 
 #

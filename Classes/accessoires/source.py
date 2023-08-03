@@ -54,6 +54,7 @@ class ItemPageSource(menus.PageSource):
         label: Optional[str] = MISSING,
         title: Optional[str] = MISSING,
         description: Optional[str] = MISSING,
+        paginating: Optional[bool] = True,
         *args,
         **kwargs,
     ):
@@ -65,6 +66,7 @@ class ItemPageSource(menus.PageSource):
         self.__label = label or title
         self.args = args
         self.kwargs = kwargs
+        self.paginating = paginating
         super().__init__()
 
     @property
@@ -76,7 +78,7 @@ class ItemPageSource(menus.PageSource):
         return PartialEmoji(name="dot", id=1093146860182568961)
 
     def is_paginating(self) -> bool:
-        return True
+        return self.paginating
 
     def get_max_pages(self) -> Optional[int]:
         return 1
@@ -236,7 +238,7 @@ class ForwardingFinishSource(ForwardingSource):
 
     async def callback(self, interaction: Interaction):
         self.view.stop()
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:

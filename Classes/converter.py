@@ -5,19 +5,24 @@ import re
 from ast import literal_eval
 from datetime import datetime, timezone
 from difflib import get_close_matches
-from os import walk
-from typing import Any, List, Literal, Optional, Self, Tuple
+from os import listdir, walk
+from os.path import isdir, isfile
+from typing import Any, Iterator, Literal, Optional, Self, Tuple
+from urllib.parse import urljoin
 
+import markdownify
 import parsedatetime
+from bs4.element import PageElement
 from dateutil.relativedelta import relativedelta
 from discord import TextChannel, Thread, abc, utils
 from discord.app_commands import AppCommand, AppCommandGroup, Command, CommandTree
 from discord.ext.commands import *
 from discord.ext.commands.converter import _get_from_guilds
+from markdownify import chomp
 
 from Classes.i18n import _
-from Classes.types import Types
-from Classes.useful import get_file_paths
+
+markdownify.whitespace_re = re.compile(r"[\r\n\s\t ]+")
 
 units = parsedatetime.pdtLocales["en_US"].units
 units["minutes"].append("mins")
@@ -37,6 +42,82 @@ __all__ = (
 
 ############
 #
+
+
+class DocMarkdownConverter(markdownify.MarkdownConverter):
+    def __init__(self, *, page_url: str, **options):
+        super().__init__(**options)
+        self.page_url = page_url
+
+    def convert_li(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Fix markdownify's erroneous indexing in ol tags."""
+        parent = el.parent
+        if parent is not None and parent.name == "ol":
+            li_tags = parent.find_all("li")
+            bullet = f"{li_tags.index(el)+1}."
+        else:
+            depth = -1
+            while el:
+                if el.name == "ul":
+                    depth += 1
+                el = el.parent
+            bullets = self.options["bullets"]
+            bullet = bullets[depth % len(bullets)]
+        return f"{bullet} {text}\n"
+
+    def convert_hn(
+        self, _n: int, el: PageElement, text: str, convert_as_inline: bool
+    ) -> str:
+        """Convert h tags to bold text with ** instead of adding #."""
+        if convert_as_inline:
+            return text
+        return f"**{text}**\n\n"
+
+    def convert_code(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Undo `markdownify`s underscore escaping."""
+        return f"`{text}`".replace("\\", "")
+
+    def convert_pre(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Wrap any codeblocks in `py` for syntax highlighting."""
+        code = "".join(el.strings)
+        return f"```py\n{code}```\n"
+
+    def convert_a(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Resolve relative URLs to `self.page_url`."""
+        el["href"] = urljoin(self.page_url, el["href"])
+        prefix, suffix, text = chomp(text)
+        if not text:
+            return ""
+        href = el.get("href")
+        title = el.get("title")
+        # For the replacement see #29: text nodes underscores are escaped
+        if (
+            self.options["autolinks"]
+            and text.replace(r"\_", "_") == href
+            and not title
+            and not self.options["default_title"]
+        ):
+            # Shortcut syntax
+            return "<%s>" % href
+        if self.options["default_title"] and not title:
+            title = href
+        title_part = ' "%s"' % title.replace('"', r"\"") if title else ""
+        "%s[%s](%s%s)%s" % (prefix, text, href, title_part, suffix) if href else text
+        return super().convert_a(el, text, convert_as_inline)
+
+    def convert_p(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Include only one newline instead of two when the parent is a li tag."""
+        if convert_as_inline:
+            return text
+
+        parent = el.parent
+        if parent is not None and parent.name == "li":
+            return f"{text}\n"
+        return super().convert_p(el, text, convert_as_inline)
+
+    def convert_hr(self, el: PageElement, text: str, convert_as_inline: bool) -> str:
+        """Ignore `hr` tag."""
+        return ""
 
 
 class ValidArg:
@@ -298,7 +379,21 @@ class Slash:
         return None
 
 
-classes = get_file_paths("Classes")
+def files(origin: str) -> Iterator[int]:
+    for following in listdir(origin):
+        x: str = f"{origin}/{following}"
+
+        if isdir(x):
+            yield from files(x)
+
+        if not isfile(x):
+            continue
+
+        if x.endswith((".py")) and not x.startswith("."):
+            yield x
+
+
+classes = list(files("Classes"))
 
 
 class ValidExt(Converter):

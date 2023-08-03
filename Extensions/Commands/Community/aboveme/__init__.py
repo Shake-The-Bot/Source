@@ -3,11 +3,10 @@
 from importlib import reload
 from typing import Optional, Union
 
+from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 from discord import PartialEmoji, TextChannel
 from discord.app_commands import Choice, choices
 from discord.ext.commands import guild_only, has_permissions, hybrid_group
-
-from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
 from ..community import Community
 from . import aboveme, testing
@@ -33,7 +32,8 @@ class aboveme_extension(Community):
     @locale_doc
     async def aboveme(self, ctx: ShakeContext):
         _(
-            """Throw nice, funny and sometimes annoying comments to the user above you! 
+            """Throw nice, funny and sometimes annoying comments to the user above you!
+            
             The AboveMe game offers a lot of fun and creats entertaining moments among each other!"""
         )
         ...

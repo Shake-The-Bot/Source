@@ -106,7 +106,7 @@ class ScheduleMenu(ForwardingMenu):
         self.update(1)
         await self.message.edit(embed=embed, view=self)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
 
@@ -129,7 +129,7 @@ class Interval(ForwardingSource):
         #     else:
         #         self.method = Methods.scheduler
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         await self.view.show_source(self.next())
@@ -166,7 +166,7 @@ class Duration(ForwardingSource):
             # self.view.insert()
             pass
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         await self.view.show_source(self.next())
@@ -189,7 +189,7 @@ class Type(ForwardingSource):
     async def function(self, interaction: Interaction, value: Types):
         self.type = Types[value]
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         self.view.stop()

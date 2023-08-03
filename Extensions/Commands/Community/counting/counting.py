@@ -2,15 +2,6 @@ from collections import deque
 from enum import Enum
 from typing import Dict, List, Optional
 
-from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
-from Classes.accessoires import (
-    ForwardingFinishSource,
-    ForwardingMenu,
-    ForwardingSource,
-    ListPageSource,
-    ShakePages,
-)
-from Classes.helpful import ShakeContext, ShakeEmbed
 from discord import (
     ButtonStyle,
     ChannelType,
@@ -29,6 +20,16 @@ from discord.app_commands import AppCommandChannel
 from discord.components import SelectOption
 from discord.ui import Button, ChannelSelect, Modal, Select, TextInput
 from discord.utils import MISSING
+
+from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
+from Classes.accessoires import (
+    ForwardingFinishSource,
+    ForwardingMenu,
+    ForwardingSource,
+    ListPageSource,
+    ShakePages,
+)
+from Classes.helpful import ShakeContext, ShakeEmbed
 
 ############
 #
@@ -107,7 +108,7 @@ class Channel(ForwardingSource):
             value = self.bot.get_channel(value.id)
         self.view.channel = value
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -160,7 +161,7 @@ class Direction(ForwardingSource):
             self.view.goal = None
             await interaction.response.send_modal(StartModal(self, self.view))
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -215,7 +216,7 @@ class Number(ForwardingSource):
         self.view.numbers = not Permission[value].value
 
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -268,7 +269,7 @@ class Math(ForwardingSource):
         self.view.math = Permission[value].value
 
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -323,7 +324,7 @@ class MessageType(ForwardingSource):
         self.view.message_type = MessageTypes[value].value
 
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -383,7 +384,7 @@ class React(ForwardingSource):
         finish.previous = React
         await self.view.show_source(source=finish, rotation=1)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -428,7 +429,7 @@ class GoalModal(Modal):
         else:
             value = int(self.goal.value)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         self.view.goal = value
@@ -464,7 +465,7 @@ class StartModal(Modal):
             )
             return
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         self.view.start = int(self.start.value)
@@ -728,7 +729,7 @@ class command(ShakeCommand):
                 embed = embed.to_error(
                     self.ctx,
                     description=_(
-                        "In {channel} is already a Counting game set up. Aborting..."
+                        "There is already a game set up in {channel}. Aborting..."
                     ).format(channel=channel.mention),
                 )
                 await message.edit(embed=embed, view=None)

@@ -3,11 +3,6 @@
 from importlib import reload
 from typing import Optional
 
-from discord import Interaction, Message, PartialEmoji
-from discord.abc import GuildChannel
-from discord.app_commands import ContextMenu
-from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
-
 from Classes import (
     GuildChannelConverter,
     ShakeBot,
@@ -18,6 +13,10 @@ from Classes import (
     locale_doc,
     setlocale,
 )
+from discord import Interaction, Message, PartialEmoji
+from discord.abc import GuildChannel
+from discord.app_commands import ContextMenu
+from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
 
 from ..information import Information
 from . import channelinfo, testing
@@ -59,9 +58,9 @@ class channel_extension(Information):
 
     @hybrid_command(name="channelinfo", aliases=["ci"])
     @guild_only()
-    @setlocale()
     @extras(beta=True)
     @locale_doc
+    @setlocale()
     async def channelinfo(self, ctx: ShakeContext, *, channel: Optional[str] = None):
         _(
             """Get information about a specific channel.

@@ -1,6 +1,19 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
+from discord import (
+    ButtonStyle,
+    ChannelType,
+    Forbidden,
+    Guild,
+    HTTPException,
+    Interaction,
+    SelectOption,
+    TextChannel,
+)
+from discord.app_commands import AppCommandChannel
+from discord.ui import Button, ChannelSelect, Select
+
 from Classes import (
     MISSING,
     Format,
@@ -17,18 +30,6 @@ from Classes.accessoires import (
     ListPageSource,
     ShakePages,
 )
-from discord import (
-    ButtonStyle,
-    ChannelType,
-    Forbidden,
-    Guild,
-    HTTPException,
-    Interaction,
-    SelectOption,
-    TextChannel,
-)
-from discord.app_commands import AppCommandChannel
-from discord.ui import Button, ChannelSelect, Select
 
 ############
 #
@@ -81,7 +82,7 @@ class Channel(ForwardingSource):
             value = self.bot.get_channel(value.id)
         self.view.channel = value
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -138,7 +139,7 @@ class React(ForwardingSource):
         finish.previous = React
         await self.view.show_source(source=finish, rotation=1)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -278,13 +279,13 @@ class command(ShakeCommand):
                     return False
 
         async with self.ctx.db.acquire() as connection:
-            query = "SELECT * FROM counting WHERE channel_id = $1"
+            query = "SELECT * FROM aboveme WHERE channel_id = $1"
             record = await connection.fetchrow(query, channel.id)
             if record:
                 embed = embed.to_error(
                     self.ctx,
                     description=_(
-                        "In {channel} is already a Counting game set up. Aborting..."
+                        "There is already a game set up in {channel}. Aborting..."
                     ).format(channel=channel.mention),
                 )
                 await message.edit(embed=embed, view=None)

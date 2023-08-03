@@ -111,35 +111,25 @@ class CategoricalMenu(ShakePages):
         page_source = await source.get_page(page)
         self.kwargs, self.file = await self._get_from_page(page_source)
 
-        if interaction or self.message:
+        if self.message:
+            await self.message.edit(
+                **self.kwargs,
+                attachments=(self.file if isinstance(self.file, list) else [self.file])
+                if self.file
+                else [],
+                view=self,
+            )
+        else:
             try:
-                if (
-                    not interaction
-                    or not isinstance(interaction, Interaction)
-                    or interaction.response.is_done()
-                ):
-                    if self.message:
-                        await self.message.edit(
-                            **self.kwargs,
-                            attachments=(
-                                self.file
-                                if isinstance(self.file, list)
-                                else [self.file]
-                            )
-                            if self.file
-                            else [],
-                            view=self,
-                        )
-                else:
-                    await interaction.response.edit_message(
-                        **self.kwargs,
-                        attachments=(
-                            self.file if isinstance(self.file, list) else [self.file]
-                        )
-                        if self.file
-                        else [],
-                        view=self,
+                await interaction.response.edit_message(
+                    **self.kwargs,
+                    attachments=(
+                        self.file if isinstance(self.file, list) else [self.file]
                     )
+                    if self.file
+                    else [],
+                    view=self,
+                )
             except:
                 pass
 
@@ -173,6 +163,9 @@ class CategoricalMenu(ShakePages):
                 item.disabled = True
                 item.style = ButtonStyle.grey
         await self.rebind(front, interaction=interaction, update=False)
+
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()
 
 
 class ForwardingMenu(ui.View):
@@ -265,7 +258,7 @@ class ForwardingMenu(ui.View):
     @ui.button(label=_("Start"), style=ButtonStyle.blurple, row=4)
     async def start_menu(self, interaction: Interaction, button: ui.Button):
         await self.show_source(rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     @ui.button(emoji=previousemoji, style=ButtonStyle.blurple, row=4)
@@ -275,12 +268,12 @@ class ForwardingMenu(ui.View):
         else:
             await self.show_source(self.source, rotation=0)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     @ui.button(label=_("Cancel"), style=ButtonStyle.red, row=4)
     async def cancel(self, interaction: Interaction, button: ui.Button):
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
         self.timeouted = True

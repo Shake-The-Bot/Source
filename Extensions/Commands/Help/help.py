@@ -347,6 +347,9 @@ class HelpSelect(CategoricalSelect):
             self.view.cache["source"] = self.view.cache["page"] = None
             await self.view.rebind(source, interaction=interaction)
 
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()
+
 
 class HelpMenu(CategoricalMenu):
     help: HelpPaginatedCommand
@@ -400,6 +403,7 @@ class HelpMenu(CategoricalMenu):
             else:
                 source = CommandSource(self.ctx, item=command)
             await self.rebind(source)
+
             with suppress(NotFound, Forbidden, HTTPException):
                 await msg.delete()
 
@@ -415,7 +419,6 @@ class HelpMenu(CategoricalMenu):
             tmpsource, tmppage = (self.cache["source"], self.cache["page"])
             self.cache["source"] = self.cache["page"] = None
             await self.rebind(tmpsource, tmppage, interaction=interaction)
-            return
 
         elif not is_frontpage:
             assert (
@@ -424,10 +427,12 @@ class HelpMenu(CategoricalMenu):
             )
             self.cache["source"], self.cache["page"] = (self.source, self.page)
             await self.rebind(Front(), 2, interaction=interaction)
-            return
+
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()
 
     async def run_command(self, interaction: Interaction, command: commands.Command):
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
         msg = copy(self.ctx.message)
         msg.channel = self.ctx.channel
@@ -538,10 +543,12 @@ class CommandSource(ItemPageSource):
                     value=title
                     + "".join(
                         " ".join(
-                            "\n>",
-                            Format.bold(f"/{self.item.name}"),
-                            " ".join(required),
-                            " ".join(map(str, _)),
+                            [
+                                "\n>",
+                                Format.bold(f"/{self.item.name}"),
+                                " ".join(required),
+                                " ".join(map(str, _)),
+                            ],
                         )
                         for _ in n
                     ),
