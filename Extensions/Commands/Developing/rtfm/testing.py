@@ -64,8 +64,6 @@ class command(ShakeCommand):
         }
         source = None
 
-        await self.ctx.defer()
-
         if item := items.get(search.lower()):
             source = SymbolSource(self.ctx, item)
         elif item := named.get(search.lower()):
@@ -210,18 +208,15 @@ class SymbolSource(ItemPageSource):
         return self
 
     async def format_page(self, menu: SymbolMenu, *args: Any, **kwargs: Any):
-        print(2)
-        print(self.item, self.item.id, self.item.name, self.item.url)
+        await self.ctx.defer()
         embed = ShakeEmbed(
             title=escape_markdown(self.item.id),
             url=self.item.url,
             description=await menu.cog.get_markdown(self.item),
         )
-        print(3)
         embed.set_author(
             name=self.item.module.name.capitalize(), url=self.item.module.value
         )
-        print(4)
         return embed, None
 
 

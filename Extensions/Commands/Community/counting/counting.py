@@ -21,7 +21,16 @@ from discord.components import SelectOption
 from discord.ui import Button, ChannelSelect, Modal, Select, TextInput
 from discord.utils import MISSING
 
-from Classes import MISSING, Format, ShakeCommand, ShakeEmbed, Slash, UserGuild, _
+from Classes import (
+    MISSING,
+    Format,
+    ShakeCommand,
+    ShakeEmbed,
+    Slash,
+    UserGuild,
+    _,
+    dbgames,
+)
 from Classes.accessoires import (
     ForwardingFinishSource,
     ForwardingMenu,
@@ -723,17 +732,18 @@ class command(ShakeCommand):
             webhook = None
 
         async with self.ctx.db.acquire() as connection:
-            query = "SELECT * FROM counting WHERE channel_id = $1"
-            record = await connection.fetchrow(query, channel.id)
-            if record:
-                embed = embed.to_error(
-                    self.ctx,
-                    description=_(
-                        "There is already a game set up in {channel}. Aborting..."
-                    ).format(channel=channel.mention),
-                )
-                await message.edit(embed=embed, view=None)
-                return False
+            query = "SELECT * FROM {game} WHERE channel_id = $1"
+            for game in dbgames:
+                record = await connection.fetchrow(query.format(game=game), channel.id)
+                if record:
+                    embed = embed.to_error(
+                        self.ctx,
+                        description=_(
+                            "There is already a game set up in {channel}. Aborting..."
+                        ).format(channel=channel.mention),
+                    )
+                    await message.edit(embed=embed, view=None)
+                    return False
 
             query = """
                 INSERT INTO counting 

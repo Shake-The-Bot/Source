@@ -24,6 +24,7 @@ from Classes import (
     Slash,
     UserGuild,
     _,
+    dbgames,
 )
 from Classes.accessoires import (
     ForwardingFinishSource,
@@ -277,17 +278,18 @@ class command(ShakeCommand):
                     return False
 
         async with self.ctx.db.acquire() as connection:
-            query = "SELECT * FROM oneword WHERE channel_id = $1"
-            record = await connection.fetchrow(query, channel.id)
-            if record:
-                embed = embed.to_error(
-                    self.ctx,
-                    description=_(
-                        "There is already a game set up in {channel}. Aborting..."
-                    ).format(channel=channel.mention),
-                )
-                await message.edit(embed=embed, view=None)
-                return False
+            query = "SELECT * FROM {game} WHERE channel_id = $1"
+            for game in dbgames:
+                record = await connection.fetchrow(query.format(game=game), channel.id)
+                if record:
+                    embed = embed.to_error(
+                        self.ctx,
+                        description=_(
+                            "There is already a game set up in {channel}. Aborting..."
+                        ).format(channel=channel.mention),
+                    )
+                    await message.edit(embed=embed, view=None)
+                    return False
 
             query = 'INSERT INTO "oneword" (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
             await connection.execute(query, channel.id, self.ctx.guild.id, react)

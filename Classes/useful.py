@@ -440,7 +440,7 @@ def find_nth_occurrence(string: str, substring: str, n: int) -> int | None:
     return index
 
 
-def truncate(
+async def truncate(
     elements: Iterable[Tag | NavigableString],
     converter: DocMarkdownConverter,
     max_length: int,
@@ -1102,7 +1102,7 @@ async def fetch_inventory(
         return pathdata
 
 
-def markdown(item: DocItem, soup: BeautifulSoup) -> str | None:
+async def markdown(item: DocItem, soup: BeautifulSoup) -> str | None:
     """
     Return a parsed Markdown string with the signatures (wrapped in python codeblocks, separated from the description by a newline) at the top of the passed item using the passed in soup,
     truncated to fit within a discord message (max 750 rendered characters for the description) with signatures at the start.
@@ -1131,7 +1131,9 @@ def markdown(item: DocItem, soup: BeautifulSoup) -> str | None:
                 tag.decompose()
 
     converter = DocMarkdownConverter(bullets="•", page_url=item.module.value)
-    description = truncate(elements, converter=converter, max_length=750, max_lines=13)
+    description = await truncate(
+        elements, converter=converter, max_length=750, max_lines=13
+    )
     description = _WHITESPACE_AFTER_NEWLINES_RE.sub("", description)
 
     if signatures is not None:

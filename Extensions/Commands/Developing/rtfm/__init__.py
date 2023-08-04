@@ -197,38 +197,6 @@ class rtfm_extension(Developing):
             for item in items:
                 self.symbols[module.name][item.id] = item
 
-    def move_to_front(self, item: QueueItem | DocItem) -> None:
-        index = self.queue.index(item)
-        item = self.queue[index]
-        del self.queue[index]
-        self.queue.append(item)
-
-    async def parse(self):
-        done = 0
-        marked = 0
-
-        try:
-            self.bot.log.debug("Started parsing")
-            while self.queue:
-                item, soup = self.queue.pop()
-
-                if (future := self.futures[item]).done():
-                    continue
-
-                result = await self.bot.loop.run_in_executor(None, markdown, item, soup)
-                if result is not None:
-                    item.markdown = result
-                else:
-                    marked += 1  # report
-
-                done += 1
-                future.set_result(result)
-                del self.futures[item]
-                await asyncio.sleep(0.1)
-        finally:
-            self.bot.log.debug(f"Ended parsing ({marked}/{done} items)")
-            self.parsing = None
-
     async def get_markdown(self, item: DocItem):
         markdown = item.markdown
 
@@ -247,44 +215,79 @@ class rtfm_extension(Developing):
 
         return markdown
 
-    async def get_soup(self, item: DocItem):
-        if soup := self.soups.get(item.relative_url):
-            return soup
-        else:
-            async with self.bot.session.get(item.relative_url) as response:
-                if response.status != 200:
-                    return None
-                text = await response.text(encoding="utf8")
-            soup = BeautifulSoup(text, "lxml")
-            self.soups[item.relative_url] = soup
-            return soup
-
     async def fetch_markdown(self, item: DocItem, alone: bool = False):
         if item not in self.futures and item not in self.queue:
             self.futures[item].requested = True
 
             soup = await self.get_soup(item)
-
-            queue = list()
             qitem = QueueItem(item, soup)
+            queue = [QueueItem(item, soup) for item in self.todo[item.relative]]
             queue.append(qitem)
-            if not alone:
-                queue.extend(
-                    [QueueItem(item, soup) for item in self.todo[item.relative]]
-                )
-
             self.queue.extendleft(queue)
             if not self.parsing:
                 self.parsing = create_task(self.parse())
         else:
             qitem = None
             self.futures[item].requested = True
-
         if qitem:
+            self.bot.log.debug("mooving it to the front")
             with suppress(ValueError):
                 self.move_to_front(qitem)
 
         return await self.futures[item]
+
+    async def get_soup(self, item: DocItem):
+        if soup := self.soups.get(item.relative_url):
+            return soup
+        else:
+            self.bot.log.debug("requesting site")
+            async with self.bot.session.get(
+                item.relative_url, raise_for_status=True
+            ) as response:
+                self.bot.log.debug("done requesting site")
+                if response.status != 200:
+                    return None
+                text = await response.text(encoding="utf8")
+            self.bot.log.debug("Parsing site")
+            soup = await self.bot.loop.run_in_executor(
+                None,
+                BeautifulSoup,
+                await response.text(encoding="utf8"),
+                "lxml",
+            )
+            self.bot.log.infdebugo("done parsing site")
+
+            self.soups[item.relative_url] = soup
+            return soup
+
+    async def parse(self):
+        done = 0
+        marked = 0
+
+        self.bot.log.debug("Started parsing")
+        while self.queue:
+            item, soup = self.queue.pop()
+
+            if (future := self.futures[item]).done():
+                continue
+            result = await markdown(item, soup)
+
+            assert result
+            item.markdown = result
+
+            done += 1
+            future.set_result(result)
+            del self.futures[item]
+            await asyncio.sleep(0)
+
+        self.bot.log.debug(f"Ended parsing ({marked}/{done} items)")
+        self.parsing = None
+
+    def move_to_front(self, item: QueueItem | DocItem) -> None:
+        index = self.queue.index(item)
+        item = self.queue[index]
+        del self.queue[index]
+        self.queue.append(item)
 
     async def clear(self) -> None:
         """

@@ -32,6 +32,14 @@ __all__ = (
     "TracebackType",
     "ExtensionMethods",
     "UserGuild",
+    "dbgames",
+)
+
+
+dbgames = (
+    "counting",
+    "oneword",
+    "aboveme",
 )
 
 
