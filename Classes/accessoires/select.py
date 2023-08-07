@@ -158,3 +158,6 @@ class CategoricalSelect(ui.Select):
             )
             self.view.cache["source"] = self.view.cache["page"] = None
             await self.view.rebind(source, interaction=interaction)
+
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()

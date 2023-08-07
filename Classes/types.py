@@ -4,6 +4,7 @@ from functools import partial
 from sys import exc_info
 from typing import Any, Callable, List, Literal, NamedTuple, Optional, TypedDict
 
+from bs4 import BeautifulSoup
 from discord import Guild, PartialEmoji, Thread, User
 from discord.channel import *
 from discord.ext.commands import Bot
@@ -21,16 +22,89 @@ __all__ = (
     "AboveMeBatch",
     "CountingBatch",
     "tick",
-    "Manuals",
     "Translated",
     "CountingsBatch",
     "AboveMesBatch",
     "Batch",
+    "DocItem",
+    "Modules",
+    "QueueItem",
     "TracebackType",
     "ExtensionMethods",
-    "Manual",
     "UserGuild",
+    "dbgames",
 )
+
+
+dbgames = (
+    "counting",
+    "oneword",
+    "aboveme",
+)
+
+
+class Modules(Enum):
+    discord = "https://discordpy.readthedocs.io/en/latest/"
+    Python = "https://docs.python.org/3/"
+    Pillow = "https://pillow.readthedocs.io/en/latest/"
+    aiohttp = "https://docs.aiohttp.org/en/latest/"
+    Wand = "https://docs.wand-py.org/en/latest/"
+    NumPy = "https://numpy.org/doc/stable/"
+    Sympy = "https://docs.sympy.org/latest/"
+    matplotlib = "https://matplotlib.org/stable/"
+    # pygame = "https://www.pygame.org/docs/"
+    # opencv = "https://docs.opencv.org/2.4.13.7/"
+    # selenium = "https://selenium-python.readthedocs.io/index.html/"
+    requests = "https://docs.python-requests.org/en/latest/"
+    magmatic = "https://magmatic.readthedocs.io/en/latest/"
+    adapt = "https://adaptpy.readthedocs.io/en/latest/"
+
+
+class DocItem:
+    id: str  # Fragment id used to locate the symbol on the page
+    name: str  # Name used to find the symbol in the bot (most likely the id)
+    module: Modules
+    subdirective: str  # Interpshinx "role" of the symbol, for example `label` or `method`
+    relative: str  # Relative path to the page where the symbol is located
+    version: str
+    location: str
+    markdown: Optional[str]
+
+    def __init__(
+        self, id, name, module, subdirective, relative, version, location
+    ) -> None:
+        self.id = id
+        self.name = name
+        self.module = module
+        self.subdirective = subdirective
+        self.relative = relative
+        self.version = version
+        self.location = location
+        self.markdown = None
+        self.soup = None
+
+    @property
+    def url(self) -> str:
+        """Return the absolute url to the symbol."""
+        link = self.module.value + self.location
+        return link
+
+    @property
+    def relative_url(self) -> str:
+        """Return the absolute url to the symbol."""
+        link = self.module.value + self.relative
+        return link
+
+    def __repr__(self) -> str:
+        return self.id
+
+    def __str__(self) -> str:
+        return self.id
+
+
+class QueueItem(NamedTuple):
+    item: DocItem
+    soup: BeautifulSoup
 
 
 class Translated:
@@ -178,12 +252,6 @@ class Format(Enum):
     )
 
 
-class Manual(NamedTuple):
-    name: str
-    url: str
-    icon: Optional[str] = None
-
-
 class Types(Enum):
     ValidStaticFormatTypes = Literal["webp", "jpeg", "jpg", "png"]
     ValidAssetFormatTypes = Literal["webp", "jpeg", "jpg", "png", "gif"]
@@ -197,32 +265,6 @@ class Types(Enum):
         | CategoryChannel
         | DMChannel
     )
-
-
-class Manuals(Enum):
-    discord = Manual(
-        "Discord.py",
-        "https://discordpy.readthedocs.io/en/latest",
-        "https://camo.githubusercontent.com/794a85b742b67a4ebadd1f7aae03a54b2fb2c4bd785b4c6e5bf548f6fc4a53a4/68747470733a2f2f692e696d6775722e636f6d2f5250727737306e2e6a7067",
-    )
-    python = Manual(
-        "python",
-        "https://docs.python.org/3",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/240px-Python-logo-notext.svg.png",
-    )
-    peps = Manual("Python peps", "https://peps.python.org")
-    pillow = Manual("Pillow", "https://pillow.readthedocs.io/en/latest")
-    aiohttp = Manual("aiohttp", "https://docs.aiohttp.org/en/latest")
-    wand = Manual("Wand", "https://docs.wand-py.org/en/latest")
-    numpy = Manual("NumPy", "https://numpy.org/doc/stable")
-    sympy = Manual("SymPy", "https://docs.sympy.org/latest")
-    matplotlib = Manual("Matplotlib", "https://matplotlib.org/stable")
-    pygame = Manual("PyGame", "https://www.pygame.org/docs")
-    opencv = Manual("OpenCV", "https://docs.opencv.org/2.4.13.7")
-    selenium = Manual("Selenium", "https://selenium-python.readthedocs.io/index.html")
-    requests = Manual("Requests", "https://docs.python-requests.org/en/latest")
-    magmatic = Manual("Magmatic", "https://magmatic.readthedocs.io/en/latest")
-    adapt = Manual("Adapt.py", "https://adaptpy.readthedocs.io/en/latest")
 
 
 class Regex(Enum):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio.exceptions import CancelledError
+from asyncio import CancelledError, Future
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -17,7 +17,9 @@ from threading import Thread
 from time import monotonic
 from traceback import format_exception
 from typing import *
+from typing import Optional
 from uuid import uuid4
+from zlib import decompressobj
 
 import asyncpraw
 from _collections_abc import dict_items, dict_values
@@ -26,7 +28,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
 from asyncpraw.models import Submission, Subreddit
 from discord import *
-from discord.abc import Snowflake
 from discord.ext.commands import *
 from discord.player import AudioPlayer
 from discord.ui import View
@@ -54,6 +55,7 @@ __all__ = (
     "ShakeCommand",
     "Category",
     "Migration",
+    "ResultFuture",
 )
 
 
@@ -435,21 +437,6 @@ class BotBase(Bot):
         """Returns the owner as a discord.User Object"""
         return self.get_user_global(self.shake_id)
 
-    async def add_cog(
-        self,
-        cog: Cog,
-        /,
-        *,
-        override: bool = False,
-        guild: Optional[Snowflake] = MISSING,
-        guilds: Sequence[Snowflake] = MISSING,
-    ) -> None:
-        try:
-            await super().add_cog(cog, override=override, guild=guild, guilds=guilds)
-        except Exception as e:
-            self.log.warn('"{}" couldn\'t get loaded: {}'.format(cog, e))
-        return
-
     def get_emoji_local(self, dictionary: Any, name: str) -> Any:
         dictionary = getattr(self.emojis, dictionary, MISSING)
         if dictionary is MISSING:
@@ -534,21 +521,6 @@ class BotBase(Bot):
                 await self.reddit.client.close()
 
         await super().close()
-
-    async def load_extensions(self):
-        for extension in self.config.client.extensions:
-            try:
-                await self.load_extension(extension)
-            except ModuleNotFoundError as e:
-                self.log.critical(
-                    'Extension "{}" couldn\'t be loaded: {}'.format(extension, e)
-                )
-            except ImportError as e:
-                self.log.critical(
-                    'Extension "{}" couldn\'t be loaded {}'.format(extension, e)
-                )
-            except:
-                await self.on_error("load_extensions")
 
     async def process_commands(self, message: Message) -> None:
         await self.wait_until_ready()
@@ -1291,6 +1263,22 @@ class Reddit:
         post = choice(list(await self.create(ctx, subreddit)))
         self.expire(ctx, post)
         return post
+
+
+""" Scraping    """
+
+
+class ResultFuture(Future):
+    """
+    Future with metadata for the parser class.
+
+    `user_requested` is set by the parser when a Future is requested by an user and moved to the front,
+    allowing the futures to only be waited for when clearing if they were user requested.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.requested = False
 
 
 #

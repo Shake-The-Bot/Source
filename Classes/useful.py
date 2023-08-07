@@ -1,35 +1,45 @@
 from __future__ import annotations
 
 import hashlib
+import textwrap
 from ast import BinOp, Expression, PyCF_ALLOW_TOP_LEVEL_AWAIT, parse
 from base64 import b64encode
+from collections import defaultdict, namedtuple
+from collections.abc import Callable, Container, Iterable
+from datetime import datetime
+from functools import partial
 from hmac import new
 from importlib import reload
 from inspect import isawaitable
-from io import BytesIO
+from logging import getLogger
 from math import ceil
 from os import getcwd, listdir
 from os import urandom as _urandom
 from os.path import isdir, isfile, join
 from random import choice as rchoice
-from re import IGNORECASE, I
+from re import I
 from re import compile as recom
 from re import escape, sub
+from string import whitespace
 from sys import modules
 from time import time
 from typing import *
+from typing import Iterable
 from urllib.parse import quote
 from zlib import decompressobj
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout, StreamReader
+from bs4 import BeautifulSoup
+from bs4.element import NavigableString, PageElement, SoupStrainer, Tag
 from discord import *
 from discord.ext.commands import *
 from discord.ui import View
 
+from Classes.converter import DocMarkdownConverter
 from Classes.exceptions import NoDumpingSpots, NotVoted
 from Classes.i18n import _
 from Classes.tomls import config
-from Classes.types import Manual, Manuals
+from Classes.types import DocItem, Modules
 
 if TYPE_CHECKING:
     from bot import ShakeBot
@@ -37,10 +47,43 @@ if TYPE_CHECKING:
     from Classes.helpful import ShakeContext
     from Classes.types import ExtensionMethods
 
+
+MAX_SIGNATURE_AMOUNT = 3
+
+
+_NO_SIGNATURE_GROUPS = {
+    "attribute",
+    "envvar",
+    "setting",
+    "tempaltefilter",
+    "markdown",
+    "templatetag",
+    "term",
+}
+
+
+BracketPair = namedtuple("BracketPair", ["opening_bracket", "closing_bracket"])
+_BRACKET_PAIRS = {
+    "{": BracketPair("{", "}"),
+    "(": BracketPair("(", ")"),
+    "[": BracketPair("[", "]"),
+    "<": BracketPair("<", ">"),
+}
+
+
+_WHITESPACE_AFTER_NEWLINES_RE = recom(r"(?<=\n\n)(\s+)")
+
+_PARAMETERS_RE = recom(r"\((.+)\)")
+_EMBED_CODE_BLOCK_LINE_LENGTH = 61
+_MAX_SIGNATURES_LENGTH = (_EMBED_CODE_BLOCK_LINE_LENGTH + 8) * MAX_SIGNATURE_AMOUNT
+_TRUNCATE_STRIP_CHARACTERS = "!?:;." + whitespace
+_MAX_DESCRIPTION_LENGTH = 4096 - _MAX_SIGNATURES_LENGTH
+
+log = getLogger()
+
 __all__ = (
     "human_join",
     "source_lines",
-    "build_lookup_table",
     "get_signature",
     "votecheck",
     "get_file_paths",
@@ -55,6 +98,10 @@ __all__ = (
     "stdoutable",
     "random_token",
     "stdoutable",
+    "get_dd_elements",
+    "get_general_elements",
+    "get_signatures",
+    "truncate",
     "safe_output",
     "async_compile",
     "cleanup",
@@ -127,6 +174,354 @@ def human_join(
 chunk = lambda seq, size: [seq[i : i + size] for i in range(0, len(seq), size)]
 
 """     Text     """
+
+_SEARCH_END_TAG_ATTRS = (
+    "data",
+    "function",
+    "class",
+    "exception",
+    "seealso",
+    "section",
+    "rubric",
+    "sphinxsidebar",
+)
+
+
+class Strainer(SoupStrainer):
+    """Subclass of SoupStrainer to allow matching of both `Tag`s and `NavigableString`s."""
+
+    def __init__(self, *, include_strings: bool, **kwargs):
+        self.include_strings = include_strings
+        passed_text = kwargs.pop("text", None)
+        if passed_text is not None:
+            log.warning("`text` is not a supported kwarg in the custom strainer.")
+        super().__init__(**kwargs)
+
+    Markup = PageElement | list["Markup"]
+
+    def search(self, markup: Markup) -> PageElement | str:
+        """Extend default SoupStrainer behaviour to allow matching both `Tag`s` and `NavigableString`s."""
+        if isinstance(markup, str):
+            # Let everything through the text filter if we're including strings and tags.
+            if not self.name and not self.attrs and self.include_strings:
+                return markup
+            return None
+        return super().search(markup)
+
+
+def _find_elements_until_tag(
+    start_element: PageElement,
+    end_tag_filter: Container[str] | Callable[[Tag], bool],
+    *,
+    func: Callable,
+    include_strings: bool = False,
+    limit: int | None = None,
+) -> list[Tag | NavigableString]:
+    """
+    Get all elements up to `limit` or until a tag matching `end_tag_filter` is found.
+
+    `end_tag_filter` can be either a container of string names to check against,
+    or a filtering callable that's applied to tags.
+
+    When `include_strings` is True, `NavigableString`s from the document will be included in the result along `Tag`s.
+
+    `func` takes in a BeautifulSoup unbound method for finding multiple elements, such as `BeautifulSoup.find_all`.
+    The method is then iterated over and all elements until the matching tag or the limit are added to the return list.
+    """
+    use_container_filter = not callable(end_tag_filter)
+    elements = []
+
+    for element in func(
+        start_element, name=Strainer(include_strings=include_strings), limit=limit
+    ):
+        if isinstance(element, Tag):
+            if use_container_filter:
+                if element.name in end_tag_filter:
+                    break
+            elif end_tag_filter(element):
+                break
+        elements.append(element)
+
+    return elements
+
+
+_find_next_children_until_tag = partial(
+    _find_elements_until_tag, func=partial(BeautifulSoup.find_all, recursive=False)
+)
+_find_recursive_children_until_tag = partial(
+    _find_elements_until_tag, func=BeautifulSoup.find_all
+)
+_find_next_siblings_until_tag = partial(
+    _find_elements_until_tag, func=BeautifulSoup.find_next_siblings
+)
+_find_previous_siblings_until_tag = partial(
+    _find_elements_until_tag, func=BeautifulSoup.find_previous_siblings
+)
+
+
+def _class_filter_factory(class_names: Iterable[str]) -> Callable[[Tag], bool]:
+    """Create callable that returns True when the passed in tag's class is in `class_names` or when it's a table."""
+
+    def match_tag(tag: Tag) -> bool:
+        for attr in class_names:
+            if attr in tag.get("class", ()):
+                return True
+        return tag.name == "table"
+
+    return match_tag
+
+
+def get_general_elements(start_element: Tag) -> list[Tag | NavigableString]:
+    """
+    Get page content to a table or a tag with its class in `SEARCH_END_TAG_ATTRS`.
+
+    A headerlink tag is attempted to be found to skip repeating the symbol information in the description.
+    If it's found it's used as the tag to start the search from instead of the `start_element`.
+    """
+    child_tags = _find_recursive_children_until_tag(
+        start_element, _class_filter_factory(["section"]), limit=100
+    )
+    header = next(filter(_class_filter_factory(["headerlink"]), child_tags), None)
+    start_tag = header.parent if header is not None else start_element
+    return _find_next_siblings_until_tag(
+        start_tag, _class_filter_factory(_SEARCH_END_TAG_ATTRS), include_strings=True
+    )
+
+
+def get_dd_elements(symbol: PageElement) -> list[Tag | NavigableString]:
+    """Get the contents of the next dd tag, up to a dt or a dl tag."""
+    description_tag = symbol.find_next("dd")
+    return _find_next_children_until_tag(
+        description_tag, ("dt", "dl"), include_strings=True
+    )
+
+
+def get_signatures(start_signature: PageElement) -> list[str]:
+    """
+    Collect up to `_MAX_SIGNATURE_AMOUNT` signatures from dt tags around the `start_signature` dt tag.
+
+    First the signatures under the `start_signature` are included;
+    if less than 2 are found, tags above the start signature are added to the result if any are present.
+    """
+    signatures = []
+    for element in (
+        *reversed(_find_previous_siblings_until_tag(start_signature, ("dd",), limit=2)),
+        start_signature,
+        *_find_next_siblings_until_tag(start_signature, ("dd",), limit=2),
+    )[-MAX_SIGNATURE_AMOUNT:]:
+        for tag in element.find_all(_filter_signature_links, recursive=False):
+            tag.decompose()
+
+        signature = element.text
+        if signature:
+            signatures.append(signature)
+
+    return signatures
+
+
+def _filter_signature_links(tag: Tag) -> bool:
+    """Return True if `tag` is a headerlink, or a link to source code; False otherwise."""
+    if tag.name == "a":
+        if "headerlink" in tag.get("class", ()):
+            return True
+
+        if tag.find(class_="viewcode-link"):
+            return True
+
+    return False
+
+
+def _split_parameters(parameters_string: str) -> Iterator[str]:
+    """
+    Split parameters of a signature into individual parameter strings on commas.
+
+    Long string literals are not accounted for.
+    """
+    last_split = 0
+    depth = 0
+    current_search: BracketPair | None = None
+
+    enumerated_string = enumerate(parameters_string)
+    for index, character in enumerated_string:
+        if character in {"'", '"'}:
+            # Skip everything inside of strings, regardless of the depth.
+            quote_character = (
+                character  # The closing quote must equal the opening quote.
+            )
+            preceding_backslashes = 0
+            for _, character in enumerated_string:
+                # If an odd number of backslashes precedes the quote, it was escaped.
+                if character == quote_character and not preceding_backslashes % 2:
+                    break
+                if character == "\\":
+                    preceding_backslashes += 1
+                else:
+                    preceding_backslashes = 0
+
+        elif current_search is None:
+            if (current_search := _BRACKET_PAIRS.get(character)) is not None:
+                depth = 1
+            elif character == ",":
+                yield parameters_string[last_split:index]
+                last_split = index + 1
+
+        else:
+            if character == current_search.opening_bracket:
+                depth += 1
+
+            elif character == current_search.closing_bracket:
+                depth -= 1
+                if depth == 0:
+                    current_search = None
+
+    yield parameters_string[last_split:]
+
+
+def truncate_signatures(signatures: Collection[str]) -> list[str] | Collection[str]:
+    """
+    Truncate passed signatures to not exceed `_MAX_SIGNATURES_LENGTH`.
+
+    If the signatures need to be truncated, parameters are collapsed until they fit withing the limit.
+    Individual signatures can consist of max 1, 2, ..., `_MAX_SIGNATURE_AMOUNT` lines of text,
+    inversely proportional to the amount of signatures.
+    A maximum of `_MAX_SIGNATURE_AMOUNT` signatures is assumed to be passed.
+    """
+    if sum(len(signature) for signature in signatures) <= _MAX_SIGNATURES_LENGTH:
+        # Total length of signatures is under the length limit; no truncation needed.
+        return signatures
+
+    max_signature_length = _EMBED_CODE_BLOCK_LINE_LENGTH * (
+        MAX_SIGNATURE_AMOUNT + 1 - len(signatures)
+    )
+    formatted_signatures = []
+    for signature in signatures:
+        signature = signature.strip()
+        if len(signature) > max_signature_length:
+            if (parameters_match := _PARAMETERS_RE.search(signature)) is None:
+                # The signature has no parameters or the regex failed; perform a simple truncation of the text.
+                formatted_signatures.append(
+                    textwrap.shorten(signature, max_signature_length, placeholder="...")
+                )
+                continue
+
+            truncated_signature = []
+            parameters_string = parameters_match[1]
+            running_length = len(signature) - len(parameters_string)
+            for parameter in _split_parameters(parameters_string):
+                # Check if including this parameter would still be within the maximum length.
+                if (
+                    len(parameter) + running_length
+                ) <= max_signature_length - 5:  # account for comma and placeholder
+                    truncated_signature.append(parameter)
+                    running_length += len(parameter) + 1
+                else:
+                    # There's no more room for this parameter. Truncate the parameter list and put it in the signature.
+                    truncated_signature.append(" ...")
+                    formatted_signatures.append(
+                        signature.replace(
+                            parameters_string, ",".join(truncated_signature)
+                        )
+                    )
+                    break
+        else:
+            # The current signature is under the length limit; no truncation needed.
+            formatted_signatures.append(signature)
+
+    return formatted_signatures
+
+
+def find_nth_occurrence(string: str, substring: str, n: int) -> int | None:
+    """Return index of `n`th occurrence of `substring` in `string`, or None if not found."""
+    index = 0
+    for _ in range(n):
+        index = string.find(substring, index + 1)
+        if index == -1:
+            return None
+    return index
+
+
+async def truncate(
+    elements: Iterable[Tag | NavigableString],
+    converter: DocMarkdownConverter,
+    max_length: int,
+    max_lines: int,
+) -> str:
+    """
+    Truncate the Markdown from `elements` to be at most `max_length` characters when rendered or `max_lines` newlines.
+
+    `max_length` limits the length of the rendered characters in the string,
+    with the real string length limited to `_MAX_DESCRIPTION_LENGTH` to accommodate discord length limits.
+    """
+    result = ""
+    ends = (
+        []
+    )  # Stores indices into `result` which point to the end boundary of each Markdown element.
+    rendered_length = 0
+
+    tag_end_index = 0
+    for element in elements:
+        is_tag = isinstance(element, Tag)
+        element_length = len(element.text) if is_tag else len(element)
+
+        if not rendered_length + element_length < max_length:
+            break
+
+        if is_tag:
+            markdown = converter.process_tag(element, convert_as_inline=False)
+        else:
+            markdown = converter.process_text(element)
+
+        rendered_length += element_length
+        tag_end_index += len(markdown)
+
+        if not markdown.isspace():
+            ends.append(tag_end_index)
+        result += markdown
+
+    if not ends:
+        return ""
+
+    # Determine the "hard" truncation index. Account for the ellipsis placeholder for the max length.
+    newline_truncate_index = find_nth_occurrence(result, "\n", max_lines)
+
+    if (
+        newline_truncate_index is not None
+        and newline_truncate_index < _MAX_DESCRIPTION_LENGTH - 3
+    ):
+        # Truncate based on maximum lines if there are more than the maximum number of lines.
+        truncate_index = newline_truncate_index
+    else:
+        # There are less than the maximum number of lines; truncate based on the max char length.
+        truncate_index = _MAX_DESCRIPTION_LENGTH - 3
+
+    # Nothing needs to be truncated if the last element ends before the truncation index.
+    if truncate_index >= ends[-1]:
+        return result
+
+    # Determine the actual truncation index.
+    possible_truncation_indices = [cut for cut in ends if cut < truncate_index]
+    if not possible_truncation_indices:
+        # In case there is no Markdown element ending before the truncation index, try to find a good cutoff point.
+        force_truncated = result[:truncate_index]
+        # If there is an incomplete codeblock, cut it out.
+        if force_truncated.count("```") % 2:
+            force_truncated = force_truncated[: force_truncated.rfind("```")]
+        # Search for substrings to truncate at, with decreasing desirability.
+        for string_ in ("\n\n", "\n", ". ", ", ", ",", " "):
+            cutoff = force_truncated.rfind(string_)
+
+            if cutoff != -1:
+                truncated_result = force_truncated[:cutoff]
+                break
+        else:
+            truncated_result = force_truncated
+
+    else:
+        # Truncate at the last Markdown element that comes before the truncation index.
+        markdown_truncate_index = possible_truncation_indices[-1]
+        truncated_result = result[:markdown_truncate_index]
+
+    return truncated_result.strip(_TRUNCATE_STRIP_CHARACTERS) + "..."
 
 
 # outdated
@@ -350,9 +745,9 @@ def get_signature(menu: View, command: Command):
     optionals = dict()
     required = dict()
 
-    text_channels = set(channel.mention for channel in guild.text_channels[:2])
-    members = set(member.mention for member in guild.members[:2])
-    voice_channels = set(channel.mention for channel in guild.voice_channels[:2])
+    text_channels = list(channel.mention for channel in guild.text_channels[:2])
+    members = list(member.mention for member in guild.members[:2])
+    voice_channels = list(channel.mention for channel in guild.voice_channels[:2])
 
     examples = {
         int: [choice(range(0, 100))],
@@ -553,9 +948,10 @@ def tens(count: int, higher_when_same: bool = False, direction: bool = True):
 
 class SphinxObjectFileReader:
     BUFSIZE = 16 * 1024
+    stream: StreamReader
 
-    def __init__(self, buffer: bytes):
-        self.stream = BytesIO(buffer)
+    def __init__(self, stream):
+        self.stream = stream
 
     def readline(self) -> str:
         return self.stream.readline().decode("utf-8")
@@ -563,13 +959,14 @@ class SphinxObjectFileReader:
     def skipline(self) -> None:
         self.stream.readline()
 
-    def read_compressed_chunks(self) -> Generator[bytes, None, None]:
+    async def read_compressed_chunks(self) -> AsyncIterator[bytes]:
         decompressor = decompressobj()
-        while True:
-            chunk = self.stream.read(self.BUFSIZE)
+        async for chunk in self.stream.iter_chunked(self.BUFSIZE):
             if len(chunk) == 0:
                 break
+
             yield decompressor.decompress(chunk)
+
         yield decompressor.flush()
 
     def read_compressed_lines(self) -> Generator[str, None, None]:
@@ -582,62 +979,216 @@ class SphinxObjectFileReader:
                 buf = buf[pos + 1 :]
                 pos = buf.find(b"\n")
 
+    async def __aiter__(self) -> AsyncIterator[str]:
+        """Yield lines of decompressed text."""
+        buf = b""
+        async for chunk in self.read_compressed_chunks():
+            buf += chunk
+            pos = buf.find(b"\n")
+            while pos != -1:
+                yield buf[:pos].decode()
+                buf = buf[pos + 1 :]
+                pos = buf.find(b"\n")
 
-async def build_lookup_table(session, name: str) -> dict[str, str]:
-    try:
-        manual: Manual = Manuals[name].value
-    except KeyError:
+
+# async def build_lookup_table(session, name: str) -> dict[str, str]:
+#     try:
+#         module: Modules = Modules[name]
+#     except KeyError:
+#         return None
+
+#     url = module.value
+
+#     async with session.get(url + "/objects.inv") as request:
+#         if request.status != 200:
+#             raise RuntimeError("Cannot build lookup table, try again later.")
+
+#         stream = SphinxObjectFileReader(await request.read())
+#         inventory: dict[str, list[DocItem]] = fetch_inventory(stream, url)
+#         return inventory
+
+
+LINE_RE = recom(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+?(\S*)\s+(.*)")
+
+
+async def fetch_inventory(
+    session: ClientSession, module: Modules
+) -> defaultdict[str, list[DocItem]]:
+    """Fetch, parse and return an intersphinx inventory file from an url."""
+    timeout = ClientTimeout(sock_connect=5, sock_read=5)
+    base_url = module.value
+    async with session.get(
+        base_url + "objects.inv", timeout=timeout, raise_for_status=True
+    ) as response:
+        stream = response.content
+
+        inventory_header = (await stream.readline()).decode().rstrip()
+        try:
+            sphinx_version = int(inventory_header[-1:])
+        except ValueError:
+            raise RuntimeError("Unable to convert inventory version header.")
+
+        projectinfo = (await stream.readline()).decode().rstrip()
+        versioninfo = (await stream.readline()).decode().rstrip()
+
+        if not projectinfo.startswith("# Project") or not versioninfo.startswith(
+            "# Version"
+        ):
+            raise RuntimeError(
+                f"Inventory on {base_url} missing project or version header."
+            )
+
+        version = versioninfo[11:]
+        project = projectinfo[11:]
+
+        invdata = defaultdict(list)
+        pathdata = defaultdict(list)
+
+        if sphinx_version == 1:
+            raise RuntimeError(str(base_url) + " is version 1")
+
+            async for line in stream:
+                name, type_, location = line.decode().rstrip().split(maxsplit=2)
+                # version 1 did not add anchors to the location
+                if type_ == "mod":
+                    type_ = "py:module"
+                    location += "#module-" + name
+                else:
+                    type_ = "py:" + type_
+                    location += "#" + name
+                invdata[type_].append((name, location))
+
+        elif sphinx_version == 2:
+            if b"zlib" not in await stream.readline():
+                raise RuntimeError(
+                    "'zlib' not found in header of compressed inventory."
+                )
+
+            async for line in SphinxObjectFileReader(stream):
+                m = LINE_RE.match(line.rstrip())
+
+                # ignore the parsed items we don't need
+                name, directive, prio, location, display_name = m.groups()
+
+                if location.endswith("$"):
+                    location = location[:-1] + name
+
+                domain, _, subdirective = directive.partition(":")
+                relative, _, id = location.partition("#")
+
+                # if directive == "std:doc":
+                #     subdirective = "label"
+
+                if display_name == "-":
+                    key = name or id
+                else:
+                    key = display_name
+
+                if key.startswith(module.name + "."):
+                    key = key.removeprefix(module.name + ".")
+
+                item = DocItem(
+                    id=id,
+                    name=key,
+                    module=module,
+                    subdirective=subdirective,
+                    relative=relative,
+                    location=location,
+                    version=version,
+                )
+                pathdata[relative].append(item)
+
+        else:
+            raise RuntimeError(f"Incompatible inventory version on {base_url}.")
+
+        return pathdata
+
+
+async def markdown(item: DocItem, soup: BeautifulSoup) -> str | None:
+    """
+    Return a parsed Markdown string with the signatures (wrapped in python codeblocks, separated from the description by a newline) at the top of the passed item using the passed in soup,
+    truncated to fit within a discord message (max 750 rendered characters for the description) with signatures at the start.
+
+    The method of parsing and what information gets included depends on the symbol's group.
+    """
+    heading = soup.find(id=item.id)
+
+    if heading is None:
         return None
 
-    url = manual.url
+    signatures = None
+    # Modules, doc pages and labels don't point to description list tags but to tags like divs,
+    # no special parsing can be done so we only try to include what's under them.
+    if heading.name != "dt":
+        elements = get_general_elements(heading)
 
-    async with session.get(url + "/objects.inv") as request:
-        if request.status != 200:
-            raise RuntimeError("Cannot build lookup table, try again later.")
+    else:
+        if not item.subdirective in _NO_SIGNATURE_GROUPS:
+            signatures = get_signatures(heading)
+        elements = get_dd_elements(heading)
 
-        stream = SphinxObjectFileReader(await request.read())
-        cache: dict[str, str] = parse_object_inv(stream, url)
-        return cache
+    for element in elements:
+        if isinstance(element, Tag):
+            for tag in element.find_all("a", class_="headerlink"):
+                tag.decompose()
+
+    converter = DocMarkdownConverter(bullets="•", page_url=item.module.value)
+    description = await truncate(
+        elements, converter=converter, max_length=750, max_lines=13
+    )
+    description = _WHITESPACE_AFTER_NEWLINES_RE.sub("", description)
+
+    if signatures is not None:
+        signature = "".join(f"```py\n{signature}```" for signature in signatures)
+        description = f"{signature}\n{description}"
+
+    return description.strip()
 
 
-def parse_object_inv(stream: SphinxObjectFileReader, url: str) -> dict[str, str]:
-    result: dict[str, str] = {}
+async def m(item: DocItem, soup: BeautifulSoup):
+    heading = soup.find(id=item.id)
+    if heading is None:
+        return None
+    signatures = None
+    # Modules, doc pages and labels don't point to description list tags but to tags like divs,
+    # no special parsing can be done so we only try to include what's under them.
+    if heading.name != "dt":
+        description = get_general_elements(heading)
 
-    inv_version = stream.readline().rstrip()
+    elif item.subdirective in _NO_SIGNATURE_GROUPS:
+        description = get_dd_elements(heading)
 
-    if inv_version != "# Sphinx inventory version 2":
-        raise RuntimeError("Invalid objects.inv file version.")
+    else:
+        signatures = get_signatures(heading)
+        description = get_dd_elements(heading)
 
-    projname = stream.readline().rstrip()[11:]
-    version = stream.readline().rstrip()[11:]
+    for description_element in description:
+        if isinstance(description_element, Tag):
+            for tag in description_element.find_all("a", class_="headerlink"):
+                tag.decompose()
 
-    line = stream.readline()
-    if "zlib" not in line:
-        raise RuntimeError("Invalid objects.inv file, not z-lib compatible.")
+    return _create_markdown(signatures, description, item.module.value).strip()
 
-    entry_regex = recom(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+(\S+)\s+(.*)")
-    for line in stream.read_compressed_lines():
-        match = entry_regex.match(line.rstrip())
-        if not match:
-            continue
 
-        name, directive, prio, location, dispname = match.groups()
-        domain, _, subdirective = directive.partition(":")
-        if directive == "py:module" and name in result:
-            continue
+def _create_markdown(
+    signatures: list[str] | None, description: Iterable[Tag], url: str
+) -> str:
+    """
+    Create a Markdown string with the signatures at the top, and the converted html description below them.
 
-        if directive == "std:doc":
-            subdirective = "label"
-
-        if location.endswith("$"):
-            location = location[:-1] + name
-
-        key = name if dispname == "-" else dispname
-        prefix = f"{subdirective}:" if domain == "std" else ""
-
-        if projname == "discord.py":
-            key = key.replace("discord.ext.commands.", "").replace("discord.", "")
-
-        result[f"{prefix}{key}"] = join(url, location)
-
-    return result
+    The signatures are wrapped in python codeblocks, separated from the description by a newline.
+    The result Markdown string is max 750 rendered characters for the description with signatures at the start.
+    """
+    description = truncate(
+        description,
+        converter=DocMarkdownConverter(bullets="•", page_url=url),
+        max_length=750,
+        max_lines=13,
+    )
+    description = _WHITESPACE_AFTER_NEWLINES_RE.sub("", description)
+    if signatures is not None:
+        signature = "".join(
+            f"```py\n{signature}```" for signature in truncate_signatures(signatures)
+        )
+        return f"{signature}\n{description}"
+    return description

@@ -1,22 +1,7 @@
+from asyncio import gather
 from enum import Enum
 from typing import Dict, List, Optional
 
-from Classes import (
-    MISSING,
-    Format,
-    ShakeCommand,
-    ShakeContext,
-    ShakeEmbed,
-    UserGuild,
-    _,
-)
-from Classes.accessoires import (
-    ForwardingFinishSource,
-    ForwardingMenu,
-    ForwardingSource,
-    ListPageSource,
-    ShakePages,
-)
 from discord import (
     ButtonStyle,
     ChannelType,
@@ -29,6 +14,24 @@ from discord import (
 )
 from discord.app_commands import AppCommandChannel
 from discord.ui import Button, ChannelSelect, Select
+
+from Classes import (
+    MISSING,
+    Format,
+    ShakeCommand,
+    ShakeContext,
+    ShakeEmbed,
+    UserGuild,
+    _,
+    dbgames,
+)
+from Classes.accessoires import (
+    ForwardingFinishSource,
+    ForwardingMenu,
+    ForwardingSource,
+    ListPageSource,
+    ShakePages,
+)
 
 ############
 #
@@ -81,7 +84,7 @@ class Channel(ForwardingSource):
             value = self.bot.get_channel(value.id)
         self.view.channel = value
         await self.view.show_source(source=self.next(self.view), rotation=1)
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -138,7 +141,7 @@ class React(ForwardingSource):
         finish.previous = React
         await self.view.show_source(source=finish, rotation=1)
 
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 
     def message(self) -> dict:
@@ -278,17 +281,18 @@ class command(ShakeCommand):
                     return False
 
         async with self.ctx.db.acquire() as connection:
-            query = "SELECT * FROM counting WHERE channel_id = $1"
-            record = await connection.fetchrow(query, channel.id)
-            if record:
-                embed = embed.to_error(
-                    self.ctx,
-                    description=_(
-                        "In {channel} is already a Counting game set up. Aborting..."
-                    ).format(channel=channel.mention),
-                )
-                await message.edit(embed=embed, view=None)
-                return False
+            query = "SELECT * FROM {game} WHERE channel_id = $1"
+            for game in dbgames:
+                record = await connection.fetchrow(query.format(game=game), channel.id)
+                if record:
+                    embed = embed.to_error(
+                        self.ctx,
+                        description=_(
+                            "There is already a game set up in {channel}. Aborting..."
+                        ).format(channel=channel.mention),
+                    )
+                    await message.edit(embed=embed, view=None)
+                    return False
 
             query = 'INSERT INTO "aboveme" (channel_id, guild_id, react) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING'
             await connection.execute(query, channel.id, self.ctx.guild.id, react)

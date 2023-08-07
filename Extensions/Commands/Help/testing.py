@@ -60,14 +60,17 @@ configurations: Callable[
         "text": _("Only the owner of the shake bot can run this command"),
     },
     "premium": {
-        "suffix": bot.emojis.help.shakeplus,
+        "suffix": bot.emojis.help.plus,
         "text": _("Start a Shake+ subscription to run this command"),
     },
     "permissions": {
         "suffix": bot.emojis.help.permissions,
         "text": _("This command requires certain rights from the user to be executed"),
     },
-    "group": {"suffix": "(G)", "text": _("This group-command has sub-commands")},
+    "group": {
+        "suffix": bot.emojis.help.group,
+        "text": _("This group-command has sub-commands"),
+    },
 }
 
 
@@ -400,6 +403,7 @@ class HelpMenu(CategoricalMenu):
             else:
                 source = CommandSource(self.ctx, item=command)
             await self.rebind(source)
+
             with suppress(NotFound, Forbidden, HTTPException):
                 await msg.delete()
 
@@ -415,7 +419,6 @@ class HelpMenu(CategoricalMenu):
             tmpsource, tmppage = (self.cache["source"], self.cache["page"])
             self.cache["source"] = self.cache["page"] = None
             await self.rebind(tmpsource, tmppage, interaction=interaction)
-            return
 
         elif not is_frontpage:
             assert (
@@ -424,10 +427,9 @@ class HelpMenu(CategoricalMenu):
             )
             self.cache["source"], self.cache["page"] = (self.source, self.page)
             await self.rebind(Front(), 2, interaction=interaction)
-            return
 
     async def run_command(self, interaction: Interaction, command: commands.Command):
-        if not interaction.response.is_done():
+        if interaction and not interaction.response.is_done():
             await interaction.response.defer()
         msg = copy(self.ctx.message)
         msg.channel = self.ctx.channel
@@ -464,6 +466,8 @@ class HelpMenu(CategoricalMenu):
         update: Optional[bool] = True,
     ) -> None:
         await super().rebind(source, page, interaction, update)
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()
         await self.hear()
         return
 
@@ -538,10 +542,12 @@ class CommandSource(ItemPageSource):
                     value=title
                     + "".join(
                         " ".join(
-                            "\n>",
-                            Format.bold(f"/{self.item.name}"),
-                            " ".join(required),
-                            " ".join(map(str, _)),
+                            [
+                                "\n>",
+                                Format.bold(f"/{self.item.name}"),
+                                " ".join(required),
+                                " ".join(map(str, _)),
+                            ],
                         )
                         for _ in n
                     ),
@@ -594,11 +600,12 @@ class CommandSource(ItemPageSource):
         items: List[Command],
         config: configurations,
     ):
-        suffix: dict[str, dict] = {
-            extra: config[extra]
-            for extra, key in getattr(item.callback, "extras", {}).items()
-            if key is True and extra in set(config.keys())
-        }
+        suffix: dict[str, dict] = dict()
+        if extras := getattr(item.callback, "extras", None):
+            for extra, key in extras.items():
+                if key and extra in config.keys():
+                    suffix[extra] = config[extra]
+
         if isinstance(item, Group):
             suffix["group"] = config["group"]
 

@@ -57,4 +57,4 @@ class NoDumpingSpots(CommandError):
     """Raised when all Dump Hosts returned nothing"""
 
     def __init__(self, message: Optional[str] = None, *args: Any) -> None:
-        super().__init__(m=message)
+        super().__init__(message)

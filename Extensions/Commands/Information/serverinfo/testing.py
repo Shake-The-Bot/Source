@@ -667,7 +667,7 @@ class Front(FrontPageSource):
             )
         ).most_common(1)
         result = region[0][0] if bool(region) else "en-US"
-        embed.add_field(name=_("Region"), value=Format.blockquotes(result))
+        embed.add_field(name=_("Region"), value=Format.blockquotes(Format.bold(result)))
 
         more: Dict[str, str] = {
             _("ID"): f"`{guild.id}`",

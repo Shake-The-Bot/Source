@@ -3,10 +3,9 @@
 from importlib import reload
 from typing import Optional
 
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord import PartialEmoji
 from discord.ext.commands import guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import say, testing
@@ -28,8 +27,8 @@ class say_extension(Gimmicks):
 
     @hybrid_command(name="say")
     @guild_only()
-    @setlocale()
     @locale_doc
+    @setlocale()
     async def say(self, ctx: ShakeContext, reply: Optional[bool] = False, *, text: str):
         _(
             """I will say whatever you tell me to say, except...

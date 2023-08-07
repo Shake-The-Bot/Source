@@ -36,6 +36,56 @@ placements = {1: "🥇", 2: "🥈", 3: "🥉"}
 ########
 #
 
+async def stats(self, member: List[Member] = None):
+    """Tells you stats about the ?rtfm command."""
+    self.member: List[Member] = member
+    query = "SELECT SUM(count) AS total_uses FROM rtfm;"
+    record = await self.bot.pool.fetchrow(query)
+    total_uses: int = record["total_uses"]
+
+    if self.member is not None:
+        embed = ShakeEmbed.default(
+            self.ctx,
+        )
+        embed.set_author(
+            name="RTFM Stats {prefix} {user_names}".format(
+                prefix=self.bot.emojis.prefix, user_names=", ".join(self.member)
+            ),
+            icon_url=self.bot.user.display_avatar.url,
+        )
+        query = "SELECT count FROM rtfm WHERE user_id=$1;"
+        for m in self.member:
+            record = await self.bot.pool.fetchrow(query, m.id)
+            count = 0 if record is None else record["count"]
+            embed.add_field(name=_("Uses"), value=count, inline=False)
+            embed.add_field(
+                name=_("Total", value=f"{count/total_uses:.0%} von {total_uses}"),
+                inline=False,
+            )
+        await self.ctx.chat(embed=embed)
+        return
+
+    query = "SELECT user_id, count FROM rtfm ORDER BY count DESC LIMIT 10;"
+    records = await self.bot.pool.fetch(query)
+    output = []
+    if total_uses is None:
+        return await self.ctx.chat("Keine Einträge")
+    output.append(
+        Format.bold(_("Total uses: {total_uses}").format(total_uses=total_uses))
+    )
+
+    if records:
+        output.append(Format.bold(_("Top {top} member:").format(top=len(records))))
+        for rank, (user_id, count) in enumerate(records, 1):
+            user = self.bot.get_user(user_id) or (
+                await self.bot.fetch_user(user_id)
+            )
+            if rank != 10:
+                output.append(f"{rank}\u20e3 {user}: {count}")
+            else:
+                output.append(f"\N{KEYCAP TEN} {user}: {count}")
+
+    await self.ctx.chat("\n".join(output))
 
 class command(ShakeCommand):
     def __init__(

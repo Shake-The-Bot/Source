@@ -3,10 +3,9 @@
 from importlib import reload
 from typing import Optional
 
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord import PartialEmoji
 from discord.ext.commands import guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import roll, testing
@@ -28,8 +27,8 @@ class roll_extension(Gimmicks):
 
     @hybrid_command(name="roll")
     @guild_only()
-    @setlocale()
     @locale_doc
+    @setlocale()
     async def roll(
         self, ctx: ShakeContext, start: Optional[int] = 1, end: Optional[int] = 6
     ):

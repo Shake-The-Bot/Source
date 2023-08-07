@@ -3,10 +3,9 @@
 from importlib import reload
 from typing import Optional
 
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord import PartialEmoji
 from discord.ext.commands import guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import random, testing
@@ -28,8 +27,8 @@ class random_extension(Gimmicks):
 
     @hybrid_command(name="random")
     @guild_only()
-    @setlocale()
     @locale_doc
+    @setlocale()
     async def random(self, ctx: ShakeContext, offline: Optional[bool] = True):
         _(
             """Picks a random online user

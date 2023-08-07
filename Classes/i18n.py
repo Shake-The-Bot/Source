@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from contextlib import suppress
 from contextvars import ContextVar
-from gettext import NullTranslations, gettext, translation
+from functools import lru_cache
+from gettext import GNUTranslations, NullTranslations, gettext, translation
 from glob import glob
 from os import getcwd, listdir, walk
 from os.path import basename, isdir, isfile, join, splitext
@@ -21,7 +22,7 @@ __all__ = ("Client", "_", "Locales", "current", "default", "translations", "Loca
 ########
 #
 default: str = "en-US"
-translations = dict()
+translations: Dict[str, Union[GNUTranslations, NullTranslations]] = dict()
 
 EXCEPTION = {"sr-SP": "sr"}
 
@@ -96,7 +97,9 @@ class Client:
         if not translations:
             return gettext(*args, **kwargs)
         locale = current.get()
-        return translations.get(locale, translations[default]).gettext(*args, **kwargs)
+        translation: GNUTranslations = translations.get(locale)
+        assert translation
+        return translation.gettext(*args, **kwargs)
 
     async def set_user(self, user_id: User.id, locale: str):
         async with self.bot.pool.acquire() as connection:

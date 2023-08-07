@@ -4,9 +4,11 @@ from logging import Logger, getLogger
 from sys import exc_info
 from traceback import format_exception
 from types import ModuleType
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Sequence
 
 from asyncpg import Pool
+from discord.abc import Snowflake
+from discord.ext.commands import Cog
 from discord.ext.tasks import loop
 
 from Classes.helpful import BotBase, DatabaseProtocol
@@ -26,7 +28,7 @@ __all__ = ("ShakeBot",)
 class ShakeBot(BotBase):
     pool: Pool
     gpool: DatabaseProtocol
-    logger: Logger
+    log: Logger
 
     def __init__(self, logger: Optional[Logger] = None, **options):
         self.log: Logger = logger or getLogger()
@@ -39,6 +41,30 @@ class ShakeBot(BotBase):
     async def refresh(self):
         self.config.reload()
         self.emojis.reload()
+
+    async def load_extensions(self):
+        for extension in self.config.client.extensions:
+            try:
+                await self.load_extension(extension)
+            except Exception as e:
+                self.log.critical(
+                    'Extension "{}" couldn\'t be loaded'.format(extension), exc_info=e
+                )
+
+    async def add_cog(
+        self,
+        cog: Cog,
+        /,
+        *,
+        override: bool = False,
+        guild: Optional[Snowflake] = MISSING,
+        guilds: Sequence[Snowflake] = MISSING,
+    ) -> None:
+        try:
+            await super().add_cog(cog, override=override, guild=guild, guilds=guilds)
+        except Exception as e:
+            self.log.critical('Cog "{}" couldn\'t be loaded'.format(cog), exc_info=e)
+        return
 
     async def testing_error(
         self, module: Dict[str, ModuleType], error: Exception

@@ -2,10 +2,9 @@
 #
 from importlib import reload
 
+from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from discord import Member, PartialEmoji
 from discord.ext.commands import Greedy, guild_only, hybrid_command
-
-from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 
 from ..gimmicks import Gimmicks
 from . import everyone, testing
@@ -29,6 +28,7 @@ class everyone_extension(Gimmicks):
     @guild_only()
     @setlocale()
     @locale_doc
+    @setlocale()
     async def everyone(self, ctx: ShakeContext, member: Greedy[Member] = None):
         _(
             """Remind others how bad @everyone actually is
