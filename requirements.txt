@@ -1,0 +1,27 @@
+aiofiles
+aiohttp
+APScheduler
+asyncpg
+asyncpraw
+beautifulsoup4
+click
+discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus
+discord.py @ git+https://github.com/Rapptz/discord.py
+faust-cchardet
+frozenlist
+humanize
+lxml
+markdownify
+parsedatetime
+Pillow
+polib
+psutil
+pylint
+PyNaCl
+python-dateutil
+pytz
+Sphinx
+toml
+topggpy
+typing_extensions
+watchdog
