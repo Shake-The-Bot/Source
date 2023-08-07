@@ -51,6 +51,7 @@ class rtfm_extension(Developing):
 
         bot.cache.setdefault("symbols", dict())
         self.symbols: dict[Modules, dict[str, DocItem]] = bot.cache["symbols"]
+        self.names: dict[Modules, dict[str, DocItem]] = dict()
 
     @property
     def display_emoji(self) -> str:
@@ -188,6 +189,7 @@ class rtfm_extension(Developing):
 
     async def scrape(self, module: Modules) -> RELATIVE:
         self.symbols.setdefault(module.name, dict())
+        self.names.setdefault(module.name, dict())
         inventory: RELATIVE = await fetch_inventory(self.bot.session, module)
         await self.single(module, inventory)
 
@@ -195,7 +197,8 @@ class rtfm_extension(Developing):
         for relative, items in inventory.items():
             self.todo[relative].extend(items)
             for item in items:
-                self.symbols[module.name][item.id] = item
+                self.symbols[module.name][item.id.lower()] = item
+                self.names[module.name][item.name.lower()] = item
 
     async def get_markdown(self, item: DocItem):
         markdown = item.markdown
@@ -255,7 +258,7 @@ class rtfm_extension(Developing):
                 await response.text(encoding="utf8"),
                 "lxml",
             )
-            self.bot.log.infdebugo("done parsing site")
+            self.bot.log.debug("done parsing site")
 
             self.soups[item.relative_url] = soup
             return soup

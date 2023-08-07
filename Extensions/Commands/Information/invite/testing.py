@@ -31,7 +31,7 @@ class Link(ui.View):
             ui.Button(
                 style=ButtonStyle.blurple,
                 emoji=PartialEmoji(name="arrow", id=1093146865706479756),
-                label=_("Add Shake to your Server"),
+                label=_("Add Shake to your server"),
                 url=link,
             )
         )

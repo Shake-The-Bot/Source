@@ -1084,6 +1084,9 @@ async def fetch_inventory(
                 else:
                     key = display_name
 
+                if key.startswith(module.name + "."):
+                    key = key.removeprefix(module.name + ".")
+
                 item = DocItem(
                     id=id,
                     name=key,
@@ -1093,7 +1096,6 @@ async def fetch_inventory(
                     location=location,
                     version=version,
                 )
-                invdata[directive].append(item)
                 pathdata[relative].append(item)
 
         else:

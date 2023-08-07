@@ -46,34 +46,34 @@ class command(ShakeCommand):
             return await self.ctx.chat(embed=embed)
 
         symbols = self.cog.symbols.get(module.name)
-        assert symbols
+        names = self.cog.names.get(module.name)
+        assert symbols and names
 
         await self.bot.pool.execute(
             "INSERT INTO rtfm (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET count = rtfm.count + 1;",
             self.ctx.author.id,
         )
 
-        matches = get_close_matches(search, list(symbols))
+        matches = get_close_matches(search, list(symbols) + list(names))
 
         select = SymbolSelect(self.ctx, source=SymbolSource, cog=self.cog)
-        select.items = [symbols[match] for match in matches]
+        select.items = [symbols.get(match) or names.get(match) for match in matches]
 
-        items = {id.lower(): item for id, item in symbols.items()}
-        named = {
-            item.name.lower(): item for item in symbols.values() if item.id != item.name
-        }
         source = None
 
-        if item := items.get(search.lower()):
+        if item := symbols.get(search.lower()):
             source = SymbolSource(self.ctx, item)
-        elif item := named.get(search.lower()):
+        elif item := names.get(search.lower()):
             source = SymbolSource(self.ctx, item)
         else:
             if bool(matches):
                 source = SearchSource(
                     self.ctx,
                     searches=[
-                        SearchItem(symbols[match].name, symbols[match].url)
+                        SearchItem(
+                            (item := symbols.get(match) or names.get(match)).name,
+                            item.url,
+                        )
                         for match in matches
                     ],
                 )
