@@ -130,8 +130,8 @@ except TypeError:
     del tb
 
 tick: Callable[[Bot], PartialEmoji] = lambda bot: (
-    str(bot.emojis.cross),
-    str(bot.emojis.hook),
+    str(bot.assets.cross),
+    str(bot.assets.hook),
 )
 
 

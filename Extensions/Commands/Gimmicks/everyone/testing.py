@@ -28,13 +28,11 @@ class command(ShakeCommand):
         )
         embed = ShakeEmbed.default(self.ctx, description=description)
         embed.set_author(name=f"@everyone?!")
-        file_name = choice(listdir("./Assets/everyone"))
-        file = File(
-            f"./Assets/everyone/{file_name}", filename=f"image.{file_name[-3:]}"
+        file_url = choice(
+            self.bot.assets.everyone.animated + self.bot.assets.everyone.static
         )
-        embed.set_image(url=f"attachment://image.{file_name[-3:]}")
-        await self.ctx.chat(embed=embed, files=[file])
-        return
+        embed.set_image(url=file_url)
+        return await self.ctx.chat(embed=embed)
 
 
 #

@@ -28,7 +28,7 @@ class command(ShakeCommand):
         rolled = randint(min(self.start, self.end), max(self.start, self.end))
 
         if 0 < rolled < 10:
-            rolled = getattr(self.bot.emojis.dice, numbers.get(rolled), MISSING)
+            rolled = getattr(self.bot.assets.dice, numbers.get(rolled), MISSING)
             assert not rolled is MISSING
 
         return await self.ctx.chat(rolled)

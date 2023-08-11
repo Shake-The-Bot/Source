@@ -1,35 +1,37 @@
 ############
 #
-from discord import ButtonStyle, Interaction, ui
+from discord import ButtonStyle, Interaction, Message, ui
 
-from Classes import ShakeCommand, _
+from Classes import ShakeCommand, ShakeContext, _
 
 
 ########
 #
 class command(ShakeCommand):
     async def __await__(self):
-        await self.ctx.chat(_("Start?"), view=EphemeralCounter())
+        menu = Counter(ctx=self.ctx)
+        await menu.send()
 
 
 class Counter(ui.View):
+    message: Message
+
+    def __init__(self, ctx: ShakeContext):
+        self.ctx = ctx
+        super().__init__()
+
+    async def on_timeout(self) -> None:
+        self.count.disabled = True
+        await self.message.edit(view=self)
+
+    async def send(self):
+        self.message = await self.ctx.chat(_("Have fun!"), view=self, ephemeral=True)
+
     @ui.button(label="0", style=ButtonStyle.grey)
     async def count(self, interaction: Interaction, button: ui.Button):
-        number = int(getattr(button, "label", 0))
+        number = int(button.label)
         button.label = str(number + 1)
-        if number + 1 >= 100:
-            button.style = ButtonStyle.green
-            button.label = _("Congratulation")
-            button.disabled = True
         await interaction.response.edit_message(view=self)
-
-
-class EphemeralCounter(ui.View):
-    @ui.button(label=_("Yes"), style=ButtonStyle.blurple)
-    async def receive(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_message(
-            _("Have fun!"), view=Counter(), ephemeral=True
-        )
 
 
 #

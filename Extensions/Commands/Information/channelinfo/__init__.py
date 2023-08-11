@@ -3,6 +3,11 @@
 from importlib import reload
 from typing import Optional
 
+from discord import Interaction, Message, PartialEmoji
+from discord.abc import GuildChannel
+from discord.app_commands import ContextMenu
+from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
+
 from Classes import (
     GuildChannelConverter,
     ShakeBot,
@@ -13,10 +18,6 @@ from Classes import (
     locale_doc,
     setlocale,
 )
-from discord import Interaction, Message, PartialEmoji
-from discord.abc import GuildChannel
-from discord.app_commands import ContextMenu
-from discord.ext.commands import ChannelNotFound, guild_only, hybrid_command, is_owner
 
 from ..information import Information
 from . import channelinfo, testing

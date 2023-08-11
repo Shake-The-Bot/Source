@@ -20,11 +20,17 @@ from . import testing, userinfo
 class userinfo_extension(Information):
     def __init__(self, bot) -> None:
         super().__init__(bot=bot)
-        self.menu = ContextMenu(
+        message_menu = ContextMenu(
             name="shake userinfo",
-            callback=self.context_menu,
+            callback=self.message_context_menu,
         )
-        self.bot.tree.add_command(self.menu)
+        self.bot.tree.add_command(message_menu)
+        member_menu = ContextMenu(
+            name="shake userinfo",
+            callback=self.member_context_menu,
+        )
+        self.bot.tree.add_command(member_menu)
+
         try:
             reload(userinfo)
         except:
@@ -40,10 +46,21 @@ class userinfo_extension(Information):
     @guild_only()
     @setlocale()
     @locale_doc
-    async def context_menu(self, interaction: Interaction, message: Message) -> None:
+    async def message_context_menu(
+        self, interaction: Interaction, message: Message
+    ) -> None:
         ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
         user: Optional[User | Member] = message.author
         await self.ui(ctx, user)
+
+    @guild_only()
+    @setlocale()
+    @locale_doc
+    async def member_context_menu(
+        self, interaction: Interaction, member: Member
+    ) -> None:
+        ctx: ShakeContext = await ShakeContext.from_interaction(interaction)
+        await self.ui(ctx, member)
 
     @hybrid_command(name="userinfo", aliases=["ui"])
     @guild_only()

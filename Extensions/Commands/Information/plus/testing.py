@@ -14,12 +14,12 @@ class command(ShakeCommand):
             title=_("> Shake Plus (Shake+)"),
             description=_(
                 "{emoji} This Discord server has no premium activated."
-            ).format(emoji=self.bot.emojis.cross),
+            ).format(emoji=self.bot.assets.cross),
         )
         embed.add_field(
             inline=False,
             name=_("{emoji} The benefit of supporting Shake as Patreon").format(
-                emoji=self.bot.emojis.dot
+                emoji=self.bot.assets.dot
             ),
             value=_(
                 """Supporting the Bot as Patreon will keep the motivation for the development of Shake and make sure that all hosting costs are covered.
@@ -31,7 +31,7 @@ class command(ShakeCommand):
         embed.add_field(
             inline=False,
             name=_("{emoji} Helpful links for understanding Patreon").format(
-                emoji=self.bot.emojis.dot
+                emoji=self.bot.assets.dot
             ),
             value=Format.bold(
                 _(

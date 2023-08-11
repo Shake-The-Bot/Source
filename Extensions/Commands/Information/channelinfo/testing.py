@@ -299,7 +299,7 @@ class TextChannelSource(ItemPageSource):
         embed.add_field(
             name=_("NSFW"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[self.item.nsfw]
+                (menu.bot.assets.no, menu.bot.assets.yes)[self.item.nsfw]
             ),
         )
 
@@ -429,7 +429,7 @@ class ThreadSource(ItemPageSource):
         embed.add_field(
             name=_("NSFW"),
             value=Format.blockquotes(
-                (ctx.bot.emojis.no, ctx.bot.emojis.yes)[channel.parent.nsfw]
+                (ctx.bot.assets.no, ctx.bot.assets.yes)[channel.parent.nsfw]
             ),
         )
 

@@ -16,7 +16,7 @@ class command(ShakeCommand):
         embed.add_field(
             inline=False,
             name=_("{emoji} The benefit of supporting Shake with Voting").format(
-                emoji=self.bot.emojis.dot
+                emoji=self.bot.assets.dot
             ),
             value=Format.blockquotes(
                 Format.italics(
@@ -28,7 +28,7 @@ class command(ShakeCommand):
         )
         embed.add_field(
             inline=False,
-            name=_("{emoji} Sites I am listed at").format(emoji=self.bot.emojis.dot),
+            name=_("{emoji} Sites I am listed at").format(emoji=self.bot.assets.dot),
             value=Format.bold(
                 """[Top.gg]({topgg})
                 [Discordbotlist.com]({discordbotlist})
@@ -44,7 +44,7 @@ class command(ShakeCommand):
 
         embed.add_field(
             inline=False,
-            name=_("{emoji} Other related links").format(emoji=self.bot.emojis.dot),
+            name=_("{emoji} Other related links").format(emoji=self.bot.assets.dot),
             value=Format.bold(
                 """[Discord Bots]({discordbots})
                 [Discords]({discords})"""

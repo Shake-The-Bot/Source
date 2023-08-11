@@ -26,7 +26,6 @@ from _collections_abc import dict_items, dict_values
 from aiohttp import ClientSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncpg import Connection, InvalidCatalogNameError, Pool, connect, create_pool
-from asyncpraw.models import Submission, Subreddit
 from discord import *
 from discord.ext.commands import *
 from discord.player import AudioPlayer
@@ -35,7 +34,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from Classes.i18n import Client as i18nClient
 from Classes.i18n import Locales, _
-from Classes.tomls import Config, Emojis, config, emojis
+from Classes.tomls import Assets, Config, assets, config
 from Classes.types import Format, Regex, TracebackType
 from Classes.useful import MISSING, source_lines
 
@@ -51,7 +50,6 @@ __all__ = (
     "ShakeEmbed",
     "DatabaseProtocol",
     "Record",
-    "Reddit",
     "ShakeCommand",
     "Category",
     "Migration",
@@ -425,8 +423,8 @@ class BotBase(Bot):
         return self._session
 
     @property
-    def emojis(self) -> Emojis:
-        return emojis
+    def assets(self) -> Assets:
+        return assets
 
     @property
     def config(self) -> Config:
@@ -515,10 +513,6 @@ class BotBase(Bot):
         if hasattr(self, "session"):
             if not self.session.closed:
                 await self.session.close()
-
-        if hasattr(self, "reddit"):
-            if not self.reddit.client.requestor.loop.is_closed():
-                await self.reddit.client.close()
 
         await super().close()
 
@@ -641,7 +635,7 @@ class ShakeEmbed(Embed):
         )
         if description := kwargs.pop("description", None):
             kwargs["description"] = Format.multiblockquotes(
-                Format.bold(f"{bot.emojis.hook} {bot.emojis.prefix} {description}")
+                Format.bold(f"{bot.assets.hook} {bot.assets.prefix} {description}")
             )
         instance = cls(colour=colour or 0x00CC88, **kwargs)
         instance.timestamp = None
@@ -662,7 +656,7 @@ class ShakeEmbed(Embed):
         )
         if description := kwargs.pop("description", None):
             kwargs["description"] = Format.multiblockquotes(
-                Format.bold(f"{bot.emojis.cross} {bot.emojis.prefix} {description}")
+                Format.bold(f"{bot.assets.cross} {bot.assets.prefix} {description}")
             )
         instance = cls(colour=colour, **kwargs)
         instance.timestamp = None
@@ -1205,64 +1199,6 @@ class Category(Cog):
     @property
     def describe(self) -> bool:
         raise NotImplemented
-
-
-class Reddit:
-    def __init__(self):
-        self.posts = set()
-        self.client = asyncpraw.Reddit(
-            client_id=config.auth.reddit.client_id,
-            client_secret=config.auth.reddit.client_secret,
-            username=config.auth.reddit.username,
-            password=config.auth.reddit.password,
-            user_agent="Shake/{}".format(__version__),
-        )
-
-    async def __await__(self, ctx: ShakeContext):
-        self.ctx: ShakeContext = ctx
-        self.bot: ShakeBot = ctx.bot
-        self.guild: Guild = ctx.guild
-        self.guild_posts = ctx.bot.cache["cached_posts"].setdefault(
-            ctx.guild.id, deque(maxlen=1000)
-        )
-        await self.prepare()
-
-    async def prepare(self):
-        if not bool(len(self.posts)):
-            pass
-            return
-
-        for post in self.posts:
-            pass
-
-    async def create(self, ctx, subreddits):
-        subs: Subreddit = await self.client.subreddit("+".join(subreddits), fetch=False)
-        posts = [
-            post
-            async for post in subs.new(limit=25)
-            if not post.over_18 and not post in self.guild_posts
-        ]
-        for post in posts:
-            self.posts.add(post)
-        return posts
-
-    @classmethod
-    def expire(self, post: Submission):
-        self.guild_posts.add(post)
-
-    async def get_post(self, ctx: ShakeContext, subreddit):
-        if not bool(len(self.posts)):
-            await self.create(ctx, subreddit)
-
-        for post in self.posts:
-            if post in self.guild_posts:
-                continue
-            self.expire(ctx, post)
-            return post
-
-        post = choice(list(await self.create(ctx, subreddit)))
-        self.expire(ctx, post)
-        return post
 
 
 """ Scraping    """

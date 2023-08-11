@@ -104,7 +104,7 @@ class Event:
         if not bad_reaction is MISSING:
             try:
                 await self.message.add_reaction(
-                    ("☑️", self.bot.emojis.cross)[bad_reaction]
+                    ("☑️", self.bot.assets.cross)[bad_reaction]
                 )
             except:
                 pass

@@ -7,7 +7,7 @@ from sys import exc_info
 from traceback import format_exception
 
 from asyncpg import Pool
-from discord import Activity, ActivityType, Intents
+from discord import Activity, ActivityType, CustomActivity, Intents
 
 from Classes import (
     Migration,
@@ -87,8 +87,8 @@ async def main():
         fetch_offline_members=True,
         owner_ids=config.bot.owner_ids,
         strip_after_prefix=True,
-        activity=Activity(
-            type=getattr(ActivityType, config.bot.presence[0], ActivityType.playing),
+        activity=CustomActivity(
+            # type=getattr(ActivityType, config.bot.presence[0], ActivityType.playing),
             name=config.bot.presence[1],
         ),
     ) as bot:

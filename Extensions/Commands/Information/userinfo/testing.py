@@ -36,6 +36,7 @@ placements = {1: "🥇", 2: "🥈", 3: "🥉"}
 ########
 #
 
+
 async def stats(self, member: List[Member] = None):
     """Tells you stats about the ?rtfm command."""
     self.member: List[Member] = member
@@ -49,7 +50,7 @@ async def stats(self, member: List[Member] = None):
         )
         embed.set_author(
             name="RTFM Stats {prefix} {user_names}".format(
-                prefix=self.bot.emojis.prefix, user_names=", ".join(self.member)
+                prefix=self.bot.assets.prefix, user_names=", ".join(self.member)
             ),
             icon_url=self.bot.user.display_avatar.url,
         )
@@ -77,15 +78,14 @@ async def stats(self, member: List[Member] = None):
     if records:
         output.append(Format.bold(_("Top {top} member:").format(top=len(records))))
         for rank, (user_id, count) in enumerate(records, 1):
-            user = self.bot.get_user(user_id) or (
-                await self.bot.fetch_user(user_id)
-            )
+            user = self.bot.get_user(user_id) or (await self.bot.fetch_user(user_id))
             if rank != 10:
                 output.append(f"{rank}\u20e3 {user}: {count}")
             else:
                 output.append(f"\N{KEYCAP TEN} {user}: {count}")
 
     await self.ctx.chat("\n".join(output))
+
 
 class command(ShakeCommand):
     def __init__(
@@ -150,7 +150,7 @@ class command(ShakeCommand):
         ]
         if any(_ is not None for _ in assets):
             categories[
-                AssetsSource(ctx=self.ctx, user=self.user, got=assets)
+                assetsource(ctx=self.ctx, user=self.user, got=assets)
             ] = self.user.display_avatar
 
         if self.member:
@@ -252,7 +252,7 @@ class RolesSource(ListPageSource):
         return embed, None
 
 
-class AssetsSource(ListPageSource):
+class assetsource(ListPageSource):
     guild: Guild
     got: Dict[Asset, str]
 
@@ -966,19 +966,19 @@ class Front(FrontPageSource):
         embed.add_field(
             name=_("Bot"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[user.bot]
+                (menu.bot.assets.no, menu.bot.assets.yes)[user.bot]
             ),
         )
         embed.add_field(
             name=_("Discord System"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[user.system]
+                (menu.bot.assets.no, menu.bot.assets.yes)[user.system]
             ),
         )
         embed.add_field(
             name=_("Member"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[bool(member)]
+                (menu.bot.assets.no, menu.bot.assets.yes)[bool(member)]
             ),
         )
 
@@ -988,7 +988,7 @@ class Front(FrontPageSource):
                     embed.description = Format.multicodeblock("„" + activity.name + "“")
                     break
 
-            emojis = menu.bot.emojis.status
+            emojis = menu.bot.assets.status
             emoji = {
                 "online": str(emojis.online),
                 "invisible": str(emojis.offline),
@@ -1019,7 +1019,7 @@ class Front(FrontPageSource):
                 embed.add_field(
                     name=_("Server Owner"),
                     value=Format.blockquotes(
-                        (menu.bot.emojis.no, menu.bot.emojis.yes)[
+                        (menu.bot.assets.no, menu.bot.assets.yes)[
                             member == member.guild.owner
                         ]
                     ),
@@ -1044,7 +1044,7 @@ class Front(FrontPageSource):
             flags.add("subscriber")
         badges = [
             str(menu.bot.get_emoji_local("badges", badge)) for badge in flags
-        ] or [(menu.bot.emojis.no, menu.bot.emojis.yes)[False]]
+        ] or [(menu.bot.assets.no, menu.bot.assets.yes)[False]]
 
         more: Dict[str, str] = {
             _("Display name"): Format.codeblock(user.global_name),
@@ -1083,7 +1083,7 @@ class Front(FrontPageSource):
 features = (
     RolesSource
     | BadgesSource
-    | AssetsSource
+    | assetsource
     | PositionSource
     | PermissionsSource
     | ActivitiesSource
