@@ -100,7 +100,7 @@ class command(ShakeCommand):
         ]
         if any(_ is not None for _ in assets):
             categories[
-                AssetsSource(ctx=self.ctx, user=self.user, got=assets)
+                assetsource(ctx=self.ctx, user=self.user, got=assets)
             ] = self.user.display_avatar
 
         if self.member:
@@ -202,7 +202,7 @@ class RolesSource(ListPageSource):
         return embed, None
 
 
-class AssetsSource(ListPageSource):
+class assetsource(ListPageSource):
     guild: Guild
     got: Dict[Asset, str]
 
@@ -916,19 +916,19 @@ class Front(FrontPageSource):
         embed.add_field(
             name=_("Bot"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[user.bot]
+                (menu.bot.assets.no, menu.bot.assets.yes)[user.bot]
             ),
         )
         embed.add_field(
             name=_("Discord System"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[user.system]
+                (menu.bot.assets.no, menu.bot.assets.yes)[user.system]
             ),
         )
         embed.add_field(
             name=_("Member"),
             value=Format.blockquotes(
-                (menu.bot.emojis.no, menu.bot.emojis.yes)[bool(member)]
+                (menu.bot.assets.no, menu.bot.assets.yes)[bool(member)]
             ),
         )
 
@@ -938,7 +938,7 @@ class Front(FrontPageSource):
                     embed.description = Format.multicodeblock("„" + activity.name + "“")
                     break
 
-            emojis = menu.bot.emojis.status
+            emojis = menu.bot.assets.status
             emoji = {
                 "online": str(emojis.online),
                 "invisible": str(emojis.offline),
@@ -969,7 +969,7 @@ class Front(FrontPageSource):
                 embed.add_field(
                     name=_("Server Owner"),
                     value=Format.blockquotes(
-                        (menu.bot.emojis.no, menu.bot.emojis.yes)[
+                        (menu.bot.assets.no, menu.bot.assets.yes)[
                             member == member.guild.owner
                         ]
                     ),
@@ -994,7 +994,7 @@ class Front(FrontPageSource):
             flags.add("subscriber")
         badges = [
             str(menu.bot.get_emoji_local("badges", badge)) for badge in flags
-        ] or [(menu.bot.emojis.no, menu.bot.emojis.yes)[False]]
+        ] or [(menu.bot.assets.no, menu.bot.assets.yes)[False]]
 
         more: Dict[str, str] = {
             _("Display name"): Format.codeblock(user.global_name),
@@ -1033,7 +1033,7 @@ class Front(FrontPageSource):
 features = (
     RolesSource
     | BadgesSource
-    | AssetsSource
+    | assetsource
     | PositionSource
     | PermissionsSource
     | ActivitiesSource

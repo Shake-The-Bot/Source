@@ -72,7 +72,7 @@ class command(ShakeCommand):
             self.guild.banner: _("Servers's banner"),
         }
         if any(bool(_) for _ in assets):
-            categoies[AssetsSource(ctx=self.ctx, guild=self.guild, items=assets)] = set(
+            categoies[assetsource(ctx=self.ctx, guild=self.guild, items=assets)] = set(
                 assets
             )
 
@@ -151,7 +151,7 @@ class RolesSource(ListPageSource):
         return embed, None
 
 
-class AssetsSource(ListPageSource):
+class assetsource(ListPageSource):
     guild: Guild
 
     def __init__(
@@ -389,7 +389,7 @@ class MembersSource(ItemPageSource):
     def format_page(self, menu: Menu, *args: Any, **kwargs: Any) -> ShakeEmbed:
         members: List[Member] = self.item
         embed = ShakeEmbed(title=_("Server Members"))
-        emojis = self.bot.emojis.status
+        emojis = self.bot.assets.status
         member = PartialEmoji(name="\N{BUSTS IN SILHOUETTE}")
         human = PartialEmoji(name="\N{BUST IN SILHOUETTE}")
         bot = PartialEmoji(name="\N{ROBOT FACE}")
@@ -584,7 +584,7 @@ class ActivitiesSource(ListPageSource):
 
 features = (
     RolesSource
-    | AssetsSource
+    | assetsource
     | EmojisSource
     | ChannelsSource
     | MembersSource
@@ -621,7 +621,7 @@ class Front(FrontPageSource):
 
         bots = len([member for member in guild.members if member.bot])
         status = Counter(str(member.status) for member in guild.members)
-        emojis = ctx.bot.emojis.status
+        emojis = ctx.bot.assets.status
         statuses = "︱".join(
             [
                 str(emojis.online) + Format.codeblock(status["online"]),

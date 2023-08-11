@@ -96,8 +96,8 @@ class Event:
                     description=_(
                         "{emoji} {prefix} **Wait before you open another temp channel directly**"
                     ).format(
-                        emoji=self.bot.emojis.animated.loading,
-                        prefix=self.bot.emojis.prefix,
+                        emoji=self.bot.assets.animated.loading,
+                        prefix=self.bot.assets.prefix,
                     ),
                 )
                 with suppress(Forbidden, HTTPException):
@@ -151,8 +151,8 @@ class Event:
                     embed = ShakeEmbed(
                         description=_(
                             "{emoji} {prefix} **You've already registered a voice channel**".format(
-                                prefix=self.bot.emojis.prefix,
-                                emoji=self.bot.emojis.cross,
+                                prefix=self.bot.assets.prefix,
+                                emoji=self.bot.assets.cross,
                             )
                         ),
                     )

@@ -84,7 +84,6 @@ class Categorys(Enum):
     gimmicks = "Gimmicks"
     gimmick = "Gimmicks"
     information = "Information"
-    informations = "Information"
     moderation = "Moderation"
     other = "Other"
     others = "Other"

@@ -64,8 +64,8 @@ class Event:
                     "{emoji} {prefix} Thank you! You have been verified in guild `{guild}`"
                 ).format(
                     guild=self.member.guild,
-                    emoji=self.bot.emojis.hook,
-                    prefix=self.bot.emojis.prefix,
+                    emoji=self.bot.assets.hook,
+                    prefix=self.bot.assets.prefix,
                 )
             )
 

@@ -67,7 +67,7 @@ class Event:
             lasts = [message async for message in self.channel.history(limit=1)]
             try:
                 last: Message = lasts[0]
-            except KeyError:
+            except (KeyError, IndexError):
                 return False
 
         if last.author == self.bot.user or last.webhook_id:

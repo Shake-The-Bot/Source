@@ -105,9 +105,9 @@ class VoteView(ui.View):
                 else ("50/50" if not self.total == 0 else None)
             )
             emoji = (
-                (self.bot.emojis.hook if self.stats == True else self.bot.emojis.cross)
+                (self.bot.assets.hook if self.stats == True else self.bot.assets.cross)
                 if not self.tie
-                else self.bot.emojis.slash
+                else self.bot.assets.slash
             )
             self.embed.insert_field_at(
                 name="Results",

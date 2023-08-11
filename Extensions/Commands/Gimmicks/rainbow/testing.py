@@ -17,13 +17,19 @@ class command(ShakeCommand):
         self.member: Member = member
 
     async def __await__(self):
-        w, h = 400, 400
+        await self.ctx.defer()
+        self.member.avatar
         async with self.bot.session.get(self.member.avatar.url) as response:
             data = await response.read()
 
         _bytes = BytesIO(data)
-        image = Image.open(_bytes).convert("RGBA").resize((w, h))
-        image2 = Image.open("./Assets/utils/rbflag.png").resize((w, h))
+
+        image = Image.open(_bytes).convert("RGBA")
+
+        w, h = max(400, image.size[0]), max(400, image.size[1])
+        if image.size != (w, h):
+            image = image.resize((w, h))
+        image2 = Image.open("./Assets/rbflag.png").resize((w, h))
 
         image2 = image2.resize((576, 576))
         image2 = image2.filter(ImageFilter.BoxBlur(radius=10))

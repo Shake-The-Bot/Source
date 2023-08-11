@@ -52,23 +52,23 @@ configurations: Callable[
     [ShakeBot], dict[str, dict[str, PartialEmoji | str]]
 ] = lambda bot: {
     "beta": {
-        "suffix": bot.emojis.help.beta,
+        "suffix": bot.assets.help.beta,
         "text": _("This command is new and is in its beta version"),
     },
     "owner": {
-        "suffix": bot.emojis.help.owner,
+        "suffix": bot.assets.help.owner,
         "text": _("Only the owner of the shake bot can run this command"),
     },
     "premium": {
-        "suffix": bot.emojis.help.plus,
+        "suffix": bot.assets.help.plus,
         "text": _("Start a Shake+ subscription to run this command"),
     },
     "permissions": {
-        "suffix": bot.emojis.help.permissions,
+        "suffix": bot.assets.help.permissions,
         "text": _("This command requires certain rights from the user to be executed"),
     },
     "group": {
-        "suffix": bot.emojis.help.group,
+        "suffix": bot.assets.help.group,
         "text": _("This group-command has sub-commands"),
     },
 }

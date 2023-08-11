@@ -71,7 +71,7 @@ class TempVoice:
         if not self.check(self.member, channels, record):
             return _(
                 "{emoji} Invalid! You are not in a valid temporary voice channel."
-            ).format(emoji=self.bot.emojis.cross)
+            ).format(emoji=self.bot.assets.cross)
         self.channel = self.bot.get_channel(
             record["channel_id"]
         )  # if record['channel_id'] in channels.keys() else None
@@ -82,7 +82,7 @@ class TempVoice:
             await interaction.response.send_message(
                 content=_(
                     "{emoji} **Invalid! You are not in a valid temporary voice channel."
-                ).format(emoji=self.bot.emojis.cross),
+                ).format(emoji=self.bot.assets.cross),
                 ephemeral=True,
             )
             return None
@@ -144,7 +144,7 @@ class TempVoice:
                 await interaction.response.send_message(
                     content=_(
                         "{emoji} **Updated!** Your channel’s name is now `{name}`!"
-                    ).format(emoji=self.bot.emojis.hook, name=name),
+                    ).format(emoji=self.bot.assets.hook, name=name),
                     ephemeral=True,
                 )
                 return True
@@ -180,7 +180,7 @@ class TempVoice:
                     await interaction.response.send_message(
                         _(
                             "{emoji} **Invalid!** ` {value} ` is not a valid Value!!"
-                        ).format(emoji=self.bot.emojis.cross, value=str(self.limit)),
+                        ).format(emoji=self.bot.assets.cross, value=str(self.limit)),
                         ephemeral=True,
                     )
                     return
@@ -195,7 +195,7 @@ class TempVoice:
                     content=_(
                         "{emoji} **Updated!** Your channel’s limit is now ` {limit} `!"
                     ).format(
-                        emoji=self.bot.emojis.hook,
+                        emoji=self.bot.assets.hook,
                         limit=str(self.limit)
                         if not self.limit == 0
                         else _("unlimited"),
@@ -272,7 +272,7 @@ class TempVoice:
                     content=_(
                         "{emoji} **Updated!** {channel} is now ` {mode} `!"
                     ).format(
-                        emoji=self.bot.emojis.hook,
+                        emoji=self.bot.assets.hook,
                         channel=channel.mention,
                         mode=str_values.get(value),
                     ),
@@ -388,7 +388,7 @@ class TempVoice:
                         view=None,
                         content=_(
                             "{emoji} **Invalid**! The selected member is not a valid user in your temporary voice channel."
-                        ).format(emoji=self.bot.emojis.cross),
+                        ).format(emoji=self.bot.assets.cross),
                     )
                     return False
 
@@ -430,7 +430,7 @@ class TempVoice:
                     content=_(
                         "{emoji} **Updated!** The {user} is now ` owner ` of your temporary {channel} channel!"
                     ).format(
-                        emoji=self.bot.emojis.hook,
+                        emoji=self.bot.assets.hook,
                         user=user.mention,
                         channel=self.channel.mention,
                     ),
@@ -507,7 +507,7 @@ class TempVoice:
                     view=None,
                     content=_(
                         "{emoji} **Updated!** The selected users are now ` trusted ` of your temporary {channel} channel!"
-                    ).format(emoji=self.bot.emojis.hook, channel=self.channel.mention),
+                    ).format(emoji=self.bot.assets.hook, channel=self.channel.mention),
                 )
                 return True
 
@@ -586,7 +586,7 @@ class TempVoice:
                     view=None,
                     content=_(
                         "{emoji} **Updated!** The selected users are now ` blocked ` of your temporary {channel} channel!"
-                    ).format(emoji=self.bot.emojis.hook, channel=self.channel.mention),
+                    ).format(emoji=self.bot.assets.hook, channel=self.channel.mention),
                 )
                 return True
 
@@ -641,7 +641,7 @@ class TempVoice:
                         view=None,
                         content=_(
                             "{emoji} **Invalid**! None of the selected users are valid members of your temporary voice channel."
-                        ).format(emoji=self.bot.emojis.cross),
+                        ).format(emoji=self.bot.assets.cross),
                     )
                     return False
 
@@ -654,7 +654,7 @@ class TempVoice:
                     view=None,
                     content=_(
                         "{emoji} **Updated!** The selected users got kicked from your temporary {channel} channel!"
-                    ).format(emoji=self.bot.emojis.hook, channel=self.channel.mention),
+                    ).format(emoji=self.bot.assets.hook, channel=self.channel.mention),
                 )
                 return True
 
@@ -672,7 +672,7 @@ class TempVoice:
         if not self.member.guild_permissions.administrator:
             await self.interaction.response.send_message(
                 _("{emoji} this option is only for admins!").format(
-                    emoji=self.bot.emojis.cross
+                    emoji=self.bot.assets.cross
                 ),
                 ephemeral=True,
             )
@@ -696,7 +696,7 @@ class TempVoice:
                 ephemeral=True,
                 content=_(
                     "{emoji} Selected user is already owner of a temporary channel!"
-                ).format(emoji=self.bot.emojis.cross),
+                ).format(emoji=self.bot.assets.cross),
             )
             return True
 
@@ -738,7 +738,7 @@ class TempVoice:
             content=_(
                 "{emoji} **Updated!** You are now ` owner ` of the temporary {channel} channel!"
             ).format(
-                emoji=self.bot.emojis.hook,
+                emoji=self.bot.assets.hook,
                 old_owner=old_owner.mention,
                 channel=channel.mention,
             ),
@@ -808,7 +808,7 @@ class TempVoice:
                     view=None,
                     content=_(
                         "{emoji} **Updated!** The selected users are now ` untrusted ` of your temporary {channel} channel!"
-                    ).format(emoji=self.bot.emojis.hook, channel=channel.mention),
+                    ).format(emoji=self.bot.assets.hook, channel=channel.mention),
                 )
                 return True
 
@@ -884,7 +884,7 @@ class TempVoice:
                     view=None,
                     content=_(
                         "{emoji} **Updated!** The selected users are now ` unblocked ` of your temporary {channel} channel!"
-                    ).format(emoji=self.bot.emojis.hook, channel=channel.mention),
+                    ).format(emoji=self.bot.assets.hook, channel=channel.mention),
                 )
                 return True
 

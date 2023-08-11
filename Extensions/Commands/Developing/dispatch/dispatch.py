@@ -23,7 +23,7 @@ class command(ShakeCommand):
         )
         self.bot.dispatch(str(self.event_name), **kwargs)
         with suppress(Forbidden, HTTPException):
-            await self.ctx.message.add_reaction(self.bot.emojis.hook)
+            await self.ctx.message.add_reaction(self.bot.assets.hook)
 
 
 #

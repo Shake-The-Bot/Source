@@ -38,7 +38,7 @@ from discord.ui import View
 from Classes.converter import DocMarkdownConverter
 from Classes.exceptions import NoDumpingSpots, NotVoted
 from Classes.i18n import _
-from Classes.tomls import config
+from Classes.tomls.configuration import config
 from Classes.types import DocItem, Modules
 
 if TYPE_CHECKING:
