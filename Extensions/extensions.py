@@ -30,8 +30,6 @@ extensions = [
     "Extensions.Commands.Gimmicks.rainbow.__init__",
     "Extensions.Commands.Gimmicks.count.__init__",
     "Extensions.Commands.Gimmicks.random.__init__",
-    "Extensions.Commands.Gimmicks.wouldyou.__init__",
-    "Extensions.Commands.Gimmicks.scenario.__init__",
     "Extensions.Commands.Information.information",
     "Extensions.Commands.Information.channelinfo.__init__",
     "Extensions.Commands.Information.charinfo.__init__",

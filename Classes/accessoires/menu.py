@@ -16,6 +16,7 @@ from Classes.types import Format
 __all__ = ("ListMenu", "CategoricalMenu", "LinkingSource", "ForwardingMenu")
 
 previousemoji = PartialEmoji(name="left", id=1033551843210579988)
+nextemoji = PartialEmoji(name="left", id=1033551841964871691)
 Group = Item = Any
 
 if TYPE_CHECKING:
@@ -176,6 +177,7 @@ class ForwardingMenu(ui.View):
     slots: List[List[ui.Item]]
 
     def __init__(self, ctx):
+        self.source = None
         self.ctx: ShakeContext = ctx
         self.bot: ShakeBot = ctx.bot
         self.timeouted = False
@@ -225,7 +227,12 @@ class ForwardingMenu(ui.View):
             self.pages.rotate(-rotation)
 
         self.clear_items()
-        for item in self.items[self.page]:
+        if self.source:
+            items = self.source.items
+        else:
+            items = self.items[self.page]
+
+        for item in items:
             self.add_item(item)
 
         if timeouted:
@@ -237,12 +244,12 @@ class ForwardingMenu(ui.View):
     async def show_source(
         self, source: Optional[ForwardingSource] = None, rotation: Optional[int] = None
     ):
+        self.source = source
         if rotation:
             self.update(rotation)
-            if not source:
-                source = self.page
-        self.source = source
-        await self.message.edit(**source.message(), view=self)
+            if not self.source:
+                self.source = self.page
+        await self.message.edit(**self.source.message(), view=self)
 
     async def on_timeout(
         self, interaction: Optional[Interaction] = None
@@ -258,6 +265,16 @@ class ForwardingMenu(ui.View):
     @ui.button(label=_("Start"), style=ButtonStyle.blurple, row=4)
     async def start_menu(self, interaction: Interaction, button: ui.Button):
         await self.show_source(rotation=1)
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer()
+
+    @ui.button(emoji=nextemoji, style=ButtonStyle.blurple, row=4)
+    async def next(self, interaction: Interaction, button: ui.Button):
+        if self.source.next:
+            await self.show_source(self.source.next(view=self), 1)
+        else:
+            await self.show_source(self.source, rotation=0)
+
         if interaction and not interaction.response.is_done():
             await interaction.response.defer()
 

@@ -119,11 +119,10 @@ class Event:
         commands = dict()
         for command in self.bot.commands:
             extras = getattr(command.callback, "extras", {})
-            allowed = (owner := await ctx.bot.is_owner(ctx.author)) or extras.get(
-                "owner", False
-            ) == owner
-            hidden = extras.get("hidden", False)
-            if allowed and not hidden:
+            owner = await ctx.bot.is_owner(ctx.author)
+            if (owner or not extras.get("owner", False)) and not extras.get(
+                "hidden", False
+            ):
                 commands[command.name] = command
         matches: Optional[List[Command]] = get_close_matches(
             invoked, list(commands.keys())
