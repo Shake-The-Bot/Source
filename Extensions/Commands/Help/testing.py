@@ -851,8 +851,7 @@ class Front(FrontPageSource):
             embed.add_field(
                 name=_("Who am I?"),
                 inline=False,
-                value="lol"
-                + _(
+                value=_(
                     "I am Shake, a bot that is partially intended for the public.\nWritten with only {lines} lines of code. Please be nice"
                 ).format(
                     lines=Format.codeblock("{0:,}".format(menu.ctx.bot.lines)),
