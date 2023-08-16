@@ -61,15 +61,21 @@ class Permission(Enum):
     deny = False
 
 
+class Modules(Enum):
+    math = "math"
+    roman = "roman"
+
+
 class CountingMenu(ForwardingMenu):
     start: Optional[int] = MISSING
     goal: Optional[int] = MISSING
     direction: Directions = MISSING
     numbers: Permission = MISSING
-    math: Permission = MISSING
     message_type: MessageTypes = MISSING
     react: Permission = MISSING
     channel: Optional[TextChannel] = MISSING
+    math: Modules = False
+    roman: Modules = False
 
     def __init__(self, ctx):
         super().__init__(ctx)
@@ -80,7 +86,7 @@ class CountingMenu(ForwardingMenu):
             Channel(self),
             Direction(self),
             Number(self),
-            Math(self),
+            Module(self),
             MessageType(self),
             React(self),
             finish,
@@ -217,7 +223,7 @@ class Number(ForwardingSource):
         super().__init__(
             view=view,
             previous=Direction,
-            next=Math,
+            next=Module,
             items=[self.item, view.previous, view.cancel],
         )
 
@@ -246,20 +252,21 @@ class Number(ForwardingSource):
         return {"embed": embed}
 
 
-class Math(ForwardingSource):
+class Module(ForwardingSource):
     view: CountingMenu
     math: Permission
     item = Select(
+        max_values=2,
         options=[
             SelectOption(
-                label="Allow mathematical calculations in Counting",
+                label="Allow mathematical calculations",
                 description=None,
-                value=Permission.allow.name,
+                value=Modules.math.name,
             ),
             SelectOption(
-                label="Deny mathematical calculations in Counting",
+                label="Allow roman numerals",
                 description=None,
-                value=Permission.deny.name,
+                value=Modules.roman.name,
             ),
         ],
         placeholder="Calculations expand the spectrum of possibilities",
@@ -274,8 +281,16 @@ class Math(ForwardingSource):
             items=[self.item, view.previous, view.cancel],
         )
 
-    async def callback(self, interaction: Interaction, value: Permission):
-        self.view.math = Permission[value].value
+    async def __call__(self, interaction: Interaction) -> None:
+        values = self.item.values
+        await self.callback(interaction, values)
+
+    async def callback(self, interaction: Interaction, values: List[Modules]):
+        for option in self.item.options:
+            if option.value in values:
+                setattr(self.view, option.value, True)
+            else:
+                setattr(self.view, option.value, False)
 
         await self.view.show_source(source=self.next(self.view), rotation=1)
         if interaction and not interaction.response.is_done():
@@ -284,14 +299,12 @@ class Math(ForwardingSource):
     def message(self) -> dict:
         embed = ShakeEmbed()
         embed.set_author(name=_("Counting ways"))
-        embed.title = _("Decide if mathematical calculations are allowed in Counting")
+        embed.title = _("Decide if specific modules are allowed in Counting")
         points = [
             _(
                 "You can allow mathematical calculations so that members can find new ways."
             ),
-            _(
-                "You can deny mathematical calculations so that {game} remains clearer."
-            ).format(game=Format.bold("Counting")),
+            _("You can also allow roman numbers."),
         ]
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
@@ -324,7 +337,7 @@ class MessageType(ForwardingSource):
         self.item.callback = self.__call__
         super().__init__(
             view=view,
-            previous=Math,
+            previous=Module,
             next=React,
             items=[self.item, view.previous, view.cancel],
         )
@@ -677,12 +690,13 @@ class command(ShakeCommand):
         goal = menu.goal
         numbers = menu.numbers
         math = menu.math
+        roman = menu.roman
         react = menu.react
         message_type = menu.message_type
 
         if menu.timeouted or any(
             _ is MISSING
-            for _ in (direction, channel, start, goal, math, numbers, react)
+            for _ in (direction, channel, start, goal, math, roman, numbers, react)
         ):
             return
 
@@ -747,8 +761,8 @@ class command(ShakeCommand):
 
             query = """
                 INSERT INTO counting 
-                (channel_id, guild_id, goal, direction, webhook, count, start, numbers, math, react) 
-                VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9) 
+                (channel_id, guild_id, goal, direction, webhook, count, start, numbers, math, roman, react) 
+                VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10) 
                 ON CONFLICT DO NOTHING"""
 
             await connection.execute(
@@ -761,6 +775,7 @@ class command(ShakeCommand):
                 0 if direction else start + 1,
                 numbers,
                 math,
+                roman,
                 react,
             )
 
