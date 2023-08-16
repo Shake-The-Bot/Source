@@ -1,25 +1,22 @@
 from __future__ import annotations
 
 import hashlib
-import textwrap
 from ast import BinOp, Expression, PyCF_ALLOW_TOP_LEVEL_AWAIT, parse
 from base64 import b64encode
 from collections import defaultdict, namedtuple
 from collections.abc import Callable, Container, Iterable
-from datetime import datetime
 from functools import partial
 from hmac import new
 from importlib import reload
 from inspect import isawaitable
 from logging import getLogger
-from math import ceil
 from os import getcwd, listdir
 from os import urandom as _urandom
-from os.path import isdir, isfile, join
+from os.path import isdir, isfile
 from random import choice as rchoice
 from re import I
 from re import compile as recom
-from re import escape, sub
+from re import escape, findall, sub
 from string import whitespace
 from sys import modules
 from time import time
@@ -73,7 +70,6 @@ _BRACKET_PAIRS = {
 
 _WHITESPACE_AFTER_NEWLINES_RE = recom(r"(?<=\n\n)(\s+)")
 
-_PARAMETERS_RE = recom(r"\((.+)\)")
 _EMBED_CODE_BLOCK_LINE_LENGTH = 61
 _MAX_SIGNATURES_LENGTH = (_EMBED_CODE_BLOCK_LINE_LENGTH + 8) * MAX_SIGNATURE_AMOUNT
 _TRUNCATE_STRIP_CHARACTERS = "!?:;." + whitespace
@@ -90,6 +86,8 @@ __all__ = (
     "dump",
     "chunk",
     "extshandler",
+    "romans",
+    "decimals",
     "MISSING",
     "evaluate",
     "string_is_calculation",
@@ -105,7 +103,6 @@ __all__ = (
     "safe_output",
     "async_compile",
     "cleanup",
-    "tens",
     "maybe_await",
     "get_syntax_error",
 )
@@ -331,199 +328,6 @@ def _filter_signature_links(tag: Tag) -> bool:
     return False
 
 
-def _split_parameters(parameters_string: str) -> Iterator[str]:
-    """
-    Split parameters of a signature into individual parameter strings on commas.
-
-    Long string literals are not accounted for.
-    """
-    last_split = 0
-    depth = 0
-    current_search: BracketPair | None = None
-
-    enumerated_string = enumerate(parameters_string)
-    for index, character in enumerated_string:
-        if character in {"'", '"'}:
-            # Skip everything inside of strings, regardless of the depth.
-            quote_character = (
-                character  # The closing quote must equal the opening quote.
-            )
-            preceding_backslashes = 0
-            for _, character in enumerated_string:
-                # If an odd number of backslashes precedes the quote, it was escaped.
-                if character == quote_character and not preceding_backslashes % 2:
-                    break
-                if character == "\\":
-                    preceding_backslashes += 1
-                else:
-                    preceding_backslashes = 0
-
-        elif current_search is None:
-            if (current_search := _BRACKET_PAIRS.get(character)) is not None:
-                depth = 1
-            elif character == ",":
-                yield parameters_string[last_split:index]
-                last_split = index + 1
-
-        else:
-            if character == current_search.opening_bracket:
-                depth += 1
-
-            elif character == current_search.closing_bracket:
-                depth -= 1
-                if depth == 0:
-                    current_search = None
-
-    yield parameters_string[last_split:]
-
-
-def truncate_signatures(signatures: Collection[str]) -> list[str] | Collection[str]:
-    """
-    Truncate passed signatures to not exceed `_MAX_SIGNATURES_LENGTH`.
-
-    If the signatures need to be truncated, parameters are collapsed until they fit withing the limit.
-    Individual signatures can consist of max 1, 2, ..., `_MAX_SIGNATURE_AMOUNT` lines of text,
-    inversely proportional to the amount of signatures.
-    A maximum of `_MAX_SIGNATURE_AMOUNT` signatures is assumed to be passed.
-    """
-    if sum(len(signature) for signature in signatures) <= _MAX_SIGNATURES_LENGTH:
-        # Total length of signatures is under the length limit; no truncation needed.
-        return signatures
-
-    max_signature_length = _EMBED_CODE_BLOCK_LINE_LENGTH * (
-        MAX_SIGNATURE_AMOUNT + 1 - len(signatures)
-    )
-    formatted_signatures = []
-    for signature in signatures:
-        signature = signature.strip()
-        if len(signature) > max_signature_length:
-            if (parameters_match := _PARAMETERS_RE.search(signature)) is None:
-                # The signature has no parameters or the regex failed; perform a simple truncation of the text.
-                formatted_signatures.append(
-                    textwrap.shorten(signature, max_signature_length, placeholder="...")
-                )
-                continue
-
-            truncated_signature = []
-            parameters_string = parameters_match[1]
-            running_length = len(signature) - len(parameters_string)
-            for parameter in _split_parameters(parameters_string):
-                # Check if including this parameter would still be within the maximum length.
-                if (
-                    len(parameter) + running_length
-                ) <= max_signature_length - 5:  # account for comma and placeholder
-                    truncated_signature.append(parameter)
-                    running_length += len(parameter) + 1
-                else:
-                    # There's no more room for this parameter. Truncate the parameter list and put it in the signature.
-                    truncated_signature.append(" ...")
-                    formatted_signatures.append(
-                        signature.replace(
-                            parameters_string, ",".join(truncated_signature)
-                        )
-                    )
-                    break
-        else:
-            # The current signature is under the length limit; no truncation needed.
-            formatted_signatures.append(signature)
-
-    return formatted_signatures
-
-
-def find_nth_occurrence(string: str, substring: str, n: int) -> int | None:
-    """Return index of `n`th occurrence of `substring` in `string`, or None if not found."""
-    index = 0
-    for _ in range(n):
-        index = string.find(substring, index + 1)
-        if index == -1:
-            return None
-    return index
-
-
-async def truncate(
-    elements: Iterable[Tag | NavigableString],
-    converter: DocMarkdownConverter,
-    max_length: int,
-    max_lines: int,
-) -> str:
-    """
-    Truncate the Markdown from `elements` to be at most `max_length` characters when rendered or `max_lines` newlines.
-
-    `max_length` limits the length of the rendered characters in the string,
-    with the real string length limited to `_MAX_DESCRIPTION_LENGTH` to accommodate discord length limits.
-    """
-    result = ""
-    ends = (
-        []
-    )  # Stores indices into `result` which point to the end boundary of each Markdown element.
-    rendered_length = 0
-
-    tag_end_index = 0
-    for element in elements:
-        is_tag = isinstance(element, Tag)
-        element_length = len(element.text) if is_tag else len(element)
-
-        if not rendered_length + element_length < max_length:
-            break
-
-        if is_tag:
-            markdown = converter.process_tag(element, convert_as_inline=False)
-        else:
-            markdown = converter.process_text(element)
-
-        rendered_length += element_length
-        tag_end_index += len(markdown)
-
-        if not markdown.isspace():
-            ends.append(tag_end_index)
-        result += markdown
-
-    if not ends:
-        return ""
-
-    # Determine the "hard" truncation index. Account for the ellipsis placeholder for the max length.
-    newline_truncate_index = find_nth_occurrence(result, "\n", max_lines)
-
-    if (
-        newline_truncate_index is not None
-        and newline_truncate_index < _MAX_DESCRIPTION_LENGTH - 3
-    ):
-        # Truncate based on maximum lines if there are more than the maximum number of lines.
-        truncate_index = newline_truncate_index
-    else:
-        # There are less than the maximum number of lines; truncate based on the max char length.
-        truncate_index = _MAX_DESCRIPTION_LENGTH - 3
-
-    # Nothing needs to be truncated if the last element ends before the truncation index.
-    if truncate_index >= ends[-1]:
-        return result
-
-    # Determine the actual truncation index.
-    possible_truncation_indices = [cut for cut in ends if cut < truncate_index]
-    if not possible_truncation_indices:
-        # In case there is no Markdown element ending before the truncation index, try to find a good cutoff point.
-        force_truncated = result[:truncate_index]
-        # If there is an incomplete codeblock, cut it out.
-        if force_truncated.count("```") % 2:
-            force_truncated = force_truncated[: force_truncated.rfind("```")]
-        # Search for substrings to truncate at, with decreasing desirability.
-        for string_ in ("\n\n", "\n", ". ", ", ", ",", " "):
-            cutoff = force_truncated.rfind(string_)
-
-            if cutoff != -1:
-                truncated_result = force_truncated[:cutoff]
-                break
-        else:
-            truncated_result = force_truncated
-
-    else:
-        # Truncate at the last Markdown element that comes before the truncation index.
-        markdown_truncate_index = possible_truncation_indices[-1]
-        truncated_result = result[:markdown_truncate_index]
-
-    return truncated_result.strip(_TRUNCATE_STRIP_CHARACTERS) + "..."
-
-
 # outdated
 def high_level_function():
     with open("...") as mfile:  # loop for files
@@ -552,6 +356,50 @@ def evaluate(string):
         return result
     except (SyntaxError, TypeError, NameError):
         return None
+
+
+def decimals(string: str):
+    pattern = r"[-+]?\d+\.[0-9]+(?:[eE][+-]?\d+)?"
+
+    matches = findall(pattern, string)
+
+    for match in matches:
+        number = float(match)
+
+        if not number < 1:
+            continue
+
+        lenght = len(str(number))
+        multiplicator = int("1" + "0" * (lenght - 2))
+        string = string.replace(match, str(int(float(number * multiplicator))), 1)
+
+    return string
+
+
+def romans(string: str):
+    pattern = r"M{0,3}(?:CM|CD|D?C{0,3})?(?:XC|XL|L?X{0,3})?(?:IX|IV|V?I{0,3})?"
+    matches = list(filter(lambda m: bool(m), findall(pattern, string)))
+
+    for match in matches:
+        values = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+        result = 0
+        last = 0
+
+        for char in match[::-1]:
+            digit = values[char]
+            if not digit:
+                continue
+
+            if digit >= last:
+                result += digit
+                last = digit
+            else:
+                result -= digit
+
+        if result:
+            string = string.replace(match, str(result), 1)
+
+    return string
 
 
 def string_is_calculation(string):
@@ -881,6 +729,7 @@ def async_compile(source, filename, mode):
 
 def cleanup(content: str) -> str:
     """Automatically removes code blocks from the code."""
+    codeblocks = ("```", "``", "`")
     starts = ("py", "js")
     for start in starts:
         if content.startswith(f"```{start}"):
@@ -923,27 +772,6 @@ def stdoutable(code: str, output: bool = False):
         s += ("..." if output else ">>>") + " "
         s += line + "\n"
     return s
-
-
-def tens(count: int, higher_when_same: bool = False, direction: bool = True):
-    __len = len(str(count))
-    __digits: List[str] = [int(_) for _ in str(count)]
-    __saves = max(1, ceil(__len / 2))
-    __saved = __digits[0:__saves]
-    if direction is False:
-        stringed = "".join(str(_) for _ in __saved)
-        inted = int(stringed)
-        upped = inted + 1
-        __saved: List[str] = [int(_) for _ in str(upped)]
-
-    __zeros = list("0" for _ in range(len(__digits[__saves:__len])))
-
-    final = int("".join(str(x) for x in __saved + __zeros))
-
-    if final == count and higher_when_same:
-        final += 1
-
-    return max(1, final)
 
 
 class SphinxObjectFileReader:
@@ -989,23 +817,6 @@ class SphinxObjectFileReader:
                 yield buf[:pos].decode()
                 buf = buf[pos + 1 :]
                 pos = buf.find(b"\n")
-
-
-# async def build_lookup_table(session, name: str) -> dict[str, str]:
-#     try:
-#         module: Modules = Modules[name]
-#     except KeyError:
-#         return None
-
-#     url = module.value
-
-#     async with session.get(url + "/objects.inv") as request:
-#         if request.status != 200:
-#             raise RuntimeError("Cannot build lookup table, try again later.")
-
-#         stream = SphinxObjectFileReader(await request.read())
-#         inventory: dict[str, list[DocItem]] = fetch_inventory(stream, url)
-#         return inventory
 
 
 LINE_RE = recom(r"(?x)(.+?)\s+(\S*:\S*)\s+(-?\d+)\s+?(\S*)\s+(.*)")
@@ -1145,50 +956,83 @@ async def markdown(item: DocItem, soup: BeautifulSoup) -> str | None:
     return description.strip()
 
 
-async def m(item: DocItem, soup: BeautifulSoup):
-    heading = soup.find(id=item.id)
-    if heading is None:
-        return None
-    signatures = None
-    # Modules, doc pages and labels don't point to description list tags but to tags like divs,
-    # no special parsing can be done so we only try to include what's under them.
-    if heading.name != "dt":
-        description = get_general_elements(heading)
+async def truncate(
+    elements: Iterable[Tag | NavigableString],
+    converter: DocMarkdownConverter,
+    max_length: int,
+    max_lines: int,
+) -> str:
+    result = ""
+    # Stores indices into `result` which point to the end boundary of each Markdown element.
+    ends = []
+    rendered = 0
 
-    elif item.subdirective in _NO_SIGNATURE_GROUPS:
-        description = get_dd_elements(heading)
+    end = 0
+    for element in elements:
+        is_tag = isinstance(element, Tag)
+        length = len(element.text) if is_tag else len(element)
+
+        if rendered + length >= max_length:
+            break
+
+        if is_tag:
+            markdown: str = converter.process_tag(element, convert_as_inline=False)
+        else:
+            markdown: str = converter.process_text(element)
+
+        rendered += length
+        end += len(markdown)
+
+        if not markdown.isspace():
+            ends.append(end)
+
+        result += markdown
+
+    if not ends:
+        return ""
+
+    newline_truncate_index = 0
+    for _ in range(max_lines):
+        newline_truncate_index = result.find("\n", newline_truncate_index + 1)
+        if newline_truncate_index == -1:
+            newline_truncate_index = None
+            break
+
+    if (
+        newline_truncate_index is not None
+        and newline_truncate_index < _MAX_DESCRIPTION_LENGTH - 3
+    ):
+        # Truncate based on maximum lines if there are more than the maximum number of lines.
+        truncate_index = newline_truncate_index
+    else:
+        # There are less than the maximum number of lines; truncate based on the max char length.
+        truncate_index = _MAX_DESCRIPTION_LENGTH - 3
+
+    # Nothing needs to be truncated if the last element ends before the truncation index.
+    if truncate_index >= ends[-1]:
+        return result
+
+    # Determine the actual truncation index.
+    possible_truncation_indices = [cut for cut in ends if cut < truncate_index]
+    if not possible_truncation_indices:
+        # In case there is no Markdown element ending before the truncation index, try to find a good cutoff point.
+        force_truncated = result[:truncate_index]
+        # If there is an incomplete codeblock, cut it out.
+        if force_truncated.count("```") % 2:
+            force_truncated = force_truncated[: force_truncated.rfind("```")]
+        # Search for substrings to truncate at, with decreasing desirability.
+        for string_ in ("\n\n", "\n", ". ", ", ", ",", " "):
+            cutoff = force_truncated.rfind(string_)
+
+            if cutoff != -1:
+                truncated_result = force_truncated[:cutoff]
+                break
+        else:
+            truncated_result = force_truncated
 
     else:
-        signatures = get_signatures(heading)
-        description = get_dd_elements(heading)
+        # Truncate at the last Markdown element that comes before the truncation index.
+        markdown_truncate_index = possible_truncation_indices[-1]
+        truncated_result = result[:markdown_truncate_index]
 
-    for description_element in description:
-        if isinstance(description_element, Tag):
-            for tag in description_element.find_all("a", class_="headerlink"):
-                tag.decompose()
-
-    return _create_markdown(signatures, description, item.module.value).strip()
-
-
-def _create_markdown(
-    signatures: list[str] | None, description: Iterable[Tag], url: str
-) -> str:
-    """
-    Create a Markdown string with the signatures at the top, and the converted html description below them.
-
-    The signatures are wrapped in python codeblocks, separated from the description by a newline.
-    The result Markdown string is max 750 rendered characters for the description with signatures at the start.
-    """
-    description = truncate(
-        description,
-        converter=DocMarkdownConverter(bullets="•", page_url=url),
-        max_length=750,
-        max_lines=13,
-    )
-    description = _WHITESPACE_AFTER_NEWLINES_RE.sub("", description)
-    if signatures is not None:
-        signature = "".join(
-            f"```py\n{signature}```" for signature in truncate_signatures(signatures)
-        )
-        return f"{signature}\n{description}"
-    return description
+    return truncated_result.strip(_TRUNCATE_STRIP_CHARACTERS) + "..."

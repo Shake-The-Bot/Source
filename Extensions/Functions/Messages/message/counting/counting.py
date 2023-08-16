@@ -15,6 +15,7 @@ from Classes import (
     cleanup,
     current,
     evaluate,
+    romans,
     string_is_calculation,
 )
 
@@ -194,7 +195,10 @@ class Counting:
         bad_reaction = 0
 
         current.set(await self.bot.i18n.get_guild(self.guild.id, default="en-US"))
-        if not await self.syntax_check(self.content, self.numbers, self.math):
+        response = await self.syntax_check(
+            self.content, self.numbers, self.math, self.roman
+        )
+        if not response:
             embed.description = Format.bold(
                 _("You can't use anything but arithmetic here.")
             )
@@ -212,7 +216,7 @@ class Counting:
             delete = True
 
         elif not await self.check_number(
-            self.content, self.count, self.direction, self.math
+            response, self.count, self.direction, self.math
         ):
             bucket = self.spam_control.get_bucket(message)
             retry_after = bucket and bucket.update_rate_limit(self.time.timestamp())
@@ -240,7 +244,7 @@ class Counting:
                         _(
                             "Incorrect number! The next number remains {start}. {streak}"
                         ).format(
-                            start=Format.codeblock(f" {start + influence} "),
+                            start=Format.codeblock(f" {self.start + self.influence} "),
                             streak=s,
                         )
                     )
@@ -253,7 +257,7 @@ class Counting:
                             user=member.mention,
                             count=Format.underline(self.count + self.influence),
                             streak=s,
-                            start=Format.codeblock(f" {start + influence} "),
+                            start=Format.codeblock(f" {self.start + self.influence} "),
                         )
                     )
                     bad_reaction = 1
@@ -318,6 +322,7 @@ class Counting:
             "react": self.react,
             "numbers": self.numbers,
             "math": self.math,
+            "roman": self.roman,
         }
         return embed, delete, bad_reaction if self.react == True else MISSING
 
@@ -343,12 +348,17 @@ class Counting:
             }
         )
 
-    async def syntax_check(self, content: str, numbers: bool, math: bool):
+    async def syntax_check(self, content: str, numbers: bool, math: bool, roman: bool):
+        if not content.isdigit():
+            if self.roman:
+                content = romans(content)
+
         if not content.isdigit():
             if math and string_is_calculation(content):
-                return True
+                return content
             return False
-        return True
+
+        return content
 
     async def check_number(self, content: str, count: int, direction: bool, math: bool):
         if math:
@@ -425,6 +435,11 @@ class Counting:
     def math(self) -> int:
         if self.record:
             return self.record.get("math") or False
+
+    @property
+    def roman(self) -> int:
+        if self.record:
+            return self.record.get("roman") or False
 
     @property
     def influence(self) -> int:
