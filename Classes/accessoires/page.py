@@ -9,6 +9,7 @@ from discord.ext.commands.errors import BotMissingPermissions
 from discord.ext.menus import PageSource
 from discord.utils import maybe_coroutine
 
+from Classes import assets
 from Classes.i18n import _
 
 if TYPE_CHECKING:
@@ -20,10 +21,14 @@ else:
 
 __all__ = ("ShakePages",)
 
-firstemoji = PartialEmoji(name="topleft", id=1033551840744312832)
-previousemoji = PartialEmoji(name="left", id=1033551843210579988)
-nextemoji = PartialEmoji(name="right", id=1033551841964871691)
-lastemoji = PartialEmoji(name="topright", id=1033551844703744041)
+# firstemoji = PartialEmoji(name="topleft", id=1033551840744312832)
+# previousemoji = PartialEmoji(name="left", id=1033551843210579988)
+# nextemoji = PartialEmoji(name="right", id=1033551841964871691)
+# lastemoji = PartialEmoji(name="topright", id=1033551844703744041)
+firstemoji = assets.arrows.mostleft
+previousemoji = assets.arrows.left
+nextemoji = assets.arrows.right
+lastemoji = assets.arrows.mostright
 
 
 ########
