@@ -3,10 +3,8 @@
 *.log
 *.toml
 *.json
-Assets/
 .vscode/
 Testing/
-Classes/tomls
 
 # Everything that got suggested
 
