@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
 
@@ -233,10 +234,14 @@ class Channel(ForwardingSource):
 
 
 class TimeModal(Modal):
-    def __init__(self, source: Channel, view: SchedulerMenu) -> None:
+    def __init__(
+        self, source: Channel, view: SchedulerMenu, failed: Optional[bool] = False
+    ) -> None:
         self.source = source
         self.view = view
-        super().__init__(title="Goal")
+        super().__init__(
+            title="When?" + (" (You have not entered time and date.)" if failed else "")
+        )
 
     date = TextInput(
         label="Date",
@@ -253,14 +258,13 @@ class TimeModal(Modal):
     )
 
     async def on_submit(self, interaction: Interaction):
-        if not self.date and self.time:
-            return await interaction.response.send_message(
-                "You have not entered both time and date.",
-                ephemeral=True,
+        if not self.date and not self.time:
+            await interaction.response.send_modal(
+                TimeModal(self, self.view, failed=True)
             )
 
-        self.view.date = self.date
-        self.view.time = self.time
+        self.view.date = self.date or datetime.today()
+        self.view.time = self.time or str(datetime.utcnow())
 
         await self.view.show_source(source=self.view.finish, rotation=1)
 
@@ -289,38 +293,9 @@ class command(ShakeCommand):
             )
             return await message.edit(embed=embed, view=None)
 
-        # async with self.ctx.db.acquire() as connection:
-        #     query = "SELECT * FROM {game} WHERE channel_id = $1"
-        #     for game in dbgames:
-        #         record = await connection.fetchrow(query.format(game=game), channel.id)
-        #         if record:
-        #             embed = embed.to_error(
-        #                 self.ctx,
-        #                 description=_(
-        #                     "There is already a game set up in {channel}. Aborting..."
-        #                 ).format(channel=channel.mention),
-        #             )
-        #             await message.edit(embed=embed, view=None)
-        #             return False
+        # *work*
 
-        #     query = """
-        #         INSERT INTO counting
-        #         (channel_id, guild_id, goal, direction, webhook, count, start, numbers, math, react)
-        #         VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9)
-        #         ON CONFLICT DO NOTHING"""
-
-        #     await connection.execute(
-        #         query,
-        #         channel.id,
-        #         self.ctx.guild.id,
-        #         goal,
-        #         direction,
-        #         webhook.url if webhook else None,
-        #         0 if direction else start + 1,
-        #         numbers,
-        #         math,
-        #         react,
-        #     )
+        Timer = ...
 
         embed = embed.to_success(
             ctx=self.ctx,
@@ -328,9 +303,6 @@ class command(ShakeCommand):
                 channel=channel.mention
             ),
         )
-        # embed.set_footer(
-        #     text=_("Note: You can manage this servers schedulers with /schedulers.")
-        # )
 
         await message.edit(
             embed=embed,
