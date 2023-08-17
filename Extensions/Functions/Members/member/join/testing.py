@@ -75,7 +75,7 @@ class Event:
     async def greet(self):
         async with ctx.pool.acquire() as connection:
             # Check the database for the guild's welcome channel if not then ignore
-            query = "SELECT message FROM welcome WHERE guild_id = $1"
+            query = "SELECT channel_id FROM welcome WHERE guild_id = $1"
             if not (channel := await connection.fetch(query, self.guild.id)):
                 return
             else:
