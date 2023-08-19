@@ -1,10 +1,10 @@
 ############
 #
 from importlib import reload
+from typing import Optional
 
-from discord import PartialEmoji
+from discord import PartialEmoji, TextChannel
 from discord.ext.commands import guild_only, has_permissions, hybrid_command, is_owner
-from discord.ext.tasks import loop
 
 from Classes import ShakeBot, ShakeContext, Testing, _, extras, locale_doc, setlocale
 
@@ -21,11 +21,6 @@ class schedule_extension(Community):
             reload(schedule)
         except:
             pass
-
-    @loop(seconds=1)
-    async def check(self):
-        print(0)
-        ...
 
     @property
     def display_emoji(self) -> PartialEmoji:

@@ -162,12 +162,3 @@ CREATE INDEX IF NOT EXISTS onewords_used_idx ON onewords (used);
 CREATE INDEX IF NOT EXISTS onewords_count_idx ON onewords (count);
 
 CREATE INDEX IF NOT EXISTS onewords_failed_idx ON onewords (failed);
-
-CREATE TABLE
-    IF NOT EXISTS welcome (
-        id SERIAL PRIMARY KEY,
-        channel_id BIGINT UNIQUE,
-        guild_id BIGINT,
-        message TEXT,
-        is_embed BOOLEAN DEFAULT FALSE,
-    );

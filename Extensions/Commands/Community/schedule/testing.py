@@ -220,10 +220,7 @@ class Channel(ForwardingSource):
         embed.title = _("Choose in which text channel this reminder should be sent!")
         points = [
             _("You can set up an existing text channel from your server."),
-            _("You can use this existing text channel."),
-            _(
-                "Alternatively, you have the option to have a new text channel created for it."
-            ),
+            _("Alternatively, you have the option to use this text channel."),
         ]
         embed.description = "\n".join(list(Format.list(_) for _ in points))
 
@@ -234,14 +231,10 @@ class Channel(ForwardingSource):
 
 
 class TimeModal(Modal):
-    def __init__(
-        self, source: Channel, view: SchedulerMenu, failed: Optional[bool] = False
-    ) -> None:
+    def __init__(self, source: Channel, view: SchedulerMenu) -> None:
         self.source = source
         self.view = view
-        super().__init__(
-            title="When?" + (" (You have not entered time and date.)" if failed else "")
-        )
+        super().__init__(title="When?")
 
     date = TextInput(
         label="Date",
@@ -258,13 +251,13 @@ class TimeModal(Modal):
     )
 
     async def on_submit(self, interaction: Interaction):
-        if not self.date and not self.time:
-            await interaction.response.send_modal(
-                TimeModal(self, self.view, failed=True)
+        if not self.date.value and not self.date.value:
+            return await interaction.response.send_message(
+                "You have not entered time and date.", ephemeral=True
             )
 
-        self.view.date = self.date or datetime.today()
-        self.view.time = self.time or str(datetime.utcnow())
+        self.view.date = self.date.value or datetime.today()
+        self.view.time = self.time.value or str(datetime.utcnow())
 
         await self.view.show_source(source=self.view.finish, rotation=1)
 
@@ -282,12 +275,14 @@ class command(ShakeCommand):
 
         duration = menu.duration
         channel = menu.channel
+        time = menu.time
+        date = menu.date
         interval = menu.interval
 
         if menu.timeouted:
             return
 
-        if any(_ is MISSING for _ in (duration, channel, interval)):
+        if any(_ is MISSING for _ in (duration, time, date, channel, interval)):
             embed = embed.to_error(
                 ctx=self.ctx, description=_("An error has occurred, try again later!")
             )
@@ -295,7 +290,14 @@ class command(ShakeCommand):
 
         # *work*
 
-        Timer = ...
+        timer = Timer(
+            "reminder",
+            self.ctx.author,
+            time=time,
+            date=date,
+            channel=channel,
+            interval=interval,
+        )
 
         embed = embed.to_success(
             ctx=self.ctx,
@@ -308,6 +310,10 @@ class command(ShakeCommand):
             embed=embed,
             view=None,
         )
+
+
+class Timer:
+    ...
 
 
 #

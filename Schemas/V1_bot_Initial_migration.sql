@@ -51,15 +51,3 @@ CREATE TABLE
 
 CREATE INDEX
     IF NOT EXISTS locale_object_id_idx ON locale (object_id);
-
-CREATE TABLE
-    IF NOT EXISTS reminders (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT,
-        expires TIMESTAMP,
-        created TIMESTAMP DEFAULT (now() at time zone 'utc'),
-        event TEXT
-    );
-
-CREATE INDEX
-    IF NOT EXISTS reminders_expires_idx ON reminders (expires);

@@ -10,14 +10,13 @@ from typing import List, Optional
 
 import cchardet
 from bs4 import BeautifulSoup
-from discord import Interaction, PartialEmoji, app_commands
-from discord.app_commands import Choice, choices
-from discord.ext.commands import guild_only, hybrid_command, is_owner
-
 from Classes import ShakeBot, ShakeContext, Testing, _, locale_doc, setlocale
 from Classes.helpful import ResultFuture
 from Classes.types import DocItem, Modules, QueueItem
 from Classes.useful import fetch_inventory, markdown
+from discord import Interaction, PartialEmoji, app_commands
+from discord.app_commands import Choice, choices
+from discord.ext.commands import guild_only, hybrid_command, is_owner
 
 from ..developing import Developing
 from . import rtfm, testing
@@ -190,14 +189,8 @@ class rtfm_extension(Developing):
     async def scrape(self, module: Modules) -> RELATIVE:
         self.symbols.setdefault(module.name, dict())
         self.names.setdefault(module.name, dict())
-        for _ in range(5):
-            try:
-                inventory: RELATIVE = await fetch_inventory(self.bot.session, module)
-            except:
-                pass
-            else:
-                await self.single(module, inventory)
-                break
+        inventory: RELATIVE = await fetch_inventory(self.bot.session, module)
+        await self.single(module, inventory)
 
     async def single(self, module: Modules, inventory: RELATIVE):
         for relative, items in inventory.items():
